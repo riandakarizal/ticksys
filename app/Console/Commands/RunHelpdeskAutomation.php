@@ -52,6 +52,7 @@ class RunHelpdeskAutomation extends Command
         Ticket::query()
             ->with('tenant')
             ->where('status', 'resolved')
+            ->with(['tenant', 'requester', 'assignee', 'team'])
             ->whereNotNull('resolved_at')
             ->get()
             ->each(function (Ticket $ticket) use (&$closed, $helpdesk): void {
@@ -65,6 +66,18 @@ class RunHelpdeskAutomation extends Command
                 ]);
 
                 $helpdesk->recordActivity($ticket, null, 'ticket_auto_closed', 'Ticket ditutup otomatis');
+                $helpdesk->notifyUsers(
+                    collect([$ticket->requester, $ticket->assignee])->filter(),
+                    $ticket,
+                    'ticket_status_changed',
+                    'Status ticket '.$ticket->ticket_number.' berubah',
+                    $helpdesk->statusNotificationMessage('closed'),
+                    [
+                        'ticket_id' => $ticket->id,
+                        'status' => 'closed',
+                        'from_status' => 'resolved',
+                    ]
+                );
                 $closed++;
             });
 

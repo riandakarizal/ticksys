@@ -90,11 +90,23 @@
             <input class="field" name="password" type="password" placeholder="Password" required>
             <div class="md:col-span-2">
                 <label class="label">Assigned projects</label>
-                <select class="field" name="project_ids[]" multiple size="8">
-                    @foreach($projects as $project)
-                        <option value="{{ $project->id }}">{{ $project->name }}</option>
-                    @endforeach
-                </select>
+                <div class="choice-panel">
+                    <div class="choice-list">
+                        @foreach($projects as $project)
+                            <label class="choice-card">
+                                <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}">
+                                <span class="choice-card-box">
+                                    <span class="choice-indicator">✓</span>
+                                    <span>
+                                        <span class="block font-semibold text-slate-900">{{ $project->name }}</span>
+                                        <span class="mt-1 block text-xs text-slate-500">{{ $project->code ?: 'Project assignment' }}</span>
+                                    </span>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+                <p class="mt-2 text-xs text-slate-500">Pilih minimal satu project untuk client, agent, atau coordinator.</p>
             </div>
             <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" checked> Active user</label>
         </div>
@@ -130,11 +142,23 @@
                 <input class="field" name="password" type="password" placeholder="New password (optional)">
                 <div class="md:col-span-2">
                     <label class="label">Assigned projects</label>
-                    <select class="field" name="project_ids[]" multiple size="8">
-                        @foreach($projects as $project)
-                            <option value="{{ $project->id }}" @selected($user->projects->contains('id', $project->id))>{{ $project->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="choice-panel">
+                        <div class="choice-list">
+                            @foreach($projects as $project)
+                                <label class="choice-card">
+                                    <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}" @checked($user->projects->contains('id', $project->id))>
+                                    <span class="choice-card-box">
+                                        <span class="choice-indicator">✓</span>
+                                        <span>
+                                            <span class="block font-semibold text-slate-900">{{ $project->name }}</span>
+                                            <span class="mt-1 block text-xs text-slate-500">{{ $project->code ?: 'Project assignment' }}</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-500">Pilih minimal satu project untuk client, agent, atau coordinator.</p>
                 </div>
                 <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" @checked($user->is_active)> Active user</label>
             </div>
@@ -161,4 +185,3 @@
     </dialog>
 @endforeach
 @endsection
-

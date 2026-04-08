@@ -97,7 +97,9 @@ class DashboardController extends Controller
         return view('dashboard', [
             'tickets' => $tickets,
             'statusCounts' => $statusCounts,
+            'isClient' => $user->role === 'client',
             'assignedCount' => (clone $visible)->where('assigned_to', $user->id)->count(),
+            'openRequestCount' => (clone $visible)->whereIn('status', ['open', 'in_progress', 'pending'])->count(),
             'ticketVolume' => $ticketVolume,
             'dueTickets' => $dueTickets,
             'slaCompliance' => $slaCompliance,
@@ -112,10 +114,10 @@ class DashboardController extends Controller
     private function buildStatusChart($statusCounts)
     {
         $colors = [
-            'open' => '#14b8a6',
-            'in_progress' => '#0ea5e9',
+            'open' => '#2563eb',
+            'in_progress' => '#d97706',
             'pending' => '#f59e0b',
-            'resolved' => '#22c55e',
+            'resolved' => '#16a34a',
             'closed' => '#64748b',
         ];
 

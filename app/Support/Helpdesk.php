@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Mail\TicketEventMail;
 use App\Models\ActivityLog;
 use App\Models\AppNotification;
 use App\Models\CustomField;
@@ -13,6 +14,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -21,6 +23,8 @@ class Helpdesk
 {
     public function visibleTickets(User $user): Builder
     {
+        // Ticket visibility is project-scoped first, then narrowed again by role.
+        // This keeps multi-tenant and project access rules in one place.
         $query = Ticket::query()->where('tickets.tenant_id', $user->tenant_id);
 
         if ($user->canManageAllTickets()) {
@@ -71,6 +75,8 @@ class Helpdesk
 
     public function autoAssignUserForProject(Team $project, ?int $preferredUserId = null): ?int
     {
+        // Assignment falls back in priority order so ticket intake can stay simple:
+        // explicit assignee -> first agent -> supervisor -> admin.
         $members = $project->members;
 
         if ($preferredUserId && $members->contains('id', $preferredUserId)) {
@@ -101,6 +107,7 @@ class Helpdesk
         }
 
         $startedAt = now();
+        // SLA due dates are recalculated from the moment the workflow starts.
         $ticket->response_due_at = $startedAt->copy()->addMinutes($policy->response_minutes);
         $ticket->resolution_due_at = $startedAt->copy()->addMinutes($policy->resolution_minutes);
     }
@@ -149,6 +156,8 @@ class Helpdesk
 
     public function notifyUsers(iterable $users, ?Ticket $ticket, string $type, string $title, string $message, array $data = []): void
     {
+        // The same event writes both in-app notifications and email notifications.
+        // Email delivery is filtered again by audience/type rules below.
         $recipients = collect($users)
             ->filter(fn ($user) => $user instanceof User)
             ->unique('id');
@@ -163,10 +172,8 @@ class Helpdesk
                 'data' => $data,
             ]);
 
-            if ($user->email) {
-                Mail::raw($title.PHP_EOL.PHP_EOL.$message, function ($mail) use ($user, $title): void {
-                    $mail->to($user->email)->subject($title);
-                });
+            if ($this->shouldSendEmailNotification($user, $ticket, $type)) {
+                $this->sendTicketEmail($user, $ticket, $title, $message, $data);
             }
         }
     }
@@ -211,4 +218,67 @@ class Helpdesk
     {
         return Storage::exists($path);
     }
+
+    public function statusNotificationMessage(string $status): string
+    {
+        return match ($status) {
+            'in_progress' => 'Ticket sedang dikerjakan oleh tim support.',
+            'pending' => 'Ticket sedang menunggu informasi atau tindak lanjut berikutnya.',
+            'resolved' => 'Ticket sudah ditandai selesai dan menunggu konfirmasi.',
+            'closed' => 'Ticket sudah ditutup.',
+            default => 'Status ticket berubah menjadi '.Str::headline($status).'.',
+        };
+    }
+
+    private function shouldSendEmailNotification(User $user, ?Ticket $ticket, string $type): bool
+    {
+        if (! $user->email || ! $ticket) {
+            return false;
+        }
+
+        if (! in_array($type, config('helpdesk.mail.types', []), true)) {
+            return false;
+        }
+
+        return match (config('helpdesk.mail.audience', 'client_only')) {
+            'all' => true,
+            'none' => false,
+            default => $user->isClient() && $user->id === $ticket->requester_id,
+        };
+    }
+
+    private function sendTicketEmail(User $user, ?Ticket $ticket, string $title, string $message, array $data): void
+    {
+        // Keep the mail payload small and deterministic: primary recipient is the
+        // requester/client, while global CC is injected from configuration.
+        $send = function () use ($user, $ticket, $title, $message, $data): void {
+            try {
+                $mail = Mail::to($user->email);
+                $ccRecipients = collect(config('helpdesk.mail.cc', []))
+                    ->filter(fn ($email) => filled($email) && strcasecmp($email, $user->email) !== 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (! empty($ccRecipients)) {
+                    $mail->cc($ccRecipients);
+                }
+
+                $mail->send(new TicketEventMail($ticket, $title, $message, $data));
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to send ticket notification email.', [
+                    'ticket_id' => $ticket?->id,
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        };
+
+        match (config('helpdesk.mail.delivery', 'sync')) {
+            'after_response' => app()->terminating($send),
+            default => $send(),
+        };
+    }
 }
+

@@ -37,13 +37,13 @@
                 </div>
                 <div>
                     <label class="label">Attachments</label>
-                    <input class="field" type="file" name="attachments[]" multiple>
+                    <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white file:transition hover:file:bg-blue-700" type="file" name="attachments[]" multiple>
                     <p class="mt-2 text-xs text-slate-500">Format yang didukung: JPG, PNG, PDF, TXT, LOG, DOCX, XLSX, CSV. Maks 5MB per file.</p>
                 </div>
             </div>
 
             <div class="flex h-full flex-col gap-6 xl:border-l xl:border-slate-200 xl:pl-6">
-                @if($customFields->count())
+                @if($customFields->count() || $devices->count())
                     <div>
                         <h3 class="text-lg font-black text-slate-900">Additional details</h3>
                         <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
@@ -74,9 +74,19 @@
                         <select class="field" name="team_id" data-ticket-project required>
                             <option value="" disabled hidden @selected(blank(old('team_id')))>Select a project</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
+                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div>
+                        <label class="label">Affected Device <span class="text-rose-500">*</span></label>
+                        <select class="field" name="device_id" data-ticket-device required>
+                            <option value="" disabled hidden @selected(blank(old('device_id')))>Select affected device</option>
+                            @foreach($devices as $device)
+                                <option value="{{ $device->id }}" data-project="{{ $device->team_id }}" @selected((string) old('device_id') === (string) $device->id)>{{ $device->name }}{{ $device->serial_number ? ' | '.$device->serial_number : '' }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-2 text-xs text-slate-500">Daftar perangkat otomatis mengikuti project yang dipilih.</p>
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
@@ -91,9 +101,9 @@
                         <div>
                             <label class="label">SLA</label>
                             <select class="field" name="sla_policy_id">
-                                <option value="" disabled hidden @selected(blank(old('sla_policy_id')))>Select an SLA policy</option>
+                                <option value="" disabled hidden @selected(blank(old('sla_policy_id')) && ! $slaPolicies->firstWhere('is_default', true))>Select an SLA policy</option>
                                 @foreach($slaPolicies as $sla)
-                                    <option value="{{ $sla->id }}" @selected((string) old('sla_policy_id') === (string) $sla->id)>{{ $sla->name }} | {{ $sla->response_minutes }}/{{ $sla->resolution_minutes }}m</option>
+                                    <option value="{{ $sla->id }}" @selected((string) old('sla_policy_id') === (string) $sla->id || (blank(old('sla_policy_id')) && $sla->is_default))>{{ $sla->name }}{{ $sla->is_default ? ' (Default)' : '' }} | {{ $sla->response_minutes }}/{{ $sla->resolution_minutes }}m</option>
                                 @endforeach
                             </select>
                         </div>
@@ -104,7 +114,7 @@
                             <select class="field" name="category_id" data-ticket-category>
                                 <option value="" disabled hidden @selected(blank(old('category_id')))>Select a category</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" data-projects="{{ $category->projects->pluck('name')->join(', ') }}" data-assignee="{{ $category->autoAssignUser?->name }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -157,4 +167,5 @@
     </div>
 </form>
 @endsection
+
 

@@ -13,11 +13,36 @@ const showToast = (message, isError = false) => {
     }
 
     element.textContent = message;
-    element.classList.remove('hidden', 'bg-slate-900', 'bg-rose-600');
-    element.classList.add(isError ? 'bg-rose-600' : 'bg-slate-900');
+    element.classList.remove(
+        'hidden',
+        'translate-y-0',
+        'opacity-100',
+        'bg-slate-900',
+        'bg-emerald-500',
+        'bg-rose-600'
+    );
+    element.classList.add(isError ? 'bg-rose-600' : 'bg-emerald-500');
 
     window.clearTimeout(element._timeout);
-    element._timeout = window.setTimeout(() => element.classList.add('hidden'), 3200);
+    requestAnimationFrame(() => {
+        element.classList.remove('translate-y-3', 'opacity-0');
+        element.classList.add('translate-y-0', 'opacity-100');
+    });
+
+    element._timeout = window.setTimeout(() => {
+        element.classList.remove('translate-y-0', 'opacity-100');
+        element.classList.add('translate-y-3', 'opacity-0');
+        window.setTimeout(() => element.classList.add('hidden'), 250);
+    }, 10000);
+};
+
+const initPageToasts = () => {
+    const toast = document.querySelector('[data-page-toast]');
+    if (!toast) {
+        return;
+    }
+
+    showToast(toast.dataset.toastMessage, toast.dataset.toastType === 'error');
 };
 
 const submitAjaxForm = async (form) => {
@@ -54,16 +79,21 @@ const submitAjaxForm = async (form) => {
             form.closest('dialog').close();
         }
 
-        if (form.dataset.reload !== 'false') {
-            window.setTimeout(() => {
-                if (payload.redirect) {
-                    window.location.href = payload.redirect;
-                    return;
-                }
+        window.setTimeout(() => {
+            if (payload.redirect) {
+                window.location.href = payload.redirect;
+                return;
+            }
 
+            if (response.redirected && response.url) {
+                window.location.href = response.url;
+                return;
+            }
+
+            if (form.dataset.reload !== 'false') {
                 window.location.reload();
-            }, 450);
-        }
+            }
+        }, 450);
     } catch {
         showToast('Terjadi error jaringan. Coba lagi.', true);
     } finally {
@@ -111,6 +141,7 @@ const initTicketForm = () => {
     const subcategorySelect = document.querySelector('[data-ticket-subcategory]');
     const requesterSelect = document.querySelector('[data-ticket-requester]');
     const assigneeSelect = document.querySelector('[data-ticket-assignee]');
+    const deviceSelect = document.querySelector('[data-ticket-device]');
     const projectHint = document.querySelector('[data-project-hint]');
     const teamHint = document.querySelector('[data-team-hint]');
     const assigneeHint = document.querySelector('[data-assignee-hint]');
@@ -123,9 +154,11 @@ const initTicketForm = () => {
         const selectedOption = projectSelect.selectedOptions[0];
         const clientIds = (selectedOption?.dataset.clients || '').split(',').filter(Boolean);
         const agentIds = (selectedOption?.dataset.agents || '').split(',').filter(Boolean);
+        const deviceIds = (selectedOption?.dataset.devices || '').split(',').filter(Boolean);
 
         filterSelectOptions(requesterSelect, clientIds);
         filterSelectOptions(assigneeSelect, agentIds);
+        filterSelectOptions(deviceSelect, deviceIds);
 
         if (projectHint) {
             projectHint.textContent = selectedOption?.value
@@ -158,14 +191,10 @@ const initTicketForm = () => {
 
         const selectedOption = categorySelect.selectedOptions[0];
         if (teamHint) {
-            teamHint.textContent = selectedOption?.dataset.projects
-                ? `Category aktif untuk project: ${selectedOption.dataset.projects}`
-                : 'Category belum dibatasi ke project tertentu.';
+            teamHint.textContent = 'Category berlaku untuk semua project.';
         }
         if (assigneeHint) {
-            assigneeHint.textContent = selectedOption?.dataset.assignee
-                ? `Auto assign: ${selectedOption.dataset.assignee}`
-                : 'Category belum punya auto assignment.';
+            assigneeHint.textContent = 'Assignment mengikuti member project yang dipilih.';
         }
     };
 
@@ -176,18 +205,31 @@ const initTicketForm = () => {
 };
 
 const initDialogs = () => {
-    document.querySelectorAll('[data-open-dialog]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const dialog = document.getElementById(button.dataset.openDialog);
-            dialog?.showModal();
-        });
-    });
+    if (!document.body.dataset.dialogsReady) {
+        document.addEventListener('click', (event) => {
+            const openButton = event.target.closest('[data-open-dialog]');
+            if (openButton) {
+                event.preventDefault();
+                const dialog = document.getElementById(openButton.dataset.openDialog);
+                dialog?.showModal();
+                return;
+            }
 
-    document.querySelectorAll('[data-close-dialog]').forEach((button) => {
-        button.addEventListener('click', () => button.closest('dialog')?.close());
-    });
+            const closeButton = event.target.closest('[data-close-dialog]');
+            if (closeButton) {
+                event.preventDefault();
+                closeButton.closest('dialog')?.close();
+            }
+        });
+
+        document.body.dataset.dialogsReady = 'true';
+    }
 
     document.querySelectorAll('dialog').forEach((dialog) => {
+        if (dialog.dataset.backdropReady === 'true') {
+            return;
+        }
+
         dialog.addEventListener('click', (event) => {
             const rect = dialog.getBoundingClientRect();
             const inside = rect.top <= event.clientY
@@ -199,6 +241,8 @@ const initDialogs = () => {
                 dialog.close();
             }
         });
+
+        dialog.dataset.backdropReady = 'true';
     });
 };
 
@@ -272,6 +316,57 @@ const initCharts = () => {
     }
 };
 
+const initNotificationActions = () => {
+    if (document.body.dataset.notificationActionsReady === 'true') {
+        return;
+    }
+
+    document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-delete-notification]');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const item = button.closest('[data-notification-item]');
+        const list = document.querySelector('[data-notification-list]');
+        const emptyState = document.querySelector('[data-notification-empty]');
+
+        try {
+            button.setAttribute('disabled', 'disabled');
+
+            const response = await fetch(button.dataset.deleteNotification, {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                showToast(payload.message || 'Notifikasi gagal dihapus.', true);
+                button.removeAttribute('disabled');
+                return;
+            }
+
+            item?.remove();
+            if (list && !list.querySelector('[data-notification-item]')) {
+                emptyState?.classList.remove('hidden');
+            }
+
+            showToast(payload.message || 'Notifikasi berhasil dihapus.');
+        } catch {
+            showToast('Terjadi error jaringan. Coba lagi.', true);
+            button.removeAttribute('disabled');
+        }
+    });
+
+    document.body.dataset.notificationActionsReady = 'true';
+};
 const initDataTables = () => {
     document.querySelectorAll('[data-datatable]').forEach((table) => {
         if (table.dataset.datatableReady === 'true') {
@@ -300,9 +395,11 @@ const initDataTables = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    initPageToasts();
     initAjaxForms();
     initTicketForm();
     initDialogs();
     initCharts();
     initDataTables();
 });
+
