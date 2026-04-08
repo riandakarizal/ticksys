@@ -7,12 +7,17 @@ use App\Support\Helpdesk;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class TicketMessageController extends Controller
 {
     public function store(Request $request, Ticket $ticket, Helpdesk $helpdesk): RedirectResponse
     {
         abort_unless($helpdesk->visibleTickets(Auth::user())->whereKey($ticket->id)->exists(), 403);
+
+        if ($ticket->isClosed()) {
+            return back()->withErrors(['ticket' => 'Ticket yang sudah closed tidak bisa ditambahkan komentar lagi.']);
+        }
 
         $user = Auth::user();
         $validated = $request->validate([
@@ -65,13 +70,14 @@ class TicketMessageController extends Controller
             $isInternal ? 'internal_note' : 'ticket_reply',
             'Update pada ticket '.$ticket->ticket_number,
             $user->name.' menambahkan '.($isInternal ? 'catatan internal.' : 'balasan baru.'),
-            ['ticket_id' => $ticket->id]
+            [
+                'ticket_id' => $ticket->id,
+                'comment_body' => Str::limit(strip_tags($validated['body']), 180),
+            ]
         );
 
         if (! $isInternal && $beforeStatus !== $ticket->status) {
-            $statusMessage = $ticket->status === 'in_progress'
-                ? 'Ticket sedang dikerjakan oleh tim support.'
-                : 'Status ticket berubah menjadi '.str($ticket->status)->headline().'.';
+            $statusMessage = $helpdesk->statusNotificationMessage($ticket->status);
 
             $helpdesk->notifyUsers(
                 collect([$ticket->requester, $ticket->assignee])->filter()->reject(fn ($recipient) => $recipient->id === $user->id),
@@ -79,7 +85,11 @@ class TicketMessageController extends Controller
                 'ticket_status_changed',
                 'Status ticket '.$ticket->ticket_number.' berubah',
                 $statusMessage,
-                ['ticket_id' => $ticket->id, 'status' => $ticket->status]
+                [
+                    'ticket_id' => $ticket->id,
+                    'status' => $ticket->status,
+                    'from_status' => $beforeStatus,
+                ]
             );
         }
 

@@ -6,9 +6,13 @@
 <script type="application/json" id="category-chart-data">{!! json_encode(['labels' => $categorySeries->pluck('label')->values(), 'values' => $categorySeries->pluck('value')->values()]) !!}</script>
 
 <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-    <div class="stat"><p class="text-sm text-slate-500">Assigned to You</p><p class="mt-2 text-4xl font-black">{{ $assignedCount }}</p><p class="mt-2 text-xs text-slate-500"></p></div>
-    <div class="stat"><p class="text-sm text-slate-500">Ticket Volumes</p><p class="mt-2 text-4xl font-black">{{ $ticketVolume }}</p><p class="mt-2 text-xs text-slate-500"></p></div>
-    <div class="stat"><p class="text-sm text-slate-500">Due in 2 hours</p><p class="mt-2 text-4xl font-black">{{ $dueTickets }}</p><p class="mt-2 text-xs text-slate-500"></p></div>
+    @if($isClient)
+        <div class="stat"><p class="text-sm text-slate-500">My Open Requests</p><p class="mt-2 text-4xl font-black">{{ $openRequestCount }}</p><p class="mt-2 text-xs text-slate-500">Tickets still waiting for progress or closure.</p></div>
+    @else
+        <div class="stat"><p class="text-sm text-slate-500">Assigned to You</p><p class="mt-2 text-4xl font-black">{{ $assignedCount }}</p><p class="mt-2 text-xs text-slate-500">Tickets currently owned by your queue.</p></div>
+    @endif
+    <div class="stat"><p class="text-sm text-slate-500">Ticket Volumes</p><p class="mt-2 text-4xl font-black">{{ $ticketVolume }}</p><p class="mt-2 text-xs text-slate-500">All visible tickets in your workspace.</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">Due in 2 hours</p><p class="mt-2 text-4xl font-black">{{ $dueTickets }}</p><p class="mt-2 text-xs text-slate-500">Prioritize tickets close to SLA deadline.</p></div>
     <div class="stat"><p class="text-sm text-slate-500">SLA Compliance</p><p class="mt-2 text-4xl font-black">{{ $slaCompliance }}%</p><div class="mt-3 h-2 rounded-full bg-slate-200"><div class="h-2 rounded-full bg-blue-500" style="width: {{ min(100, $slaCompliance) }}%"></div></div></div>
 </div>
 
@@ -84,8 +88,8 @@
                     @foreach($tickets as $ticket)
                         <tr>
                             <td class="py-3"><a class="font-semibold hover:text-blue-600" href="{{ route('tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a><div class="text-slate-500">{{ $ticket->subject }}</div></td>
-                            <td class="py-3">{{ \Illuminate\Support\Str::headline($ticket->status) }}</td>
-                            <td class="py-3">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</td>
+                            <td class="py-3"><span class="badge {{ $ticket->statusBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->status) }}</span></td>
+                            <td class="py-3"><span class="badge {{ $ticket->priorityBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</span></td>
                             <td class="py-3">{{ $ticket->assignee?->name ?? 'Unassigned' }}</td>
                         </tr>
                     @endforeach

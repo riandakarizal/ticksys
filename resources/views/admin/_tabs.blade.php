@@ -4,6 +4,7 @@
         ['label' => 'SLA Policy', 'route' => route('admin.sla.index'), 'active' => request()->routeIs('admin.sla.*')],
         ['label' => 'Category', 'route' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
         ['label' => 'Project', 'route' => route('admin.projects.index'), 'active' => request()->routeIs('admin.projects.*')],
+        ['label' => 'Device', 'route' => route('admin.devices.index'), 'active' => request()->routeIs('admin.devices.*')],
     ];
 @endphp
 

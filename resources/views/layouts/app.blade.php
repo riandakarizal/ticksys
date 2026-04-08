@@ -9,7 +9,7 @@
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
 </head>
 <body class="min-h-full text-slate-900">
-    <div id="app-toast" class="pointer-events-none fixed right-4 top-4 z-50 hidden rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-300"></div>
+    <div id="app-toast" class="pointer-events-none fixed right-5 top-5 z-50 hidden max-w-sm rounded-2xl px-5 py-4 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/30 transition duration-200 translate-y-3 opacity-0"></div>
     <?php if(auth()->guard()->check()): ?>
 
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -74,22 +74,35 @@
                             <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Recent notifications</p>
                             <span class="text-xs text-slate-400">Last updates</span>
                         </div>
-                        <div class="space-y-2">
+                        <div class="space-y-2" data-notification-list>
                             <?php $__empty_1 = true; $__currentLoopData = auth()->user()->notificationsFeed()->with('ticket')->latest()->limit(5)->get(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $notification): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                <a href="<?php echo e($notification->ticket ? route('tickets.show', $notification->ticket) : '#'); ?>" class="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition hover:border-blue-200 hover:bg-blue-50">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition hover:border-blue-200 hover:bg-blue-50" data-notification-item>
                                     <div class="flex items-start justify-between gap-3">
-                                        <div>
+                                        <a href="<?php echo e($notification->ticket ? route('tickets.show', $notification->ticket) : '#'); ?>" class="min-w-0 flex-1">
                                             <p class="font-semibold text-slate-900"><?php echo e($notification->title); ?></p>
                                             <p class="mt-1 text-slate-600"><?php echo e($notification->message); ?></p>
                                             <?php if($notification->ticket): ?>
                                                 <p class="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"><?php echo e($notification->ticket->ticket_number); ?></p>
                                             <?php endif; ?>
+                                        </a>
+                                        <div class="flex items-start gap-2">
+                                            <span class="pt-1 text-xs text-slate-400"><?php echo e($notification->created_at->diffForHumans()); ?></span>
+                                            <form method="POST" action="<?php echo e(route('notifications.destroy', $notification)); ?>">
+                                                <?php echo csrf_field(); ?>
+                                                <?php echo method_field('DELETE'); ?>
+                                                <button type="submit" class="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700" aria-label="Delete notification">
+                                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </form>
                                         </div>
-                                        <span class="text-xs text-slate-400"><?php echo e($notification->created_at->diffForHumans()); ?></span>
                                     </div>
-                                </a>
+                                </div>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                <p class="text-sm text-slate-500">Belum ada notifikasi.</p>
+                                <p class="text-sm text-slate-500" data-notification-empty>Belum ada notifikasi.</p>
+                            <?php else: ?>
+                                <p class="hidden text-sm text-slate-500" data-notification-empty>Belum ada notifikasi.</p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -147,5 +160,7 @@
     <?php endif; ?>
 </body>
 </html>
+
+
 
 

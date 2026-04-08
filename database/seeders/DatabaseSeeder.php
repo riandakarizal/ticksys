@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Device;
 use App\Models\CustomField;
 use App\Models\SlaPolicy;
 use App\Models\Team;
@@ -143,13 +144,43 @@ class DatabaseSeeder extends Seeder
             'is_required' => false,
         ]);
 
-        CustomField::create([
+        $vpnLaptop = Device::create([
             'tenant_id' => $tenant->id,
-            'name' => 'Business Impact',
-            'key' => 'business_impact',
-            'type' => 'select',
-            'options' => ['Low', 'Medium', 'High'],
-            'is_required' => true,
+            'team_id' => $itTeam->id,
+            'name' => 'Laptop Finance-01',
+            'asset_code' => 'ACME-LPT-001',
+            'device_type' => 'Laptop',
+            'serial_number' => 'SN-LPT-001',
+            'ip_address' => '10.10.1.21',
+            'location' => 'Finance Floor',
+            'notes' => 'Primary finance laptop',
+            'is_active' => true,
+        ]);
+
+        Device::create([
+            'tenant_id' => $tenant->id,
+            'team_id' => $itTeam->id,
+            'name' => 'VPN Router Branch-01',
+            'asset_code' => 'ACME-RTR-014',
+            'device_type' => 'Router',
+            'serial_number' => 'SN-RTR-014',
+            'ip_address' => '10.20.0.1',
+            'location' => 'Bandung Branch',
+            'notes' => 'Router for branch VPN access',
+            'is_active' => true,
+        ]);
+
+        Device::create([
+            'tenant_id' => $tenant->id,
+            'team_id' => $appTeam->id,
+            'name' => 'ERP Application Server',
+            'asset_code' => 'ACME-SRV-002',
+            'device_type' => 'Server',
+            'serial_number' => 'SN-SRV-002',
+            'ip_address' => '10.30.0.15',
+            'location' => 'Jakarta DC',
+            'notes' => 'Handles ERP approval workflow',
+            'is_active' => true,
         ]);
 
         $ticket = Ticket::create([
@@ -158,6 +189,7 @@ class DatabaseSeeder extends Seeder
             'created_by' => $client->id,
             'assigned_to' => $agent->id,
             'team_id' => $itTeam->id,
+            'device_id' => $vpnLaptop->id,
             'category_id' => $network->id,
             'subcategory_id' => $vpn->id,
             'sla_policy_id' => $standardSla->id,

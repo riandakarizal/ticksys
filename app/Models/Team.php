@@ -41,4 +41,10 @@ class Team extends Model
     {
         return $this->hasMany(Ticket::class);
     }
+
+    public function devices(): HasMany
+    {
+        return $this->hasMany(Device::class)->orderBy('name');
+    }
 }
+

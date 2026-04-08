@@ -16,12 +16,12 @@
 
     body {
         @apply text-slate-900;
-        background-color: #eef5ff;
+        background-color: #f4f8ff;
         background-image:
-            radial-gradient(circle at 10% 12%, rgba(96, 165, 250, 0.18), transparent 26%),
-            radial-gradient(circle at 86% 10%, rgba(125, 211, 252, 0.16), transparent 24%),
-            radial-gradient(circle at 50% 100%, rgba(191, 219, 254, 0.18), transparent 30%),
-            linear-gradient(180deg, #f7fbff 0%, #edf5ff 54%, #f3f8ff 100%);
+            radial-gradient(circle at 12% 10%, rgba(147, 197, 253, 0.16), transparent 24%),
+            radial-gradient(circle at 88% 12%, rgba(191, 219, 254, 0.18), transparent 22%),
+            radial-gradient(circle at 50% 100%, rgba(226, 232, 240, 0.24), transparent 30%),
+            linear-gradient(180deg, #fbfdff 0%, #f4f8ff 56%, #f8fbff 100%);
         background-attachment: fixed;
         position: relative;
     }
@@ -32,24 +32,24 @@
         inset: 0;
         pointer-events: none;
         background-image:
-            linear-gradient(rgba(147, 197, 253, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(147, 197, 253, 0.08) 1px, transparent 1px);
-        background-size: 34px 34px;
+            linear-gradient(rgba(191, 219, 254, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(191, 219, 254, 0.08) 1px, transparent 1px);
+        background-size: 38px 38px;
         mask-image: radial-gradient(circle at center, black 28%, transparent 78%);
-        opacity: 0.35;
+        opacity: 0.22;
     }
 
     body::after {
         content: '';
         position: fixed;
-        inset: auto auto 6% 8%;
-        width: 18rem;
-        height: 18rem;
+        inset: auto auto 7% 8%;
+        width: 20rem;
+        height: 20rem;
         border-radius: 9999px;
-        background: radial-gradient(circle, rgba(96, 165, 250, 0.18), transparent 72%);
-        filter: blur(18px);
+        background: radial-gradient(circle, rgba(125, 211, 252, 0.16), transparent 72%);
+        filter: blur(24px);
         pointer-events: none;
-        opacity: 0.75;
+        opacity: 0.65;
     }
 
     dialog {
@@ -103,37 +103,89 @@
     .badge {
         @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
     }
+
+    .choice-list {
+        @apply grid gap-3 sm:grid-cols-2;
+    }
+
+    .choice-panel {
+        @apply max-h-72 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50/70 p-3;
+    }
+
+    .choice-card {
+        @apply block cursor-pointer;
+    }
+
+    .choice-card-box {
+        @apply flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm shadow-slate-200/70 transition;
+    }
+
+    .choice-card:hover .choice-card-box {
+        @apply border-blue-200 bg-blue-50/70;
+    }
+
+    .choice-card input:checked + .choice-card-box {
+        @apply border-blue-500 bg-blue-50 text-blue-700 shadow-md shadow-blue-100/80;
+    }
+
+    .choice-indicator {
+        @apply mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold text-transparent transition;
+    }
+
+    .choice-card input:checked + .choice-card-box .choice-indicator {
+        @apply border-blue-500 bg-blue-600 text-white;
+    }
 }
 
 @layer utilities {
-    .datatable-shell .dataTable-top,
-    .datatable-shell .dataTable-bottom {
+    .datatable-shell .datatable-top,
+    .datatable-shell .datatable-bottom {
         @apply flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between;
     }
 
-    .datatable-shell .dataTable-dropdown label,
-    .datatable-shell .dataTable-search {
+    .datatable-shell .datatable-dropdown label,
+    .datatable-shell .datatable-search {
         @apply text-sm text-slate-500;
     }
 
-    .datatable-shell .dataTable-selector,
-    .datatable-shell .dataTable-input {
+    .datatable-shell .datatable-search {
+        @apply ml-auto;
+    }
+
+    .datatable-shell .datatable-selector,
+    .datatable-shell .datatable-input {
         @apply rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
     }
 
-    .datatable-shell .dataTable-input {
+    .datatable-shell .datatable-input {
         @apply min-w-56;
     }
 
-    .datatable-shell .dataTable-container {
-        @apply overflow-x-auto;
+    .datatable-shell .datatable-container {
+        @apply relative overflow-x-auto;
     }
 
-    .datatable-shell .dataTable-table {
+    .datatable-shell .datatable-table {
         @apply min-w-full;
     }
 
-    .datatable-shell .dataTable-pagination a {
+    .datatable-shell .datatable-table tbody tr,
+    .datatable-shell .datatable-table tbody td {
+        position: relative;
+    }
+
+    .datatable-shell .datatable-table tbody td:last-child {
+        z-index: 20;
+    }
+
+    .datatable-shell .datatable-table tbody td:last-child button,
+    .datatable-shell .datatable-table tbody td:last-child a {
+        position: relative;
+        z-index: 30;
+        pointer-events: auto;
+    }
+
+    .datatable-shell .datatable-pagination a {
         @apply inline-flex min-h-9 min-w-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700;
     }
 }

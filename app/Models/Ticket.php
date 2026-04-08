@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 
 class Ticket extends Model
 {
@@ -19,6 +20,7 @@ class Ticket extends Model
         'created_by',
         'assigned_to',
         'team_id',
+        'device_id',
         'category_id',
         'subcategory_id',
         'sla_policy_id',
@@ -92,6 +94,11 @@ class Ticket extends Model
         return $this->belongsTo(Team::class);
     }
 
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(Device::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
@@ -109,7 +116,7 @@ class Ticket extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(TicketMessage::class);
+        return $this->hasMany(TicketMessage::class)->latest();
     }
 
     public function attachments(): HasMany
@@ -143,6 +150,11 @@ class Ticket extends Model
             && $this->resolution_due_at->isPast();
     }
 
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
     public function responseDueClass(): string
     {
         if (! ($this->response_due_at instanceof Carbon)) {
@@ -163,5 +175,60 @@ class Ticket extends Model
         return $this->isResolutionBreached()
             ? 'text-rose-600 font-semibold'
             : 'text-emerald-600 font-semibold';
+    }
+
+    public function statusBadgeClass(): string
+    {
+        return match ($this->status) {
+            'open' => 'bg-blue-100 text-blue-700',
+            'in_progress' => 'bg-amber-100 text-amber-700',
+            'pending' => 'bg-orange-100 text-orange-700',
+            'resolved' => 'bg-emerald-100 text-emerald-700',
+            'closed' => 'bg-slate-200 text-slate-700',
+            default => 'bg-slate-100 text-slate-700',
+        };
+    }
+
+    public function priorityBadgeClass(): string
+    {
+        return match ($this->priority) {
+            'low' => 'bg-blue-100 text-blue-700',
+            'medium' => 'bg-amber-100 text-amber-700',
+            'high' => 'bg-orange-100 text-orange-700',
+            'critical' => 'bg-rose-100 text-rose-700',
+            default => 'bg-slate-100 text-slate-700',
+        };
+    }
+
+    public function slaBadgeClass(): ?string
+    {
+        if ($this->isClosed()) {
+            return 'bg-emerald-100 text-emerald-700';
+        }
+
+        if (! ($this->resolution_due_at instanceof Carbon)) {
+            return null;
+        }
+
+        return $this->isResolutionBreached()
+            ? 'bg-rose-100 text-rose-700'
+            : 'bg-amber-100 text-amber-700';
+    }
+
+    public function slaBadgeLabel(): ?string
+    {
+        if ($this->isClosed()) {
+            return 'On Track';
+        }
+
+        if (! ($this->resolution_due_at instanceof Carbon)) {
+            return null;
+        }
+
+        if ($this->isResolutionBreached()) {
+            return 'Breached';
+        }
+
+        return $this->resolution_due_at->diffForHumans(now(), CarbonInterface::DIFF_ABSOLUTE, false, 1);
     }
 }

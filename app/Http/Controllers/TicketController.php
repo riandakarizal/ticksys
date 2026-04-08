@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
 use App\Models\Category;
+use App\Models\Device;
 use App\Models\SlaPolicy;
 use App\Models\Team;
 use App\Models\Ticket;
@@ -33,7 +34,7 @@ class TicketController extends Controller
         $projectIds = $projects->pluck('id');
 
         $query = $helpdesk->visibleTickets($user)
-            ->with(['requester', 'assignee', 'team', 'category', 'subcategory']);
+            ->with(['requester', 'assignee', 'team', 'device', 'category', 'subcategory']);
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($builder) use ($search): void {
@@ -86,19 +87,26 @@ class TicketController extends Controller
     {
         $user = Auth::user();
         $projects = $helpdesk->visibleProjects($user)
-            ->with(['members' => fn ($query) => $query->orderBy('name')])
+            ->with([
+                'members' => fn ($query) => $query->orderBy('name'),
+                'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
+            ])
             ->orderBy('name')
             ->get();
 
         $projectIds = $projects->pluck('id');
         $members = $this->projectMembers($projects);
+        $customFields = $helpdesk->defaultCustomFields($user)
+            ->reject(fn ($field) => in_array($field->key, ['affected_device', 'business_impact'], true))
+            ->values();
 
         return view('tickets.create', [
-            'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with(['children.projects:id,name', 'projects:id,name', 'autoAssignUser'])->orderBy('name')->get(),
+            'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
             'projects' => $projects,
+            'devices' => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
             'agents' => $members->whereIn('role', ['agent', 'supervisor', 'admin'])->sortBy('name')->values(),
             'clients' => $members->where('role', 'client')->sortBy('name')->values(),
-            'customFields' => $helpdesk->defaultCustomFields($user),
+            'customFields' => $customFields,
             'priorities' => Ticket::PRIORITIES,
             'slaPolicies' => SlaPolicy::query()->where('tenant_id', $user->tenant_id)->orderByDesc('is_default')->orderBy('name')->get(),
         ]);
@@ -107,21 +115,24 @@ class TicketController extends Controller
     public function store(Request $request, Helpdesk $helpdesk): RedirectResponse|JsonResponse
     {
         $user = Auth::user();
-        $customFields = $helpdesk->defaultCustomFields($user);
+        $allCustomFields = $helpdesk->defaultCustomFields($user);
+        // Affected device is rendered as a first-class form field, so it is excluded
+        // from the generic custom field loop and synced back manually.
+        $customFields = $allCustomFields
+            ->reject(fn ($field) => in_array($field->key, ['affected_device', 'business_impact'], true))
+            ->values();
+        $affectedDeviceField = $allCustomFields->firstWhere('key', 'affected_device');
         $validated = $request->validate($this->ticketRules($user));
 
-        $projects = $helpdesk->visibleProjects($user)->with('members:id,name,email,role')->get();
+        $projects = $helpdesk->visibleProjects($user)->with(['members:id,name,email,role', 'devices:id,tenant_id,team_id,name,is_active'])->get();
         $this->validateTicketRelationships($request, $user, $customFields, $projects);
 
         $project = $projects->firstWhere('id', (int) $validated['team_id']);
-        $category = ! empty($validated['category_id'])
-            ? Category::query()->where('tenant_id', $user->tenant_id)->findOrFail($validated['category_id'])
-            : null;
+        $assignedUserId = $helpdesk->autoAssignUserForProject($project, $validated['assigned_to'] ?? null);
 
-        $preferredAssigneeId = $category?->auto_assign_user_id ?? ($validated['assigned_to'] ?? null);
-        $assignedUserId = $helpdesk->autoAssignUserForProject($project, $preferredAssigneeId);
-
-        $ticket = DB::transaction(function () use ($validated, $request, $user, $customFields, $helpdesk, $project, $assignedUserId) {
+        $ticket = DB::transaction(function () use ($validated, $request, $user, $customFields, $affectedDeviceField, $helpdesk, $project, $assignedUserId) {
+            // If intake does not explicitly pick an SLA, we always fall back to the
+            // tenant default so due dates and reporting stay populated.
             $slaId = $validated['sla_policy_id'] ?? SlaPolicy::query()
                 ->where('tenant_id', $user->tenant_id)
                 ->where('is_default', true)
@@ -135,6 +146,7 @@ class TicketController extends Controller
                 'created_by' => $user->id,
                 'assigned_to' => $assignedUserId,
                 'team_id' => $project->id,
+                'device_id' => $validated['device_id'] ?? null,
                 'category_id' => $validated['category_id'] ?? null,
                 'subcategory_id' => $validated['subcategory_id'] ?? null,
                 'sla_policy_id' => $slaId,
@@ -146,6 +158,10 @@ class TicketController extends Controller
             ]);
 
             $helpdesk->syncCustomFields($ticket, $customFields, $request->input('custom_fields', []));
+            $this->syncAffectedDeviceField($helpdesk, $ticket, $affectedDeviceField);
+            $ticket->loadMissing('slaPolicy');
+            $helpdesk->applySlaDeadlines($ticket, $ticket->slaPolicy);
+            $ticket->save();
             $helpdesk->storeAttachments($ticket, $request->file('attachments', []), $user->id);
             $helpdesk->recordActivity($ticket, $user, 'ticket_created', 'Ticket dibuat', [
                 'status' => 'open',
@@ -155,7 +171,7 @@ class TicketController extends Controller
             ]);
             $this->recordStatusHistory($helpdesk, $ticket, $user, null, 'open');
 
-            return $ticket->load(['requester', 'assignee', 'team']);
+            return $ticket->load(['requester', 'assignee', 'team', 'device']);
         });
 
         $supervisors = $project->members->whereIn('role', ['supervisor', 'admin']);
@@ -180,15 +196,15 @@ class TicketController extends Controller
             );
         }
 
-        if ($request->expectsJson()) {
+        if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
             return response()->json([
                 'message' => 'Ticket berhasil dibuat.',
-                'redirect' => route('tickets.show', $ticket),
+                'redirect' => route('tickets.index'),
                 'ticket_number' => $ticket->ticket_number,
             ]);
         }
 
-        return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket berhasil dibuat.');
+        return redirect()->route('tickets.index')->with('success', 'Ticket berhasil dibuat.');
     }
 
     public function show(Ticket $ticket, Helpdesk $helpdesk): View
@@ -203,7 +219,10 @@ class TicketController extends Controller
             ->update(['read_at' => now()]);
 
         $projects = $helpdesk->visibleProjects($user)
-            ->with(['members' => fn ($query) => $query->orderBy('name')])
+            ->with([
+                'members' => fn ($query) => $query->orderBy('name'),
+                'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
+            ])
             ->orderBy('name')
             ->get();
         $projectIds = $projects->pluck('id');
@@ -214,6 +233,7 @@ class TicketController extends Controller
             'creator',
             'assignee',
             'team',
+            'device',
             'category',
             'subcategory',
             'slaPolicy',
@@ -228,7 +248,8 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'agents' => $members->whereIn('role', ['agent', 'supervisor', 'admin'])->sortBy('name')->values(),
             'projects' => $projects,
-            'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with(['children.projects:id,name', 'projects:id,name', 'autoAssignUser'])->orderBy('name')->get(),
+            'devices' => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
+            'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
             'clients' => $members->where('role', 'client')->sortBy('name')->values(),
             'statuses' => Ticket::STATUSES,
             'priorities' => Ticket::PRIORITIES,
@@ -243,24 +264,34 @@ class TicketController extends Controller
         $user = Auth::user();
         abort_if($user->isClient(), 403);
 
+        // Closed tickets are treated as immutable history records.
+        if ($ticket->isClosed()) {
+            return back()->withErrors(['ticket' => 'Ticket yang sudah closed tidak bisa diperbarui lagi.']);
+        }
+
+        $affectedDeviceField = $helpdesk->defaultCustomFields($user)->firstWhere('key', 'affected_device');
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(Ticket::STATUSES)],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
             'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id)->whereIn('role', ['agent', 'supervisor', 'admin']))],
             'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id))],
+            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id))],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id)->whereNull('parent_id'))],
             'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id))],
             'requester_id' => ['required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $user->tenant_id)->where('role', 'client'))],
         ]);
 
-        $projects = $helpdesk->visibleProjects($user)->with('members:id,name,email,role')->get();
+        $projects = $helpdesk->visibleProjects($user)->with(['members:id,name,email,role', 'devices:id,tenant_id,team_id,name,is_active'])->get();
         $this->validateTicketRelationships($request, $user, collect(), $projects);
 
-        $before = $ticket->only(['status', 'priority', 'assigned_to', 'team_id', 'category_id', 'subcategory_id', 'requester_id']);
+        $before = $ticket->only(['status', 'priority', 'assigned_to', 'team_id', 'device_id', 'category_id', 'subcategory_id', 'requester_id']);
 
         $ticket->fill($validated);
         $ticket->loadMissing('slaPolicy');
 
+        // SLA counters start when the ticket is actually picked up, not only when
+        // it was created, so moving into "in progress" can refresh the deadlines.
         if (($before['status'] ?? null) !== $validated['status'] && $validated['status'] === 'in_progress') {
             $helpdesk->applySlaDeadlines($ticket, $ticket->slaPolicy);
             $ticket->first_responded_at ??= now();
@@ -274,7 +305,9 @@ class TicketController extends Controller
             $ticket->closed_at = now();
         }
 
-        if ($validated['status'] !== 'resolved') {
+        // Preserve resolved_at when a resolved ticket is later closed, but clear it
+        // if the workflow moves back to a pre-resolution state.
+        if (! in_array($validated['status'], ['resolved', 'closed'], true)) {
             $ticket->resolved_at = null;
         }
 
@@ -283,6 +316,7 @@ class TicketController extends Controller
         }
 
         $ticket->save();
+        $this->syncAffectedDeviceField($helpdesk, $ticket, $affectedDeviceField);
 
         $helpdesk->recordActivity($ticket, $user, 'ticket_updated', 'Ticket diperbarui', [
             'before' => $before,
@@ -312,6 +346,10 @@ class TicketController extends Controller
         $this->authorizeTicket($ticket, $helpdesk);
         abort_if(Auth::user()->isClient(), 403);
 
+        if ($ticket->isClosed()) {
+            return back()->withErrors(['ticket' => 'Ticket yang sudah closed tidak bisa diubah lagi.']);
+        }
+
         $data = $request->validate([
             'target_ticket_id' => ['required', 'integer'],
         ]);
@@ -338,6 +376,10 @@ class TicketController extends Controller
         $this->authorizeTicket($ticket, $helpdesk);
         abort_if(Auth::user()->isClient(), 403);
 
+        if ($ticket->isClosed()) {
+            return back()->withErrors(['ticket' => 'Ticket yang sudah closed tidak bisa diubah lagi.']);
+        }
+
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
@@ -349,6 +391,7 @@ class TicketController extends Controller
             'created_by' => Auth::id(),
             'assigned_to' => $ticket->assigned_to,
             'team_id' => $ticket->team_id,
+            'device_id' => $ticket->device_id,
             'category_id' => $ticket->category_id,
             'subcategory_id' => $ticket->subcategory_id,
             'sla_policy_id' => $ticket->sla_policy_id,
@@ -359,6 +402,10 @@ class TicketController extends Controller
             'priority' => $ticket->priority,
             'tags' => $ticket->tags,
         ]);
+
+        $newTicket->loadMissing('slaPolicy');
+        $helpdesk->applySlaDeadlines($newTicket, $newTicket->slaPolicy);
+        $newTicket->save();
 
         $helpdesk->recordActivity($newTicket, Auth::user(), 'ticket_split', 'Ticket hasil split dibuat', [
             'parent_ticket_id' => $ticket->id,
@@ -382,6 +429,7 @@ class TicketController extends Controller
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
+            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->whereNull('parent_id'))],
             'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
             'requester_id' => [$user->isClient() ? 'nullable' : 'required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->where('role', 'client'))],
@@ -396,11 +444,14 @@ class TicketController extends Controller
 
     private function validateTicketRelationships(Request $request, User $user, Collection $customFields, EloquentCollection $projects): void
     {
+        // Form choices are filtered on the client, but we still validate the full
+        // project/requester/assignee/device relationship graph on the server.
         $projectId = (int) $request->input('team_id');
         $categoryId = $request->input('category_id');
         $subcategoryId = $request->input('subcategory_id');
         $requesterId = $user->isClient() ? $user->id : (int) $request->input('requester_id');
         $assignedTo = $request->input('assigned_to') ? (int) $request->input('assigned_to') : null;
+        $deviceId = $request->input('device_id') ? (int) $request->input('device_id') : null;
 
         $project = $projects->firstWhere('id', $projectId);
         if (! $project) {
@@ -415,6 +466,13 @@ class TicketController extends Controller
             throw ValidationException::withMessages(['assigned_to' => 'Assignee harus menjadi member dari project yang dipilih.']);
         }
 
+        if ($deviceId) {
+            $device = $project->devices->firstWhere('id', $deviceId);
+            if (! $device) {
+                throw ValidationException::withMessages(['device_id' => 'Affected device harus berasal dari project yang dipilih.']);
+            }
+        }
+
         if ($subcategoryId && ! $categoryId) {
             throw ValidationException::withMessages(['subcategory_id' => 'Pilih category utama sebelum memilih subcategory.']);
         }
@@ -425,9 +483,7 @@ class TicketController extends Controller
                 ->with('projects:id')
                 ->find($categoryId);
 
-            if ($category && $category->projects->isNotEmpty() && ! $category->projects->contains('id', $projectId)) {
-                throw ValidationException::withMessages(['category_id' => 'Category ini tidak tersedia untuk project yang dipilih.']);
-            }
+
         }
 
         if ($subcategoryId) {
@@ -437,10 +493,7 @@ class TicketController extends Controller
                 throw ValidationException::withMessages(['subcategory_id' => 'Subcategory tidak cocok dengan category yang dipilih.']);
             }
 
-            $subcategory->loadMissing('projects:id');
-            if ($subcategory->projects->isNotEmpty() && ! $subcategory->projects->contains('id', $projectId)) {
-                throw ValidationException::withMessages(['subcategory_id' => 'Subcategory ini tidak tersedia untuk project yang dipilih.']);
-            }
+
         }
 
         foreach ($customFields as $field) {
@@ -453,15 +506,7 @@ class TicketController extends Controller
 
     private function categoryQuery(User $user, Collection $projectIds)
     {
-        return Category::query()
-            ->where('tenant_id', $user->tenant_id)
-            ->when(! $user->isAdmin(), function ($query) use ($projectIds): void {
-                $query->where(function ($inner) use ($projectIds): void {
-                    $inner
-                        ->whereDoesntHave('projects')
-                        ->orWhereHas('projects', fn ($builder) => $builder->whereIn('teams.id', $projectIds));
-                });
-            });
+        return Category::query()->where('tenant_id', $user->tenant_id);
     }
 
     private function projectMembers(EloquentCollection $projects): Collection
@@ -470,6 +515,17 @@ class TicketController extends Controller
             ->flatMap(fn (Team $project) => $project->members)
             ->unique('id')
             ->values();
+    }
+
+    private function syncAffectedDeviceField(Helpdesk $helpdesk, Ticket $ticket, $affectedDeviceField): void
+    {
+        if (! $affectedDeviceField) {
+            return;
+        }
+
+        $helpdesk->syncCustomFields($ticket, collect([$affectedDeviceField]), [
+            $affectedDeviceField->key => $ticket->device?->name,
+        ]);
     }
 
     private function recordStatusHistory(Helpdesk $helpdesk, Ticket $ticket, User $actor, ?string $fromStatus, string $toStatus): void
@@ -486,6 +542,8 @@ class TicketController extends Controller
 
     private function notifyTicketWorkflowChanges(Helpdesk $helpdesk, Ticket $ticket, array $before, User $actor): void
     {
+        // Workflow changes fan out into generic update notifications, assignment
+        // notifications, and status-specific notifications.
         $participants = $helpdesk->participants($ticket)
             ->reject(fn (User $participant) => $participant->id === $actor->id);
 
@@ -510,12 +568,7 @@ class TicketController extends Controller
         }
 
         if (($before['status'] ?? null) !== $ticket->status) {
-            $message = match ($ticket->status) {
-                'in_progress' => 'Ticket sedang dikerjakan oleh tim support.',
-                'resolved' => 'Ticket sudah ditandai selesai dan menunggu konfirmasi.',
-                'closed' => 'Ticket sudah ditutup.',
-                default => 'Status ticket berubah menjadi '.Str::headline($ticket->status).'.',
-            };
+            $message = $helpdesk->statusNotificationMessage($ticket->status);
 
             $helpdesk->notifyUsers(
                 collect([$ticket->requester, $ticket->assignee])->filter(),
@@ -523,8 +576,15 @@ class TicketController extends Controller
                 'ticket_status_changed',
                 'Status ticket '.$ticket->ticket_number.' berubah',
                 $message,
-                ['ticket_id' => $ticket->id, 'status' => $ticket->status]
+                [
+                    'ticket_id' => $ticket->id,
+                    'status' => $ticket->status,
+                    'from_status' => $before['status'] ?? null,
+                ]
             );
         }
     }
 }
+
+
+

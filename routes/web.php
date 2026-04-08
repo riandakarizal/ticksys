@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -15,6 +16,7 @@ Route::post('/login', [AuthController::class, 'store'])->name('login.store');
 Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
@@ -37,6 +39,10 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::get('/sla-policies', [AdminController::class, 'slaPolicies'])->name('sla.index');
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories.index');
         Route::get('/projects', [AdminController::class, 'projects'])->name('projects.index');
+        Route::get('/projects/{team}/devices', [AdminController::class, 'projectDevices'])->name('projects.devices');
+        Route::get('/devices', [AdminController::class, 'devices'])->name('devices.index');
+        Route::get('/devices/template', [AdminController::class, 'downloadDeviceTemplate'])->name('devices.template');
+        Route::get('/devices/export/csv', [AdminController::class, 'exportDevices'])->name('devices.export');
 
         Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
         Route::patch('/users/{managedUser}', [AdminController::class, 'updateUser'])->name('users.update');
@@ -45,6 +51,11 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::post('/projects', [AdminController::class, 'storeProject'])->name('projects.store');
         Route::patch('/projects/{team}', [AdminController::class, 'updateProject'])->name('projects.update');
         Route::delete('/projects/{team}', [AdminController::class, 'destroyProject'])->name('projects.destroy');
+
+        Route::post('/devices/import', [AdminController::class, 'importDevices'])->name('devices.import');
+        Route::post('/devices', [AdminController::class, 'storeDevice'])->name('devices.store');
+        Route::patch('/devices/{device}', [AdminController::class, 'updateDevice'])->name('devices.update');
+        Route::delete('/devices/{device}', [AdminController::class, 'destroyDevice'])->name('devices.destroy');
 
         Route::post('/categories', [AdminController::class, 'storeCategory'])->name('categories.store');
         Route::patch('/categories/{category}', [AdminController::class, 'updateCategory'])->name('categories.update');
@@ -55,3 +66,4 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::delete('/sla-policies/{slaPolicy}', [AdminController::class, 'destroySla'])->name('sla.destroy');
     });
 });
+

@@ -119,13 +119,11 @@
                         <td class="py-4">{{ $ticket->requester?->name }}</td>
                         <td class="py-4">{{ $ticket->team?->name ?? '-' }}</td>
                         <td class="py-4">{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? 'Uncategorized' }}</td>
-                        <td class="py-4">{{ \Illuminate\Support\Str::headline($ticket->status) }}</td>
-                        <td class="py-4">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</td>
+                        <td class="py-4"><span class="badge {{ $ticket->statusBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->status) }}</span></td>
+                        <td class="py-4"><span class="badge {{ $ticket->priorityBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</span></td>
                         <td class="py-4">
-                            @if($ticket->isResolutionBreached())
-                                <span class="badge bg-rose-100 text-rose-700">Breached</span>
-                            @elseif($ticket->resolution_due_at)
-                                <span class="badge bg-amber-100 text-amber-700">{{ $ticket->resolution_due_at->diffForHumans() }}</span>
+                            @if($ticket->slaBadgeLabel())
+                                <span class="badge {{ $ticket->slaBadgeClass() }}">{{ $ticket->slaBadgeLabel() }}</span>
                             @else
                                 <span class="text-slate-400">-</span>
                             @endif
@@ -143,7 +141,5 @@
     <div class="mt-6">{{ $tickets->links() }}</div>
 </div>
 @endsection
-
-
 
 
