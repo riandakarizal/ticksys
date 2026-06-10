@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Ticket;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,14 +11,10 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function create(Request $request): View
+    public function create(): View|RedirectResponse
     {
         if (Auth::check()) {
-            Auth::logout();
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-            }
+            return redirect()->route('dashboard');
         }
 
         $completedTicketCount = Ticket::query()
@@ -29,23 +26,19 @@ class AuthController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
         if ($request->hasSession()) {
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
 
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-
+        $credentials = $request->validated();
         $credentials['is_active'] = true;
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors([
-                'email' => 'Email atau password tidak cocok.',
+                'email' => 'These credentials do not match our records.',
             ])->onlyInput('email');
         }
 

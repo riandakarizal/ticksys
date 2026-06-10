@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Carbon\CarbonInterface;
 
 class Ticket extends Model
 {
+    use HasFactory;
     public const STATUSES = ['open', 'in_progress', 'pending', 'resolved', 'closed'];
 
     public const PRIORITIES = ['low', 'medium', 'high', 'critical'];
@@ -58,14 +61,33 @@ class Ticket extends Model
     protected static function booted(): void
     {
         static::creating(function (Ticket $ticket): void {
-            if (! $ticket->ticket_number) {
-                $prefix = 'HD-'.now()->format('Ymd');
-                $sequence = static::query()
-                    ->where('ticket_number', 'like', $prefix.'-%')
-                    ->count() + 1;
-
-                $ticket->ticket_number = $prefix.'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+            if ($ticket->ticket_number) {
+                return;
             }
+
+            $date = now()->format('Ymd');
+
+            $ticket->ticket_number = DB::transaction(function () use ($date): string {
+                // Ensure the sequence row exists with a starting value of 0,
+                // then lock the row and increment atomically within the transaction.
+                DB::table('ticket_sequences')->insertOrIgnore([
+                    'sequence_date' => $date,
+                    'sequence'      => 0,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+
+                $sequence = DB::table('ticket_sequences')
+                    ->where('sequence_date', $date)
+                    ->lockForUpdate()
+                    ->value('sequence') + 1;
+
+                DB::table('ticket_sequences')
+                    ->where('sequence_date', $date)
+                    ->update(['sequence' => $sequence, 'updated_at' => now()]);
+
+                return 'HD-' . $date . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+            });
         });
     }
 
@@ -116,7 +138,7 @@ class Ticket extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(TicketMessage::class)->latest();
+        return $this->hasMany(TicketMessage::class);
     }
 
     public function attachments(): HasMany
@@ -141,13 +163,31 @@ class Ticket extends Model
 
     public function isResponseBreached(): bool
     {
-        return $this->response_due_at instanceof Carbon && $this->response_due_at->isPast();
+        if (! ($this->response_due_at instanceof Carbon)) {
+            return false;
+        }
+
+        // If first response exists, check whether it was sent after the deadline.
+        if ($this->first_responded_at) {
+            return $this->first_responded_at->gt($this->response_due_at);
+        }
+
+        return $this->response_due_at->isPast();
     }
 
     public function isResolutionBreached(): bool
     {
-        return $this->resolution_due_at instanceof Carbon
-            && $this->resolution_due_at->isPast();
+        if (! ($this->resolution_due_at instanceof Carbon)) {
+            return false;
+        }
+
+        // For resolved/closed tickets, compare the actual resolution time.
+        if ($this->resolved_at) {
+            return $this->resolved_at->gt($this->resolution_due_at);
+        }
+
+        // Ticket is still open — breached only if the deadline has passed.
+        return ! $this->isClosed() && $this->resolution_due_at->isPast();
     }
 
     public function isClosed(): bool
@@ -202,31 +242,27 @@ class Ticket extends Model
 
     public function slaBadgeClass(): ?string
     {
-        if ($this->isClosed()) {
-            return 'bg-emerald-100 text-emerald-700';
-        }
-
         if (! ($this->resolution_due_at instanceof Carbon)) {
             return null;
         }
 
         return $this->isResolutionBreached()
             ? 'bg-rose-100 text-rose-700'
-            : 'bg-amber-100 text-amber-700';
+            : 'bg-emerald-100 text-emerald-700';
     }
 
     public function slaBadgeLabel(): ?string
     {
-        if ($this->isClosed()) {
-            return 'On Track';
-        }
-
         if (! ($this->resolution_due_at instanceof Carbon)) {
             return null;
         }
 
         if ($this->isResolutionBreached()) {
             return 'Breached';
+        }
+
+        if (in_array($this->status, ['resolved', 'closed'], true)) {
+            return 'On Track';
         }
 
         return $this->resolution_due_at->diffForHumans(now(), CarbonInterface::DIFF_ABSOLUTE, false, 1);

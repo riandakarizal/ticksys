@@ -53,11 +53,6 @@ class User extends Authenticatable
         return $this->belongsToMany(Team::class)->withTimestamps();
     }
 
-    public function projects(): BelongsToMany
-    {
-        return $this->belongsToMany(Team::class)->withTimestamps();
-    }
-
     public function createdTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'created_by');
@@ -93,11 +88,6 @@ class User extends Authenticatable
         return $this->role === 'supervisor';
     }
 
-    public function isCoordinator(): bool
-    {
-        return $this->role === 'supervisor';
-    }
-
     public function isAgent(): bool
     {
         return $this->role === 'agent';
@@ -115,7 +105,7 @@ class User extends Authenticatable
 
     public function canViewReports(): bool
     {
-        return $this->isAdmin() || $this->isCoordinator();
+        return $this->isAdmin() || $this->isSupervisor();
     }
 
 }

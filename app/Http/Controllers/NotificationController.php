@@ -18,10 +18,10 @@ class NotificationController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Notifikasi berhasil dihapus.',
+                'message' => 'Notification deleted.',
             ]);
         }
 
-        return back()->with('success', 'Notifikasi berhasil dihapus.');
+        return back()->with('success', 'Notification deleted.');
     }
 }

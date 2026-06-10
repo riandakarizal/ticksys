@@ -1,4 +1,4 @@
-@extends('layouts.app', ['title' => 'Admin Users', 'heading' => 'Admin'])
+@extends('layouts.app', ['title' => 'Users — Admin', 'heading' => 'Admin'])
 
 @section('content')
 @include('admin._tabs')
@@ -7,7 +7,7 @@
     <div class="panel-soft">
         <p class="text-sm uppercase tracking-[0.3em] text-blue-600">User Management</p>
         <h3 class="mt-2 text-3xl font-black leading-tight text-slate-900">Manage User Access</h3>
-        <p class="mt-3 text-slate-600">Control user access and permissions across the application.</p>
+        <p class="mt-3 text-slate-600">Control user access and permissions within the application.</p>
         <div class="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
             <div class="stat"><p class="text-sm text-slate-500">Users</p><p class="mt-2 text-3xl font-black">{{ $users->count() }}</p></div>
             <div class="stat"><p class="text-sm text-slate-500">Projects</p><p class="mt-2 text-3xl font-black">{{ $projects->count() }}</p></div>
@@ -19,9 +19,9 @@
         <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h3 class="text-xl font-black text-slate-900">Users</h3>
-                <p class="text-sm text-slate-500">Detailed list of all users.</p>
+                <p class="text-sm text-slate-500">Complete list of all users.</p>
             </div>
-            <button type="button" class="btn-primary" data-open-dialog="user-create-dialog">Create user</button>
+            <button type="button" class="btn-primary" data-open-dialog="user-create-dialog">Add User</button>
         </div>
 
         <div class="datatable-shell mt-5">
@@ -31,9 +31,9 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Projects</th>
+                        <th>Project</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,7 +45,7 @@
                             </td>
                             <td>{{ $user->email }}</td>
                             <td>{{ \Illuminate\Support\Str::headline($user->role) }}</td>
-                            <td>{{ $user->projects->pluck('name')->join(', ') ?: '-' }}</td>
+                            <td>{{ $user->teams->pluck('name')->join(', ') ?: '-' }}</td>
                             <td>
                                 <span class="badge {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                                     {{ $user->is_active ? 'Active' : 'Inactive' }}
@@ -70,26 +70,26 @@
         @csrf
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-                <h3 class="text-xl font-black">Create user</h3>
-                <p class="text-sm text-slate-500">User non-admin wajib punya assignment project.</p>
+                <h3 class="text-xl font-black">Add User</h3>
+                <p class="text-sm text-slate-500">Non-admin users must have at least one project assignment.</p>
             </div>
             <button type="button" class="btn-soft" data-close-dialog>Close</button>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
-            <input class="field" name="name" placeholder="Full name" required>
+            <input class="field" name="name" placeholder="Full Name" required>
             <input class="field" type="email" name="email" placeholder="Email" required>
             <select class="field" name="role" required>
-                <option value="" disabled hidden>Select role</option>
+                <option value="" disabled hidden>Select Role</option>
                 <option value="client">Client</option>
                 <option value="agent">Agent</option>
                 <option value="supervisor">Coordinator</option>
                 <option value="admin">Admin</option>
             </select>
-            <input class="field" name="job_title" placeholder="Job title">
+            <input class="field" name="job_title" placeholder="Job Title">
             <input class="field" name="phone" placeholder="Phone">
             <input class="field" name="password" type="password" placeholder="Password" required>
             <div class="md:col-span-2">
-                <label class="label">Assigned projects</label>
+                <label class="label">Assigned Projects</label>
                 <div class="choice-panel">
                     <div class="choice-list">
                         @foreach($projects as $project)
@@ -106,12 +106,12 @@
                         @endforeach
                     </div>
                 </div>
-                <p class="mt-2 text-xs text-slate-500">Pilih minimal satu project untuk client, agent, atau coordinator.</p>
+                <p class="mt-2 text-xs text-slate-500">Select at least one project for client, agent, or coordinator roles.</p>
             </div>
-            <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" checked> Active user</label>
+            <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" checked> Active User</label>
         </div>
         <div class="mt-5 flex justify-end">
-            <button class="btn-primary" type="submit">Save user</button>
+            <button class="btn-primary" type="submit">Save</button>
         </div>
     </form>
 </dialog>
@@ -123,8 +123,8 @@
             @method('PATCH')
             <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
                 <div>
-                    <h3 class="text-xl font-black">Edit user</h3>
-                    <p class="text-sm text-slate-500">Perbarui profile, role, dan assignment project.</p>
+                    <h3 class="text-xl font-black">Edit User</h3>
+                    <p class="text-sm text-slate-500">Update profile, role, and project assignments.</p>
                 </div>
                 <button type="button" class="btn-soft" data-close-dialog>Close</button>
             </div>
@@ -137,16 +137,16 @@
                     <option value="supervisor" @selected($user->role === 'supervisor')>Coordinator</option>
                     <option value="admin" @selected($user->role === 'admin')>Admin</option>
                 </select>
-                <input class="field" name="job_title" value="{{ $user->job_title }}" placeholder="Job title">
+                <input class="field" name="job_title" value="{{ $user->job_title }}" placeholder="Job Title">
                 <input class="field" name="phone" value="{{ $user->phone }}" placeholder="Phone">
                 <input class="field" name="password" type="password" placeholder="New password (optional)">
                 <div class="md:col-span-2">
-                    <label class="label">Assigned projects</label>
+                    <label class="label">Assigned Projects</label>
                     <div class="choice-panel">
                         <div class="choice-list">
                             @foreach($projects as $project)
                                 <label class="choice-card">
-                                    <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}" @checked($user->projects->contains('id', $project->id))>
+                                    <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}" @checked($user->teams->contains('id', $project->id))>
                                     <span class="choice-card-box">
                                         <span class="choice-indicator">✓</span>
                                         <span>
@@ -158,12 +158,12 @@
                             @endforeach
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-slate-500">Pilih minimal satu project untuk client, agent, atau coordinator.</p>
+                    <p class="mt-2 text-xs text-slate-500">Select at least one project for client, agent, or coordinator roles.</p>
                 </div>
-                <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" @checked($user->is_active)> Active user</label>
+                <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" @checked($user->is_active)> Active User</label>
             </div>
             <div class="mt-5 flex justify-end">
-                <button class="btn-primary" type="submit">Update user</button>
+                <button class="btn-primary" type="submit">Update</button>
             </div>
         </form>
     </dialog>
@@ -173,13 +173,13 @@
             @csrf
             @method('DELETE')
             <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-                <h3 class="text-xl font-black">Delete user</h3>
+                <h3 class="text-xl font-black">Delete User</h3>
                 <button type="button" class="btn-soft" data-close-dialog>Close</button>
             </div>
-            <p class="text-sm text-slate-500">User akan dihapus dari directory dan assignment project. Histori ticket tetap aman.</p>
+            <p class="text-sm text-slate-500">This user will be removed from the directory and all project assignments. Ticket history will be retained.</p>
             <div class="mt-6 flex justify-end gap-2">
                 <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                <button class="btn-primary" type="submit">Delete user</button>
+                <button class="btn-primary" type="submit">Delete</button>
             </div>
         </form>
     </dialog>

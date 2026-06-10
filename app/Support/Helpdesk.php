@@ -33,7 +33,7 @@ class Helpdesk
 
         $projectIds = $user->teams()->pluck('teams.id');
 
-        if ($user->isCoordinator()) {
+        if ($user->isSupervisor()) {
             return $query->whereIn('tickets.team_id', $projectIds);
         }
 
@@ -187,18 +187,27 @@ class Helpdesk
     {
         preg_match_all('/@([A-Za-z0-9._-]+)/', $body, $matches);
 
-        $needles = collect($matches[1] ?? [])->map(fn (string $value) => Str::lower($value))->unique();
+        $needles = collect($matches[1] ?? [])->map(fn (string $value) => Str::lower($value))->unique()->values();
 
         if ($needles->isEmpty()) {
             return collect();
         }
 
-        return User::query()
-            ->where('tenant_id', $actor->tenant_id)
-            ->get()
+        // Narrow candidates in SQL with LIKE conditions, then apply exact
+        // slug/email matching in PHP to avoid false positives from LIKE.
+        $query = User::query()->where('tenant_id', $actor->tenant_id);
+
+        $query->where(function ($builder) use ($needles): void {
+            foreach ($needles as $needle) {
+                $builder->orWhere('email', 'like', $needle . '@%')
+                        ->orWhere('name', 'like', '%' . $needle . '%');
+            }
+        });
+
+        return $query->get()
             ->filter(function (User $user) use ($needles): bool {
                 $emailLocal = Str::before(Str::lower($user->email), '@');
-                $nameSlug = Str::slug($user->name, '');
+                $nameSlug   = Str::slug($user->name, '');
 
                 return $needles->contains($emailLocal) || $needles->contains($nameSlug);
             })

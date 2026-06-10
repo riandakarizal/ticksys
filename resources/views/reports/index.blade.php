@@ -3,8 +3,8 @@
 @section('content')
 <div class="grid gap-5 lg:grid-cols-4">
     <div class="stat"><p class="text-sm text-slate-500">Tickets</p><p class="mt-2 text-4xl font-black">{{ $ticketCount }}</p></div>
-    <div class="stat"><p class="text-sm text-slate-500">Avg resolution</p><p class="mt-2 text-4xl font-black">{{ $averageResolutionMinutes }}m</p></div>
-    <div class="stat"><p class="text-sm text-slate-500">SLA breach rate</p><p class="mt-2 text-4xl font-black">{{ $breachRate }}%</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">Avg. Resolution</p><p class="mt-2 text-4xl font-black">{{ $averageResolutionMinutes }}m</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">SLA Breach Rate</p><p class="mt-2 text-4xl font-black">{{ $breachRate }}%</p></div>
     <div class="stat"><p class="text-sm text-slate-500">Export</p><a class="btn-primary mt-3" href="{{ route('reports.export', request()->query()) }}">Download CSV</a></div>
 </div>
 
@@ -17,23 +17,23 @@
         <select class="field" name="priority"><option value="" disabled hidden @selected(blank(request('priority')))>Select priority</option>@foreach(['low','medium','high','critical'] as $priority)<option value="{{ $priority }}" @selected(request('priority') === $priority)>{{ \Illuminate\Support\Str::headline($priority) }}</option>@endforeach</select>
         <select class="field" name="category_id"><option value="" disabled hidden @selected(blank(request('category_id')))>Select category</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select>
         <select class="field" name="requester_id"><option value="" disabled hidden @selected(blank(request('requester_id')))>Select client</option>@foreach($clients as $client)<option value="{{ $client->id }}" @selected((string) request('requester_id') === (string) $client->id)>{{ $client->name }}</option>@endforeach</select>
-        <button class="btn-primary md:col-span-7 md:w-max" type="submit">Filter report</button>
+        <button class="btn-primary md:col-span-7 md:w-max" type="submit">Apply Filters</button>
     </form>
 </div>
 
 <div class="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
     <div class="panel">
-        <h2 class="text-xl font-black">Ticket by category</h2>
+        <h2 class="text-xl font-black">Tickets by Category</h2>
         <div class="mt-4 space-y-3 text-sm">
             @forelse($byCategory as $category => $count)
                 <div class="flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-3"><span>{{ $category }}</span><span class="font-bold">{{ $count }}</span></div>
             @empty
-                <p class="text-slate-500">Belum ada data.</p>
+                <p class="text-slate-500">No data available.</p>
             @endforelse
         </div>
     </div>
     <div class="panel overflow-hidden">
-        <h2 class="text-xl font-black">Filtered tickets</h2>
+        <h2 class="text-xl font-black">Filter Results</h2>
         <div class="mt-4 overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="text-left text-slate-500"><tr><th class="pb-3">Ticket</th><th class="pb-3">Client</th><th class="pb-3">Project</th><th class="pb-3">Category</th><th class="pb-3">Status</th><th class="pb-3">Assignee</th></tr></thead>
@@ -45,7 +45,7 @@
                             <td class="py-3">{{ $ticket->team?->name ?? '-' }}</td>
                             <td class="py-3">{{ $ticket->category?->name ?? '-' }}</td>
                             <td class="py-3">{{ \Illuminate\Support\Str::headline($ticket->status) }}</td>
-                            <td class="py-3">{{ $ticket->assignee?->name ?? '-' }}</td>
+                            <td class="py-3">{{ $ticket->assignee?->name ?? 'Unassigned' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

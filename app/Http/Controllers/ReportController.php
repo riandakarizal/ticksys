@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Ticket;
+use App\Support\Helpdesk;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +12,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function index(Request $request, \App\Support\Helpdesk $helpdesk): View
+    public function index(Request $request, Helpdesk $helpdesk): View
     {
         $user = Auth::user();
         abort_unless($user->canViewReports(), 403);
@@ -39,7 +40,7 @@ class ReportController extends Controller
         ]);
     }
 
-    public function export(Request $request, \App\Support\Helpdesk $helpdesk): StreamedResponse
+    public function export(Request $request, Helpdesk $helpdesk): StreamedResponse
     {
         $user = Auth::user();
         abort_unless($user->canViewReports(), 403);
@@ -68,7 +69,7 @@ class ReportController extends Controller
         }, 'ticket-report-'.now()->format('Ymd-His').'.csv');
     }
 
-    private function filteredQuery(Request $request, \App\Support\Helpdesk $helpdesk)
+    private function filteredQuery(Request $request, Helpdesk $helpdesk)
     {
         $query = $helpdesk->visibleTickets(Auth::user());
 

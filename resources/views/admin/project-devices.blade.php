@@ -82,7 +82,7 @@
                         </div>
                     </a>
                 @empty
-                    <p class="text-sm text-slate-500">Belum ada ticket untuk project ini.</p>
+                    <p class="text-sm text-slate-500">No tickets for this project yet.</p>
                 @endforelse
             </div>
         </div>
