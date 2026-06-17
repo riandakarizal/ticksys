@@ -58,7 +58,7 @@ class DashboardController extends Controller
                 ->keyBy('assigned_to');
 
             $agentPerformance = User::query()
-                ->where('tenant_id', $user->tenant_id)
+                ->when(! $user->canManageAllTickets(), fn ($q) => $q->where('company_id', $user->company_id))
                 ->whereIn('id', $performanceCounts->keys())
                 ->get()
                 ->map(function (User $agent) use ($performanceCounts) {
@@ -114,11 +114,11 @@ class DashboardController extends Controller
     private function buildStatusChart($statusCounts)
     {
         $colors = [
-            'open' => '#2563eb',
-            'in_progress' => '#d97706',
-            'pending' => '#f59e0b',
-            'resolved' => '#16a34a',
-            'closed' => '#64748b',
+            'open'        => '#3b82f6', // blue-500   — baru/menunggu perhatian
+            'in_progress' => '#f59e0b', // amber-400  — sedang dikerjakan
+            'pending'     => '#f97316', // orange-500 — menunggu/tertahan
+            'resolved'    => '#22c55e', // green-500  — selesai berhasil
+            'closed'      => '#94a3b8', // slate-400  — diarsipkan
         ];
 
         $total = max($statusCounts->sum(), 1);

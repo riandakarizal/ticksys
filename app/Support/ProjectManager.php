@@ -8,9 +8,9 @@ use Illuminate\Validation\ValidationException;
 
 class ProjectManager
 {
-    public function create(int $tenantId, array $data): Team
+    public function create(int $companyId, array $data): Team
     {
-        $payload = $this->payload($tenantId, $data);
+        $payload = $this->payload($companyId, $data);
 
         $project = Team::create($payload['attributes']);
         $project->members()->sync($payload['member_ids']);
@@ -20,7 +20,7 @@ class ProjectManager
 
     public function update(Team $project, array $data): Team
     {
-        $payload = $this->payload($project->tenant_id, $data);
+        $payload = $this->payload($project->company_id, $data);
 
         $project->update($payload['attributes']);
         $project->members()->sync($payload['member_ids']);
@@ -35,7 +35,7 @@ class ProjectManager
         $project->delete();
     }
 
-    private function payload(int $tenantId, array $data): array
+    private function payload(int $companyId, array $data): array
     {
         $memberIds = collect($data['member_ids'] ?? [])
             ->map(fn ($value) => (int) $value)
@@ -58,7 +58,7 @@ class ProjectManager
 
         return [
             'attributes' => [
-                'tenant_id' => $tenantId,
+                'company_id' => $companyId,
                 'name' => $data['name'],
                 'code' => $data['code'] ?: Str::upper(Str::slug($data['name'], '-')),
                 'description' => $data['description'] ?? null,

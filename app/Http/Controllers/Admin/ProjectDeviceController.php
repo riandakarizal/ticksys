@@ -12,7 +12,7 @@ class ProjectDeviceController extends AdminController
 {
     public function show(Team $team, Helpdesk $helpdesk): View
     {
-        $this->ensureTenantRecord($team);
+        $this->ensureCompanyRecord($team);
 
         $team->load(['lead:id,name', 'members:id,name,role']);
         $projectDevices = $team->devices()
@@ -21,7 +21,7 @@ class ProjectDeviceController extends AdminController
             ->orderBy('name')
             ->get();
         $recentTickets = Ticket::query()
-            ->where('tenant_id', $team->tenant_id)
+            ->where('company_id', $team->company_id)
             ->where('team_id', $team->id)
             ->with(['device:id,name', 'requester:id,name'])
             ->latest()

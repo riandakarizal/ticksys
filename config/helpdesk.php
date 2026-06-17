@@ -12,6 +12,14 @@ return [
             'ticket_created',
             'ticket_status_changed',
             'ticket_reply',
+            'ticket_auto_close_warning',
+            'ticket_assigned',
+            'sla_escalated',
+        ],
+        'staff_types' => [
+            'ticket_assigned',   // agent dapat email saat diassign
+            'ticket_reply',      // agent dapat email saat client reply
+            'sla_escalated',     // supervisor dapat email saat SLA breach
         ],
     ],
 ];

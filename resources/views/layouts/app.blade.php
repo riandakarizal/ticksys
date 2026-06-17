@@ -17,7 +17,27 @@
                 <div class="flex items-center justify-between gap-4 py-4">
                     {{-- Brand --}}
                     <div class="shrink-0">
-                        <a href="{{ route('dashboard') }}" class="text-2xl font-black tracking-tight text-slate-900 hover:text-blue-600">IASSI TickSys</a>
+                        <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 text-2xl font-black tracking-tight text-slate-900 hover:text-blue-600">
+                            <svg class="h-7 w-7 flex-shrink-0" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="pln1" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#93c5fd"/><stop offset="100%" stop-color="#2563eb"/></linearGradient>
+                                    <linearGradient id="pln2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#1e40af"/></linearGradient>
+                                    <linearGradient id="pln3" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#172554"/></linearGradient>
+                                </defs>
+                                <ellipse cx="60" cy="102" rx="38" ry="7" fill="#1e3a8a" opacity="0.15"/>
+                                <polygon points="60,60 88,45 88,82 60,97" fill="url(#pln3)"/>
+                                <polygon points="60,60 32,45 32,82 60,97" fill="url(#pln2)"/>
+                                <polygon points="60,60 32,45 88,45" fill="url(#pln1)"/>
+                                <line x1="60" y1="60" x2="32" y2="45" stroke="rgba(255,255,255,0.6)" stroke-width="1.2"/>
+                                <line x1="60" y1="60" x2="88" y2="45" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+                                <line x1="60" y1="60" x2="60" y2="97" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"/>
+                                <line x1="32" y1="45" x2="88" y2="45" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+                                <circle cx="60" cy="60" r="3" fill="rgba(255,255,255,0.7)"/>
+                                <circle cx="32" cy="45" r="2" fill="rgba(255,255,255,0.4)"/>
+                                <circle cx="88" cy="45" r="2" fill="rgba(255,255,255,0.25)"/>
+                            </svg>
+                            PRISM
+                        </a>
                         <p class="hidden text-xs text-slate-500 sm:block">Helpdesk Ticket System</p>
                     </div>
 
@@ -140,7 +160,7 @@
                             </svg>
                         </button>
                     </div>
-                    <p class="text-sm leading-7 text-slate-600">Your session will be ended and you will need to log in again to access IASSI TickSys.</p>
+                    <p class="text-sm leading-7 text-slate-600">Your session will be ended and you will need to log in again to access PRISM.</p>
                     <div class="mt-6 flex justify-end gap-3">
                         <button class="btn-soft" type="button" data-close-dialog>Cancel</button>
                         <form method="POST" action="<?php echo e(route('logout')); ?>">

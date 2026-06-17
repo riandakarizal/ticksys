@@ -26,7 +26,7 @@ class UserController extends AdminController
         $this->ensureProjectAssignmentForRole($data['role'], $data['project_ids'] ?? []);
 
         $user = User::create([
-            'tenant_id' => $authUser->tenant_id,
+            'company_id' => $authUser->company_id,
             'name'      => $data['name'],
             'email'     => $data['email'],
             'password'  => $data['password'],
@@ -43,7 +43,7 @@ class UserController extends AdminController
 
     public function update(UserUpdateRequest $request, User $managedUser): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($managedUser);
+        $this->ensureCompanyRecord($managedUser);
 
         $data = $request->validated();
         $this->ensureProjectAssignmentForRole($data['role'], $data['project_ids'] ?? []);
@@ -69,7 +69,7 @@ class UserController extends AdminController
 
     public function destroy(Request $request, User $managedUser): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($managedUser);
+        $this->ensureCompanyRecord($managedUser);
         abort_if($managedUser->id === auth()->id(), 422, 'Tidak dapat menghapus akun sendiri.');
 
         $managedUser->teams()->detach();

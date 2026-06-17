@@ -1,0 +1,87 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="d1" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="d2" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#93c5fd"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="d3" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <!-- Side gradients for 3D depth -->
+    <linearGradient id="d1s" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="d2s" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="d3s" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <filter id="lshadow">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#1e3a8a" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!--
+    Three stacked/layered triangular prisms, each offset
+    Like a prism "stack" giving a layered depth illusion.
+
+    Prism 1 (back/bottom, darkest):
+      Front triangle: apex=(60,72), BL=(22,108), BR=(98,108)
+      Depth offset +15,+5: apex'=(75,77), BL'=(37,113), BR'=(113,113)
+      Right face: apex,BR,BR',apex' → (60,72),(98,108),(113,113),(75,77)
+      Bottom face: BL,BR,BR',BL' → (22,108),(98,108),(113,113),(37,113)
+
+    Prism 2 (middle):
+      Front triangle: apex=(60,48), BL=(26,82), BR=(94,82)
+      Depth offset +13,+4: apex'=(73,52), BL'=(39,86), BR'=(107,86)
+      Right face: (60,48),(94,82),(107,86),(73,52)
+      Bottom face: (26,82),(94,82),(107,86),(39,86)
+
+    Prism 3 (front/top, lightest):
+      Front triangle: apex=(60,22), BL=(30,58), BR=(90,58)
+      Depth offset +12,+4: apex'=(72,26), BL'=(42,62), BR'=(102,62)
+      Right face: (60,22),(90,58),(102,62),(72,26)
+      Bottom face: (30,58),(90,58),(102,62),(42,62)
+  -->
+
+  <!-- Prism 1 (back) -->
+  <g filter="url(#lshadow)">
+    <polygon points="22,108 98,108 113,113 37,113" fill="url(#d3s)" opacity="0.7"/>
+    <polygon points="60,72 98,108 113,113 75,77" fill="url(#d3s)"/>
+    <polygon points="60,72 22,108 98,108" fill="url(#d3)" opacity="0.6"/>
+  </g>
+  <line x1="60" y1="72" x2="22" y2="108" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+  <line x1="60" y1="72" x2="98" y2="108" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <line x1="60" y1="72" x2="75" y2="77" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+  <!-- Prism 2 (middle) -->
+  <polygon points="26,82 94,82 107,86 39,86" fill="url(#d2s)" opacity="0.85"/>
+  <polygon points="60,48 94,82 107,86 73,52" fill="url(#d2s)"/>
+  <polygon points="60,48 26,82 94,82" fill="url(#d2)"/>
+  <line x1="60" y1="48" x2="26" y2="82" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+  <line x1="60" y1="48" x2="94" y2="82" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+  <line x1="60" y1="48" x2="73" y2="52" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+  <!-- Prism 3 (front, lightest) -->
+  <polygon points="30,58 90,58 102,62 42,62" fill="url(#d1s)" opacity="0.9"/>
+  <polygon points="60,22 90,58 102,62 72,26" fill="url(#d1s)"/>
+  <polygon points="60,22 30,58 90,58" fill="url(#d1)"/>
+  <line x1="60" y1="22" x2="30" y2="58" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+  <line x1="60" y1="22" x2="90" y2="58" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+  <line x1="60" y1="22" x2="72" y2="26" stroke="rgba(255,255,255,0.4)" stroke-width="1.2"/>
+  <line x1="30" y1="58" x2="90" y2="58" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+  <!-- Apex highlights -->
+  <circle cx="60" cy="22" r="2.5" fill="white" opacity="0.75"/>
+  <circle cx="60" cy="48" r="1.8" fill="white" opacity="0.4"/>
+  <circle cx="60" cy="72" r="1.5" fill="white" opacity="0.2"/>
+</svg>

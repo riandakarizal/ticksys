@@ -23,14 +23,13 @@ class Helpdesk
 {
     public function visibleTickets(User $user): Builder
     {
-        // Ticket visibility is project-scoped first, then narrowed again by role.
-        // This keeps multi-tenant and project access rules in one place.
-        $query = Ticket::query()->where('tickets.tenant_id', $user->tenant_id);
-
+        // Admin = superadmin, sees all tickets across all tenants with no restriction.
         if ($user->canManageAllTickets()) {
-            return $query;
+            return Ticket::query();
         }
 
+        // Non-admin: tickets are scoped to tenant first, then narrowed by role.
+        $query = Ticket::query()->where('tickets.company_id', $user->company_id);
         $projectIds = $user->teams()->pluck('teams.id');
 
         if ($user->isSupervisor()) {
@@ -50,13 +49,13 @@ class Helpdesk
 
     public function visibleProjects(User $user): Builder
     {
-        $query = Team::query()->where('teams.tenant_id', $user->tenant_id);
-
         if ($user->canManageAllTickets()) {
-            return $query;
+            return Team::query();
         }
 
-        return $query->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
+        return Team::query()
+            ->where('teams.company_id', $user->company_id)
+            ->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
     }
 
     public function parseTags(?string $tags): array
@@ -145,7 +144,7 @@ class Helpdesk
     public function recordActivity(?Ticket $ticket, ?User $user, string $action, string $description, array $properties = []): void
     {
         ActivityLog::create([
-            'tenant_id' => $ticket?->tenant_id ?? $user?->tenant_id,
+            'company_id' => $ticket?->company_id ?? $user?->company_id,
             'ticket_id' => $ticket?->id,
             'user_id' => $user?->id,
             'action' => $action,
@@ -195,7 +194,7 @@ class Helpdesk
 
         // Narrow candidates in SQL with LIKE conditions, then apply exact
         // slug/email matching in PHP to avoid false positives from LIKE.
-        $query = User::query()->where('tenant_id', $actor->tenant_id);
+        $query = User::query()->where('company_id', $actor->company_id);
 
         $query->where(function ($builder) use ($needles): void {
             foreach ($needles as $needle) {
@@ -217,7 +216,7 @@ class Helpdesk
     public function defaultCustomFields(User $user): Collection
     {
         return CustomField::query()
-            ->where('tenant_id', $user->tenant_id)
+            ->where('company_id', $user->company_id)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -249,8 +248,13 @@ class Helpdesk
             return false;
         }
 
+        // Staff-facing types bypass the client_only audience filter.
+        if (in_array($type, config('helpdesk.mail.staff_types', []), true)) {
+            return true;
+        }
+
         return match (config('helpdesk.mail.audience', 'client_only')) {
-            'all' => true,
+            'all'  => true,
             'none' => false,
             default => $user->isClient() && $user->id === $ticket->requester_id,
         };

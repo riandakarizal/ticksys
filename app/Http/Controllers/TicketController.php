@@ -107,7 +107,7 @@ class TicketController extends Controller
             'clients'     => $members->where('role', 'client')->sortBy('name')->values(),
             'customFields' => $customFields,
             'priorities'  => Ticket::PRIORITIES,
-            'slaPolicies' => SlaPolicy::query()->where('tenant_id', $user->tenant_id)->orderByDesc('is_default')->orderBy('name')->get(),
+            'slaPolicies' => SlaPolicy::query()->where('company_id', $user->company_id)->orderByDesc('is_default')->orderBy('name')->get(),
         ]);
     }
 
@@ -253,7 +253,7 @@ class TicketController extends Controller
 
     private function categoryQuery(User $user, Collection $projectIds): Builder
     {
-        $query = Category::query()->where('tenant_id', $user->tenant_id);
+        $query = Category::query()->where('company_id', $user->company_id);
 
         if ($projectIds->isNotEmpty()) {
             $query->whereHas('projects', fn (Builder $q) => $q->whereIn('teams.id', $projectIds));

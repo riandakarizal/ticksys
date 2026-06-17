@@ -45,8 +45,9 @@ class TicketMessageController extends Controller
 
         // Auto-transition: client reply reopens a pending/resolved ticket.
         if ($user->isClient() && in_array($ticket->status, ['pending', 'resolved'], true)) {
-            $ticket->status     = 'open';
-            $ticket->resolved_at = null;
+            $ticket->status              = 'open';
+            $ticket->resolved_at         = null;
+            $ticket->auto_close_warned_at = null;
         }
 
         // Auto-transition: first agent/staff reply moves ticket to in_progress.

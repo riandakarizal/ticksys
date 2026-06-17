@@ -21,11 +21,11 @@ class SlaPolicyController extends AdminController
         $data = $request->validated();
 
         if ($request->boolean('is_default')) {
-            SlaPolicy::query()->where('tenant_id', $authUser->tenant_id)->update(['is_default' => false]);
+            SlaPolicy::query()->where('company_id', $authUser->company_id)->update(['is_default' => false]);
         }
 
         SlaPolicy::create([
-            'tenant_id' => $authUser->tenant_id,
+            'company_id' => $authUser->company_id,
             'name' => $data['name'],
             'response_minutes' => $data['response_minutes'],
             'resolution_minutes' => $data['resolution_minutes'],
@@ -37,12 +37,12 @@ class SlaPolicyController extends AdminController
 
     public function update(SlaPolicyRequest $request, SlaPolicy $slaPolicy): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($slaPolicy);
+        $this->ensureCompanyRecord($slaPolicy);
         $data = $request->validated();
 
         if ($request->boolean('is_default')) {
             SlaPolicy::query()
-                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('company_id', auth()->user()->company_id)
                 ->whereKeyNot($slaPolicy->id)
                 ->update(['is_default' => false]);
         }
@@ -59,7 +59,7 @@ class SlaPolicyController extends AdminController
 
     public function destroy(SlaPolicy $slaPolicy): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($slaPolicy);
+        $this->ensureCompanyRecord($slaPolicy);
         $slaPolicy->delete();
 
         return $this->respond(request(), 'SLA policy deleted successfully.', route('admin.sla.index'));

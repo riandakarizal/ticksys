@@ -102,12 +102,50 @@
             @php
                 $allLogs = $ticket->activityLogs->sortByDesc('created_at')->values();
                 $latestLogs = $allLogs->take(3);
+                $statusColors = [
+                    'open'        => 'bg-blue-100 text-blue-700',
+                    'in_progress' => 'bg-amber-100 text-amber-700',
+                    'pending'     => 'bg-orange-100 text-orange-700',
+                    'resolved'    => 'bg-emerald-100 text-emerald-700',
+                    'closed'      => 'bg-slate-200 text-slate-700',
+                ];
+                $statusLabels = [
+                    'open'        => 'Open',
+                    'in_progress' => 'In Progress',
+                    'pending'     => 'Pending',
+                    'resolved'    => 'Resolved',
+                    'closed'      => 'Closed',
+                ];
+                $actionPills = [
+                    'ticket_created'       => ['bg-emerald-100 text-emerald-700', 'Ticket Dibuat'],
+                    'reply_added'          => ['bg-blue-100 text-blue-700',       'Balasan'],
+                    'internal_note_added'  => ['bg-violet-100 text-violet-700',   'Catatan Internal'],
+                    'ticket_updated'       => ['bg-slate-200 text-slate-600',     'Diperbarui'],
+                    'sla_escalated'        => ['bg-red-100 text-red-700',         'SLA Breach'],
+                    'ticket_auto_closed'   => ['bg-slate-200 text-slate-600',     'Auto Closed'],
+                    'ticket_merged'        => ['bg-slate-200 text-slate-600',     'Merged'],
+                    'ticket_split'         => ['bg-indigo-100 text-indigo-700',   'Split'],
+                ];
             @endphp
             <div class="mt-4 space-y-3">
                 @forelse($latestLogs as $log)
                     <div class="rounded-2xl bg-slate-100 p-4 text-sm">
                         <p class="font-semibold">{{ $log->description }}</p>
-                        <p class="text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
+                        @if ($log->action === 'ticket_status_changed' && !empty($log->properties['to']))
+                            @php $from = $log->properties['from'] ?? null; $to = $log->properties['to']; @endphp
+                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                @if ($from)
+                                    <span class="badge {{ $statusColors[$from] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$from] ?? ucfirst($from) }}</span>
+                                    <span class="text-slate-400">→</span>
+                                @endif
+                                <span class="badge {{ $statusColors[$to] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$to] ?? ucfirst($to) }}</span>
+                            </div>
+                        @elseif (isset($actionPills[$log->action]))
+                            <div class="mt-1.5">
+                                <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
+                            </div>
+                        @endif
+                        <p class="mt-1 text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
                     </div>
                 @empty
                     <p class="text-sm text-slate-500">No activity log yet.</p>
@@ -124,7 +162,21 @@
                         @foreach($allLogs as $log)
                             <div class="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-slate-100">
                                 <p class="font-semibold">{{ $log->description }}</p>
-                                <p class="text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
+                                @if ($log->action === 'ticket_status_changed' && !empty($log->properties['to']))
+                                    @php $from = $log->properties['from'] ?? null; $to = $log->properties['to']; @endphp
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                        @if ($from)
+                                            <span class="badge {{ $statusColors[$from] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$from] ?? ucfirst($from) }}</span>
+                                            <span class="text-slate-400">→</span>
+                                        @endif
+                                        <span class="badge {{ $statusColors[$to] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$to] ?? ucfirst($to) }}</span>
+                                    </div>
+                                @elseif (isset($actionPills[$log->action]))
+                                    <div class="mt-1.5">
+                                        <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
+                                    </div>
+                                @endif
+                                <p class="mt-1 text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
                             </div>
                         @endforeach
                     </div>

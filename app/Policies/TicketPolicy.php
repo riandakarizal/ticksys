@@ -55,10 +55,10 @@ class TicketPolicy
     private function visible(User $user, Ticket $ticket): bool
     {
         if ($user->isAdmin()) {
-            return $ticket->tenant_id === $user->tenant_id;
+            return $ticket->company_id === $user->company_id;
         }
 
-        if ($ticket->tenant_id !== $user->tenant_id) {
+        if ($ticket->company_id !== $user->company_id) {
             return false;
         }
 

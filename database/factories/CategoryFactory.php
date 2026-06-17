@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Category;
-use App\Models\Tenant;
+use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -19,7 +19,7 @@ class CategoryFactory extends Factory
         $name = fake()->unique()->word();
 
         return [
-            'tenant_id' => Tenant::factory(),
+            'company_id' => Company::factory(),
             'name' => $name,
             'slug' => Str::slug($name),
             'color' => '#' . fake()->hexColor(),

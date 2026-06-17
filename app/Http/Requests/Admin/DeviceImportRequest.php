@@ -14,10 +14,10 @@ class DeviceImportRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = auth()->user()->tenant_id;
+        $companyId = auth()->user()->company_id;
 
         return [
-            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
+            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
             'file' => ['required', 'file', 'mimes:csv,txt'],
         ];
     }

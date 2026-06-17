@@ -2,7 +2,7 @@
 
 use App\Models\Device;
 use App\Models\Team;
-use App\Models\Tenant;
+use App\Models\Company;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,17 +10,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->tenant = Tenant::factory()->create();
-    $this->team   = Team::factory()->create(['tenant_id' => $this->tenant->id]);
+    $this->company = Company::factory()->create();
+    $this->team   = Team::factory()->create(['company_id' => $this->company->id]);
 
-    $this->client = User::factory()->client()->create(['tenant_id' => $this->tenant->id]);
-    $this->other  = User::factory()->client()->create(['tenant_id' => $this->tenant->id]);
-    $this->admin  = User::factory()->admin()->create(['tenant_id' => $this->tenant->id]);
+    $this->client = User::factory()->client()->create(['company_id' => $this->company->id]);
+    $this->other  = User::factory()->client()->create(['company_id' => $this->company->id]);
+    $this->admin  = User::factory()->admin()->create(['company_id' => $this->company->id]);
 
     $this->team->members()->attach([$this->client->id, $this->other->id]);
 
     $this->device = Device::create([
-        'tenant_id' => $this->tenant->id,
+        'company_id' => $this->company->id,
         'team_id'   => $this->team->id,
         'name'      => 'Test Device',
         'is_active' => true,
@@ -63,7 +63,7 @@ test('POST /tickets berhasil membuat tiket baru', function () {
         ->assertRedirect();
 
     $this->assertDatabaseHas('tickets', [
-        'tenant_id'   => $this->tenant->id,
+        'company_id'   => $this->company->id,
         'subject'     => 'Test ticket subject',
         'requester_id' => $this->client->id,
     ]);

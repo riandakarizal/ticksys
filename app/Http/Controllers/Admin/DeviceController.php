@@ -28,7 +28,7 @@ class DeviceController extends AdminController
         $data = $request->validated();
 
         Device::create([
-            'tenant_id' => $authUser->tenant_id,
+            'company_id' => $authUser->company_id,
             'team_id' => $data['team_id'],
             'name' => $data['name'],
             'asset_code' => $data['asset_code'] ?? null,
@@ -45,7 +45,7 @@ class DeviceController extends AdminController
 
     public function update(DeviceRequest $request, Device $device): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($device);
+        $this->ensureCompanyRecord($device);
         $data = $request->validated();
 
         $device->update([
@@ -65,7 +65,7 @@ class DeviceController extends AdminController
 
     public function destroy(Request $request, Device $device): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($device);
+        $this->ensureCompanyRecord($device);
         $device->delete();
 
         return $this->respond($request, 'Device deleted successfully.', route('admin.devices.index'));
@@ -73,7 +73,7 @@ class DeviceController extends AdminController
 
     public function import(DeviceImportRequest $request): RedirectResponse|JsonResponse
     {
-        $tenantId = Auth::user()->tenant_id;
+        $companyId = Auth::user()->company_id;
         $data = $request->validated();
         $rows = $this->parseDeviceCsv($request->file('file')->getRealPath());
 
@@ -89,12 +89,12 @@ class DeviceController extends AdminController
             }
 
             $match = ! empty($row['asset_code'])
-                ? ['tenant_id' => $tenantId, 'team_id' => (int) $data['team_id'], 'asset_code' => $row['asset_code']]
-                : ['tenant_id' => $tenantId, 'team_id' => (int) $data['team_id'], 'name' => $row['name']];
+                ? ['company_id' => $companyId, 'team_id' => (int) $data['team_id'], 'asset_code' => $row['asset_code']]
+                : ['company_id' => $companyId, 'team_id' => (int) $data['team_id'], 'name' => $row['name']];
 
             $device = Device::firstOrNew($match);
             $device->fill([
-                'tenant_id' => $tenantId,
+                'company_id' => $companyId,
                 'team_id' => (int) $data['team_id'],
                 'name' => $row['name'],
                 'asset_code' => $row['asset_code'] ?? null,
@@ -128,9 +128,8 @@ class DeviceController extends AdminController
 
     public function export(Request $request): StreamedResponse
     {
-        $tenantId = Auth::user()->tenant_id;
-        $query = Device::query()
-            ->where('tenant_id', $tenantId)
+        $authUser = Auth::user();
+        $query = ($authUser->canManageAllTickets() ? Device::query() : Device::query()->where('company_id', $authUser->company_id))
             ->with('team:id,name')
             ->withExists(['tickets as has_open_ticket' => fn ($builder) => $builder->where('status', '!=', 'closed')])
             ->orderBy('team_id')

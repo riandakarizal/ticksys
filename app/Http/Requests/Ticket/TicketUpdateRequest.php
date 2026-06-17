@@ -15,17 +15,17 @@ class TicketUpdateRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = auth()->user()->tenant_id;
+        $companyId = auth()->user()->company_id;
 
         return [
             'status' => ['required', Rule::in(Ticket::STATUSES)],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
-            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->whereIn('role', ['agent', 'supervisor', 'admin']))],
-            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
-            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->whereNull('parent_id'))],
-            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
-            'requester_id' => ['required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->where('role', 'client'))],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['agent', 'supervisor', 'admin']))],
+            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereNull('parent_id'))],
+            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            'requester_id' => ['required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->where('role', 'client'))],
         ];
     }
 }

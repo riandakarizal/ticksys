@@ -20,7 +20,7 @@ class TicketManager
     public function createTicket(User $user, TicketStoreRequest $request, Helpdesk $helpdesk): Ticket
     {
         $projects = $helpdesk->visibleProjects($user)
-            ->with(['members:id,name,email,role', 'devices:id,tenant_id,team_id,name,is_active'])
+            ->with(['members:id,name,email,role', 'devices:id,company_id,team_id,name,is_active'])
             ->get();
 
         $customFields = $helpdesk->defaultCustomFields($user)
@@ -35,12 +35,12 @@ class TicketManager
 
         return DB::transaction(function () use ($request, $user, $customFields, $affectedDeviceField, $helpdesk, $project, $assignedUserId) {
             $slaId = $request->validated('sla_policy_id') ?? SlaPolicy::query()
-                ->where('tenant_id', $user->tenant_id)
+                ->where('company_id', $user->company_id)
                 ->where('is_default', true)
                 ->value('id');
 
             $ticket = Ticket::create([
-                'tenant_id'     => $user->tenant_id,
+                'company_id'     => $user->company_id,
                 'requester_id'  => $user->isClient() ? $user->id : $request->validated('requester_id'),
                 'created_by'    => $user->id,
                 'assigned_to'   => $assignedUserId,
@@ -82,7 +82,7 @@ class TicketManager
 
         $user = auth()->user();
         $projects = $helpdesk->visibleProjects($user)
-            ->with(['members:id,name,email,role', 'devices:id,tenant_id,team_id,name,is_active'])
+            ->with(['members:id,name,email,role', 'devices:id,company_id,team_id,name,is_active'])
             ->get();
 
         $this->validateTicketRelationships($request, $user, collect(), $projects);
@@ -98,7 +98,8 @@ class TicketManager
         }
 
         if ($ticket->status === 'resolved' && ! $ticket->resolved_at) {
-            $ticket->resolved_at = now();
+            $ticket->resolved_at         = now();
+            $ticket->auto_close_warned_at = null;
         }
 
         if ($ticket->status === 'closed' && ! $ticket->closed_at) {
@@ -163,7 +164,7 @@ class TicketManager
 
         return DB::transaction(function () use ($ticket, $data, $helpdesk): Ticket {
             $newTicket = Ticket::create([
-                'tenant_id'           => $ticket->tenant_id,
+                'company_id'           => $ticket->company_id,
                 'requester_id'        => $ticket->requester_id,
                 'created_by'          => Auth::id(),
                 'assigned_to'         => $ticket->assigned_to,
@@ -225,12 +226,12 @@ class TicketManager
 
         if ($categoryId) {
             $category = Category::query()
-                ->where('tenant_id', $user->tenant_id)
+                ->where('company_id', $user->company_id)
                 ->with('projects:id')
                 ->find($categoryId);
 
             if (! $category) {
-                throw ValidationException::withMessages(['category_id' => 'Category tidak valid untuk tenant ini.']);
+                throw ValidationException::withMessages(['category_id' => 'Category tidak valid untuk company ini.']);
             }
 
             if ($projectId && ! $category->projects->contains('id', $projectId)) {
@@ -239,7 +240,7 @@ class TicketManager
         }
 
         if ($subcategoryId) {
-            $subcategory = Category::query()->where('tenant_id', $user->tenant_id)->find($subcategoryId);
+            $subcategory = Category::query()->where('company_id', $user->company_id)->find($subcategoryId);
 
             if (! $subcategory || (int) $subcategory->parent_id !== (int) $categoryId) {
                 throw ValidationException::withMessages(['subcategory_id' => 'Subcategory tidak cocok dengan category yang dipilih.']);

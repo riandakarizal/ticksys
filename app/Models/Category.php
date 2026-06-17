@@ -12,7 +12,7 @@ class Category extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'tenant_id',
+        'company_id',
         'parent_id',
         'auto_assign_user_id',
         'name',
@@ -28,9 +28,9 @@ class Category extends Model
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function parent(): BelongsTo

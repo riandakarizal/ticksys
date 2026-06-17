@@ -18,7 +18,7 @@ class Ticket extends Model
     public const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
     protected $fillable = [
-        'tenant_id',
+        'company_id',
         'requester_id',
         'created_by',
         'assigned_to',
@@ -42,6 +42,7 @@ class Ticket extends Model
         'resolution_due_at',
         'resolved_at',
         'closed_at',
+        'auto_close_warned_at',
     ];
 
     protected function casts(): array
@@ -55,6 +56,7 @@ class Ticket extends Model
             'resolution_due_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'auto_close_warned_at' => 'datetime',
         ];
     }
 
@@ -91,9 +93,9 @@ class Ticket extends Model
         });
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function requester(): BelongsTo

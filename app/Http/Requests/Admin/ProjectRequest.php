@@ -14,15 +14,15 @@ class ProjectRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = auth()->user()->tenant_id;
+        $companyId = auth()->user()->company_id;
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', Rule::unique('teams', 'code')->ignore(optional($this->route('team'))->id)->where(fn ($query) => $query->where('tenant_id', $tenantId))],
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('teams', 'code')->ignore(optional($this->route('team'))->id)->where(fn ($query) => $query->where('company_id', $companyId))],
             'description' => ['nullable', 'string'],
-            'lead_user_id' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)->whereIn('role', ['admin', 'supervisor']))],
+            'lead_user_id' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['admin', 'supervisor']))],
             'member_ids' => ['nullable', 'array'],
-            'member_ids.*' => [Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
+            'member_ids.*' => [Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
         ];
     }
 }

@@ -1,22 +1,22 @@
 <?php
 
 use App\Models\Team;
-use App\Models\Tenant;
+use App\Models\Company;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-// Setup: buat tenant + team, lalu user-user yang terkait
+// Setup: buat company + team, lalu user-user yang terkait
 beforeEach(function () {
-    $this->tenant = Tenant::factory()->create();
-    $this->team   = Team::factory()->create(['tenant_id' => $this->tenant->id]);
+    $this->company = Company::factory()->create();
+    $this->team   = Team::factory()->create(['company_id' => $this->company->id]);
 
-    $this->admin      = User::factory()->admin()->create(['tenant_id' => $this->tenant->id]);
-    $this->supervisor = User::factory()->supervisor()->create(['tenant_id' => $this->tenant->id]);
-    $this->agent      = User::factory()->agent()->create(['tenant_id' => $this->tenant->id]);
-    $this->client     = User::factory()->client()->create(['tenant_id' => $this->tenant->id]);
+    $this->admin      = User::factory()->admin()->create(['company_id' => $this->company->id]);
+    $this->supervisor = User::factory()->supervisor()->create(['company_id' => $this->company->id]);
+    $this->agent      = User::factory()->agent()->create(['company_id' => $this->company->id]);
+    $this->client     = User::factory()->client()->create(['company_id' => $this->company->id]);
 
     // Supervisor dan agent bergabung ke team
     $this->team->members()->attach([$this->supervisor->id, $this->agent->id, $this->client->id]);
@@ -26,7 +26,7 @@ beforeEach(function () {
         'assigned_to' => $this->agent->id,
     ]);
 
-    $this->otherClient = User::factory()->client()->create(['tenant_id' => $this->tenant->id]);
+    $this->otherClient = User::factory()->client()->create(['company_id' => $this->company->id]);
     $this->team->members()->attach($this->otherClient->id);
 
     $this->otherTicket = Ticket::factory()->forTeam($this->team)->forRequester($this->otherClient)->create([
@@ -70,10 +70,10 @@ test('admin melihat semua tiket', function () {
     $response->assertSee($this->otherTicket->ticket_number);
 });
 
-test('client tidak melihat tiket dari tenant lain', function () {
-    $otherTenant = Tenant::factory()->create();
-    $otherTeam   = Team::factory()->create(['tenant_id' => $otherTenant->id]);
-    $outsider    = User::factory()->client()->create(['tenant_id' => $otherTenant->id]);
+test('client tidak melihat tiket dari company lain', function () {
+    $otherCompany = Company::factory()->create();
+    $otherTeam   = Team::factory()->create(['company_id' => $otherCompany->id]);
+    $outsider    = User::factory()->client()->create(['company_id' => $otherCompany->id]);
     $foreignTicket = Ticket::factory()->forTeam($otherTeam)->forRequester($outsider)->create();
 
     $response = $this->actingAs($this->client)->get('/tickets');

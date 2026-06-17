@@ -1,4 +1,4 @@
-@extends('layouts.app', ['title' => 'Monitoring EQT', 'heading' => 'Monitoring Project — Equipment & Technology Units'])
+@extends('layouts.app', ['title' => 'Monitoring EQT', 'heading' => 'Monitoring Project Equipment & Technology'])
 
 @section('content')
 {{-- ── Page Header Actions ──────────────────────────────────── --}}

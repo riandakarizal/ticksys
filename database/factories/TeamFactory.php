@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Team;
-use App\Models\Tenant;
+use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,7 +16,7 @@ class TeamFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
+            'company_id' => Company::factory(),
             'name' => fake()->words(2, true),
             'code' => strtoupper(fake()->unique()->lexify('???')),
             'description' => null,

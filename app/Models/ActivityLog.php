@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ActivityLog extends Model
 {
     protected $fillable = [
-        'tenant_id',
+        'company_id',
         'ticket_id',
         'user_id',
         'action',
@@ -23,9 +23,9 @@ class ActivityLog extends Model
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function ticket(): BelongsTo

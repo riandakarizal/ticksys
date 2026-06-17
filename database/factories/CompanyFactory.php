@@ -2,15 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Models\Tenant;
+use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Tenant>
+ * @extends Factory<Company>
  */
-class TenantFactory extends Factory
+class CompanyFactory extends Factory
 {
-    protected $model = Tenant::class;
+    protected $model = Company::class;
 
     public function definition(): array
     {

@@ -1,0 +1,46 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="a1" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="a2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="a3" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <filter id="shadow1">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1e40af" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="60" cy="102" rx="38" ry="7" fill="#1e3a8a" opacity="0.25"/>
+
+  <!-- Isometric triangular prism, upright -->
+  <!-- top-front=(60,60), top-backL=(32,45), top-backR=(88,45) -->
+  <!-- bot-front=(60,97), bot-backL=(32,82), bot-backR=(88,82) -->
+
+  <!-- Right face (in shadow) -->
+  <polygon points="60,60 88,45 88,82 60,97" fill="url(#a3)" filter="url(#shadow1)"/>
+
+  <!-- Left face (medium lit) -->
+  <polygon points="60,60 32,45 32,82 60,97" fill="url(#a2)"/>
+
+  <!-- Top face (lightest — hit by light) -->
+  <polygon points="60,60 32,45 88,45" fill="url(#a1)"/>
+
+  <!-- Edge highlights -->
+  <line x1="60" y1="60" x2="32" y2="45" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+  <line x1="60" y1="60" x2="88" y2="45" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+  <line x1="60" y1="60" x2="60" y2="97" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+  <line x1="32" y1="45" x2="88" y2="45" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+
+  <!-- Apex glow -->
+  <circle cx="60" cy="60" r="3" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="32" cy="45" r="2" fill="rgba(255,255,255,0.35)"/>
+  <circle cx="88" cy="45" r="2" fill="rgba(255,255,255,0.2)"/>
+</svg>

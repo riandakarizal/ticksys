@@ -14,7 +14,7 @@ class UserStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = auth()->user()->tenant_id;
+        $companyId = auth()->user()->company_id;
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -25,7 +25,7 @@ class UserStoreRequest extends FormRequest
             'password' => ['required', 'string', 'min:6'],
             'is_active' => ['nullable', 'boolean'],
             'project_ids' => ['nullable', 'array'],
-            'project_ids.*' => [Rule::exists('teams', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId))],
+            'project_ids.*' => [Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
         ];
     }
 }

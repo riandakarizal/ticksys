@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CustomField extends Model
 {
     protected $fillable = [
-        'tenant_id',
+        'company_id',
         'name',
         'key',
         'type',
@@ -27,9 +27,9 @@ class CustomField extends Model
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function values(): HasMany

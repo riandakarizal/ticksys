@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
-    'tenant_id',
+    'company_id',
     'name',
     'email',
     'password',
@@ -43,9 +43,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function teams(): BelongsToMany

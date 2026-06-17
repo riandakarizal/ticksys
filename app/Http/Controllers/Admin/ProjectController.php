@@ -20,14 +20,14 @@ class ProjectController extends AdminController
 
     public function store(ProjectRequest $request, ProjectManager $projectManager): RedirectResponse|JsonResponse
     {
-        $projectManager->create(auth()->user()->tenant_id, $request->validated());
+        $projectManager->create(auth()->user()->company_id, $request->validated());
 
         return $this->respond($request, 'Project created successfully.', route('admin.projects.index'));
     }
 
     public function update(ProjectRequest $request, Team $team, ProjectManager $projectManager): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($team);
+        $this->ensureCompanyRecord($team);
 
         $projectManager->update($team, $request->validated());
 
@@ -36,7 +36,7 @@ class ProjectController extends AdminController
 
     public function destroy(Request $request, Team $team, ProjectManager $projectManager): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($team);
+        $this->ensureCompanyRecord($team);
 
         $projectManager->delete($team);
 

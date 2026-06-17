@@ -29,17 +29,22 @@ class AdminController extends Controller
 
     protected function viewData(string $pageTitle, string $pageDescription): array
     {
-        $tenantId = Auth::user()->tenant_id;
+        $user = Auth::user();
+        $isAdmin = $user->canManageAllTickets();
+        $companyId = $user->company_id;
 
-        $users = User::query()
-            ->where('tenant_id', $tenantId)
+        // Admin sees all records across tenants; others are scoped to their own tenant.
+        $scope = fn (string $model) => $isAdmin
+            ? $model::query()
+            : $model::query()->where('company_id', $companyId);
+
+        $users = $scope(User::class)
             ->with('teams:id,name')
             ->orderByRaw("CASE role WHEN 'admin' THEN 0 WHEN 'supervisor' THEN 1 WHEN 'agent' THEN 2 WHEN 'client' THEN 3 ELSE 4 END")
             ->orderBy('name')
             ->get();
 
-        $projects = Team::query()
-            ->where('tenant_id', $tenantId)
+        $projects = $scope(Team::class)
             ->with(['members:id,name,role', 'lead:id,name'])
             ->orderBy('name')
             ->get();
@@ -49,10 +54,9 @@ class AdminController extends Controller
             'pageDescription' => $pageDescription,
             'users' => $users,
             'projects' => $projects,
-            'categories' => Category::query()->where('tenant_id', $tenantId)->with(['children', 'parent'])->orderBy('name')->get(),
-            'slaPolicies' => SlaPolicy::query()->where('tenant_id', $tenantId)->orderByDesc('is_default')->orderBy('name')->get(),
-            'devices' => Device::query()
-                ->where('tenant_id', $tenantId)
+            'categories' => $scope(Category::class)->with(['children', 'parent'])->orderBy('name')->get(),
+            'slaPolicies' => $scope(SlaPolicy::class)->orderByDesc('is_default')->orderBy('name')->get(),
+            'devices' => $scope(Device::class)
                 ->with('team:id,name')
                 ->withExists(['tickets as has_open_ticket' => fn ($query) => $query->where('status', '!=', 'closed')])
                 ->orderBy('name')
@@ -75,9 +79,12 @@ class AdminController extends Controller
         return redirect($redirect)->with('success', $message);
     }
 
-    protected function ensureTenantRecord(object $model): void
+    protected function ensureCompanyRecord(object $model): void
     {
-        abort_unless($model->tenant_id === Auth::user()->tenant_id, 404);
+        if (Auth::user()->canManageAllTickets()) {
+            return;
+        }
+        abort_unless($model->company_id === Auth::user()->company_id, 404);
     }
 
     protected function ensureProjectAssignmentForRole(string $role, array $projectIds): void
@@ -126,10 +133,10 @@ class AdminController extends Controller
         return $rows;
     }
 
-    protected function resolveCategoryColor(int $tenantId, ?string $color, ?Category $parentCategory = null, ?string $fallbackColor = null): string
+    protected function resolveCategoryColor(int $companyId, ?string $color, ?Category $parentCategory = null, ?string $fallbackColor = null): string
     {
         if ($parentCategory) {
-            return $parentCategory->color ?: $this->defaultCategoryColor($tenantId);
+            return $parentCategory->color ?: $this->defaultCategoryColor($companyId);
         }
 
         if (filled($color)) {
@@ -140,13 +147,13 @@ class AdminController extends Controller
             return $fallbackColor;
         }
 
-        return $this->defaultCategoryColor($tenantId);
+        return $this->defaultCategoryColor($companyId);
     }
 
-    protected function defaultCategoryColor(int $tenantId): string
+    protected function defaultCategoryColor(int $companyId): string
     {
         $parentCount = Category::query()
-            ->where('tenant_id', $tenantId)
+            ->where('company_id', $companyId)
             ->whereNull('parent_id')
             ->count();
 

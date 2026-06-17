@@ -34,7 +34,7 @@ class ReportController extends Controller
             'byCategory' => $collection->groupBy(fn ($ticket) => $ticket->category?->name ?? 'Uncategorized')->map->count(),
             'averageResolutionMinutes' => $averageResolutionMinutes,
             'breachRate' => $breachRate,
-            'categories' => Category::query()->where('tenant_id', $user->tenant_id)->whereNull('parent_id')->orderBy('name')->get(),
+            'categories' => Category::query()->where('company_id', $user->company_id)->whereNull('parent_id')->orderBy('name')->get(),
             'clients' => $helpdesk->visibleProjects($user)->with('members:id,name,role')->get()->flatMap->members->where('role', 'client')->unique('id')->sortBy('name')->values(),
             'projects' => $helpdesk->visibleProjects($user)->orderBy('name')->get(),
         ]);

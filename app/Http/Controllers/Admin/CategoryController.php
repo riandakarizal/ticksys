@@ -24,15 +24,15 @@ class CategoryController extends AdminController
         $data = $request->validated();
 
         $parentCategory = ! empty($data['parent_id'])
-            ? Category::query()->where('tenant_id', $authUser->tenant_id)->find($data['parent_id'])
+            ? Category::query()->where('company_id', $authUser->company_id)->find($data['parent_id'])
             : null;
 
         Category::create([
-            'tenant_id' => $authUser->tenant_id,
+            'company_id' => $authUser->company_id,
             'name' => $data['name'],
             'slug' => $data['slug'],
             'parent_id' => $data['parent_id'] ?? null,
-            'color' => $this->resolveCategoryColor($authUser->tenant_id, $data['color'] ?? null, $parentCategory),
+            'color' => $this->resolveCategoryColor($authUser->company_id, $data['color'] ?? null, $parentCategory),
             'is_active' => $request->boolean('is_active', true),
         ]);
 
@@ -41,7 +41,7 @@ class CategoryController extends AdminController
 
     public function update(CategoryRequest $request, Category $category): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($category);
+        $this->ensureCompanyRecord($category);
 
         $data = $request->validated();
 
@@ -50,7 +50,7 @@ class CategoryController extends AdminController
         }
 
         $parentCategory = ! empty($data['parent_id'])
-            ? Category::query()->where('tenant_id', auth()->user()->tenant_id)->find($data['parent_id'])
+            ? Category::query()->where('company_id', auth()->user()->company_id)->find($data['parent_id'])
             : null;
 
         $category->update([
@@ -58,7 +58,7 @@ class CategoryController extends AdminController
             'slug' => $data['slug'],
             'parent_id' => $data['parent_id'] ?? null,
             'color' => $this->resolveCategoryColor(
-                auth()->user()->tenant_id,
+                auth()->user()->company_id,
                 $data['color'] ?? null,
                 $parentCategory,
                 $category->color
@@ -75,7 +75,7 @@ class CategoryController extends AdminController
 
     public function destroy(Request $request, Category $category): RedirectResponse|JsonResponse
     {
-        $this->ensureTenantRecord($category);
+        $this->ensureCompanyRecord($category);
 
         $category->projects()->detach();
         $category->delete();
