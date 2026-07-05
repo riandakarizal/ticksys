@@ -83,7 +83,7 @@
                         <select class="field" name="team_id" data-ticket-project required>
                             <option value="" disabled hidden @selected(blank(old('team_id')))>Select project</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
+                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -149,7 +149,7 @@
                                 <select class="field" name="assigned_to" data-ticket-assignee>
                                     <option value="" disabled hidden @selected(blank(old('assigned_to')))>Select assignee</option>
                                     @foreach($agents as $agent)
-                                        <option value="{{ $agent->id }}" @selected((string) old('assigned_to') === (string) $agent->id)>{{ $agent->name }}</option>
+                                        <option value="{{ $agent->id }}" @selected((string) old('assigned_to') === (string) $agent->id)>{{ $agent->user_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -159,7 +159,7 @@
                                     <select class="field" name="requester_id" data-ticket-requester required>
                                         <option value="" disabled hidden @selected(blank(old('requester_id')))>Select client</option>
                                         @foreach($clients as $client)
-                                            <option value="{{ $client->id }}" @selected((string) old('requester_id') === (string) $client->id)>{{ $client->name }} - {{ $client->email }}</option>
+                                            <option value="{{ $client->id }}" @selected((string) old('requester_id') === (string) $client->id)>{{ $client->user_name }} - {{ $client->user_email }}</option>
                                         @endforeach
                                     </select>
                                     @if($clients->isEmpty())

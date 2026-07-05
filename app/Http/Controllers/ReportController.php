@@ -34,8 +34,8 @@ class ReportController extends Controller
             'byCategory' => $collection->groupBy(fn ($ticket) => $ticket->category?->name ?? 'Uncategorized')->map->count(),
             'averageResolutionMinutes' => $averageResolutionMinutes,
             'breachRate' => $breachRate,
-            'categories' => Category::query()->where('company_id', $user->company_id)->whereNull('parent_id')->orderBy('name')->get(),
-            'clients' => $helpdesk->visibleProjects($user)->with('members:id,name,role')->get()->flatMap->members->where('role', 'client')->unique('id')->sortBy('name')->values(),
+            'categories' => Category::query()->whereNull('parent_id')->orderBy('name')->get(),
+            'clients' => $helpdesk->visibleProjects($user)->with('members:id,user_name,user_role')->get()->flatMap->members->where('user_role', 'client')->unique('id')->sortBy('user_name')->values(),
             'projects' => $helpdesk->visibleProjects($user)->orderBy('name')->get(),
         ]);
     }
@@ -57,9 +57,9 @@ class ReportController extends Controller
                     $ticket->subject,
                     $ticket->status,
                     $ticket->priority,
-                    $ticket->requester?->name,
+                    $ticket->requester?->user_name,
                     $ticket->category?->name,
-                    $ticket->assignee?->name,
+                    $ticket->assignee?->user_name,
                     $ticket->team?->name,
                     $ticket->created_at->format('Y-m-d H:i'),
                 ]);

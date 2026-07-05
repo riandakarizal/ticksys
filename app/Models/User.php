@@ -2,52 +2,64 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
-    'company_id',
-    'name',
-    'email',
-    'password',
-    'role',
-    'job_title',
-    'phone',
-    'is_active',
+    'id',
+    'user_empid',
+    'user_name',
+    'user_email',
+    'user_pass',
+    'user_level',
+    'user_role',
+    'user_unit',
+    'user_div',
+    'user_parid',
+    'user_status',
 ])]
-#[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+#[Hidden(['user_pass'])]
+class User extends Model implements AuthenticatableContract
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Authenticatable, HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    public $incrementing = false;
+    public $timestamps   = false;
+    protected $keyType   = 'string';
+
     protected function casts(): array
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-        ];
+        return [];
     }
 
-    public function company(): BelongsTo
+    // ── Auth overrides ────────────────────────────────────────────────────────
+    public function getAuthIdentifierName(): string  { return 'id'; }
+    public function getAuthIdentifier(): mixed        { return $this->id; }
+    public function getAuthPassword(): string         { return $this->user_pass ?? ''; }
+    public function getAuthPasswordName(): string     { return 'password'; }
+    public function getRememberToken(): string        { return ''; }
+    public function setRememberToken($value): void   {}
+    public function getRememberTokenName(): string    { return ''; }
+
+    // Maps virtual 'password' key → actual 'user_pass' column for rehash support
+    protected function password(): Attribute
     {
-        return $this->belongsTo(Company::class);
+        return Attribute::make(
+            get: fn () => $this->user_pass ?? '',
+            set: fn (string $value) => ['user_pass' => $value],
+        );
     }
 
+    // ── Relationships ─────────────────────────────────────────────────────────
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class)->withTimestamps();
@@ -78,25 +90,27 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
-    public function isAdmin(): bool
+    // ── Role helpers ──────────────────────────────────────────────────────────
+    public function jabatan(): string
     {
-        return $this->role === 'admin';
+        return match ($this->user_level) {
+            'L1'    => 'Direktur',
+            'L2'    => 'Group Head',
+            'L3'    => 'Division Head',
+            'L4'    => 'Analyst',
+            'L5'    => 'Senior Officer',
+            'L6'    => 'Officer',
+            'L7'    => 'Staff',
+            default => $this->user_level ?? '-',
+        };
     }
 
-    public function isSupervisor(): bool
-    {
-        return $this->role === 'supervisor';
-    }
-
-    public function isAgent(): bool
-    {
-        return $this->role === 'agent';
-    }
-
-    public function isClient(): bool
-    {
-        return $this->role === 'client';
-    }
+    public function isAdmin(): bool      { return $this->user_role === 'admin'; }
+    public function isSupervisor(): bool { return $this->user_role === 'supervisor'; }
+    public function isAgent(): bool      { return $this->user_role === 'agent'; }
+    public function isClient(): bool     { return $this->user_role === 'client'; }
+    public function isVip(): bool        { return $this->user_role === 'vip'; }
+    public function isActive(): bool     { return $this->user_status === 'active'; }
 
     public function canManageAllTickets(): bool
     {
@@ -105,7 +119,6 @@ class User extends Authenticatable
 
     public function canViewReports(): bool
     {
-        return $this->isAdmin() || $this->isSupervisor();
+        return $this->isAdmin() || $this->isSupervisor() || $this->isVip();
     }
-
 }

@@ -14,18 +14,20 @@ class UserStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $companyId = auth()->user()->company_id;
-
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'role' => ['required', 'in:client,agent,supervisor,admin'],
-            'job_title' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'password' => ['required', 'string', 'min:6'],
-            'is_active' => ['nullable', 'boolean'],
-            'project_ids' => ['nullable', 'array'],
-            'project_ids.*' => [Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            'id'          => ['required', 'string', 'max:20', Rule::unique('users', 'id')],
+            'user_empid'  => ['required', 'string', 'max:20'],
+            'user_name'   => ['required', 'string', 'max:20'],
+            'user_email'  => ['required', 'email', 'max:225', Rule::unique('users', 'user_email')],
+            'user_pass'   => ['required', 'string', 'min:6'],
+            'user_level'  => ['required', 'string', 'max:20'],
+            'user_role'   => ['required', 'in:client,agent,supervisor,admin,vip'],
+            'user_unit'   => ['required', 'string', 'max:225'],
+            'user_div'    => ['required', 'string', 'max:225'],
+            'user_parid'  => ['required', 'string', 'max:225'],
+            'user_status' => ['required', 'in:active,inactive'],
+            'project_ids'   => ['nullable', 'array'],
+            'project_ids.*' => [Rule::exists('teams', 'id')],
         ];
     }
 }

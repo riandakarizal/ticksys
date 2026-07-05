@@ -9,7 +9,7 @@
             <div>
                 <p class="text-sm uppercase tracking-[0.28em] text-slate-500">Project Device Detail</p>
                 <h3 class="mt-2 text-3xl font-black text-slate-900">{{ $project->name }}</h3>
-                <p class="mt-2 text-sm leading-7 text-slate-600">Coordinator: {{ $project->lead?->name ?? '-' }} | Members: {{ $project->members->count() }} | Code: {{ $project->code }}</p>
+                <p class="mt-2 text-sm leading-7 text-slate-600">Coordinator: {{ $project->lead?->user_name ?? '-' }} | Members: {{ $project->members->count() }} | Code: {{ $project->code }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <a class="btn-soft" href="{{ route('admin.projects.index') }}">Back to projects</a>

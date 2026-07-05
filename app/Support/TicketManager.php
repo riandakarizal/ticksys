@@ -35,12 +35,11 @@ class TicketManager
 
         return DB::transaction(function () use ($request, $user, $customFields, $affectedDeviceField, $helpdesk, $project, $assignedUserId) {
             $slaId = $request->validated('sla_policy_id') ?? SlaPolicy::query()
-                ->where('company_id', $user->company_id)
                 ->where('is_default', true)
                 ->value('id');
 
             $ticket = Ticket::create([
-                'company_id'     => $user->company_id,
+                'company_id'     => 1,
                 'requester_id'  => $user->isClient() ? $user->id : $request->validated('requester_id'),
                 'created_by'    => $user->id,
                 'assigned_to'   => $assignedUserId,
@@ -226,7 +225,6 @@ class TicketManager
 
         if ($categoryId) {
             $category = Category::query()
-                ->where('company_id', $user->company_id)
                 ->with('projects:id')
                 ->find($categoryId);
 
@@ -240,7 +238,7 @@ class TicketManager
         }
 
         if ($subcategoryId) {
-            $subcategory = Category::query()->where('company_id', $user->company_id)->find($subcategoryId);
+            $subcategory = Category::query()->find($subcategoryId);
 
             if (! $subcategory || (int) $subcategory->parent_id !== (int) $categoryId) {
                 throw ValidationException::withMessages(['subcategory_id' => 'Subcategory tidak cocok dengan category yang dipilih.']);

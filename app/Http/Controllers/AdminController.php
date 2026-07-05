@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Device;
 use App\Models\SlaPolicy;
 use App\Models\Team;
 use App\Models\User;
@@ -29,41 +28,34 @@ class AdminController extends Controller
 
     protected function viewData(string $pageTitle, string $pageDescription): array
     {
-        $user = Auth::user();
-        $isAdmin = $user->canManageAllTickets();
-        $companyId = $user->company_id;
-
-        // Admin sees all records across tenants; others are scoped to their own tenant.
-        $scope = fn (string $model) => $isAdmin
-            ? $model::query()
-            : $model::query()->where('company_id', $companyId);
-
-        $users = $scope(User::class)
+        $users = User::query()
             ->with('teams:id,name')
-            ->orderByRaw("CASE role WHEN 'admin' THEN 0 WHEN 'supervisor' THEN 1 WHEN 'agent' THEN 2 WHEN 'client' THEN 3 ELSE 4 END")
-            ->orderBy('name')
+            ->orderByRaw("CASE user_role
+                WHEN 'admin'      THEN 0
+                WHEN 'supervisor' THEN 1
+                WHEN 'agent'      THEN 2
+                WHEN 'client'     THEN 3
+                WHEN 'vip'        THEN 4
+                ELSE 5 END")
+            ->orderBy('user_name')
             ->get();
 
-        $projects = $scope(Team::class)
-            ->with(['members:id,name,role', 'lead:id,name'])
+        $projects = Team::query()
+            ->with(['members:id,user_name,user_role', 'lead:id,user_name'])
             ->orderBy('name')
             ->get();
 
         return [
-            'pageTitle' => $pageTitle,
-            'pageDescription' => $pageDescription,
-            'users' => $users,
-            'projects' => $projects,
-            'categories' => $scope(Category::class)->with(['children', 'parent'])->orderBy('name')->get(),
-            'slaPolicies' => $scope(SlaPolicy::class)->orderByDesc('is_default')->orderBy('name')->get(),
-            'devices' => $scope(Device::class)
-                ->with('team:id,name')
-                ->withExists(['tickets as has_open_ticket' => fn ($query) => $query->where('status', '!=', 'closed')])
-                ->orderBy('name')
-                ->get(),
-            'projectUsers' => $users->where('role', '!=', 'admin')->values(),
-            'assignableAgents' => $users->whereIn('role', ['admin', 'supervisor', 'agent'])->values(),
-            'coordinators' => $users->whereIn('role', ['admin', 'supervisor'])->values(),
+            'pageTitle'        => $pageTitle,
+            'pageDescription'  => $pageDescription,
+            'users'            => $users,
+            'projects'         => $projects,
+            'categories'       => Category::query()->with(['children', 'parent'])->orderBy('name')->get(),
+            'slaPolicies'      => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            'devices'          => collect(),
+            'projectUsers'     => $users->where('user_role', '!=', 'admin')->values(),
+            'assignableAgents' => $users->whereIn('user_role', ['admin', 'supervisor', 'agent'])->values(),
+            'coordinators'     => $users->whereIn('user_role', ['admin', 'supervisor'])->values(),
         ];
     }
 
@@ -71,7 +63,7 @@ class AdminController extends Controller
     {
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => $message,
+                'message'  => $message,
                 'redirect' => $redirect,
             ]);
         }
@@ -81,15 +73,12 @@ class AdminController extends Controller
 
     protected function ensureCompanyRecord(object $model): void
     {
-        if (Auth::user()->canManageAllTickets()) {
-            return;
-        }
-        abort_unless($model->company_id === Auth::user()->company_id, 404);
+        // Single-tenant — no company scoping needed.
     }
 
     protected function ensureProjectAssignmentForRole(string $role, array $projectIds): void
     {
-        if ($role !== 'admin' && empty($projectIds)) {
+        if ($role !== 'admin' && $role !== 'vip' && empty($projectIds)) {
             throw ValidationException::withMessages([
                 'project_ids' => 'Non-admin users must be assigned to at least one project.',
             ]);
@@ -153,7 +142,6 @@ class AdminController extends Controller
     protected function defaultCategoryColor(int $companyId): string
     {
         $parentCount = Category::query()
-            ->where('company_id', $companyId)
             ->whereNull('parent_id')
             ->count();
 

@@ -23,38 +23,31 @@ class Helpdesk
 {
     public function visibleTickets(User $user): Builder
     {
-        // Admin = superadmin, sees all tickets across all tenants with no restriction.
-        if ($user->canManageAllTickets()) {
+        if ($user->canManageAllTickets() || $user->isVip()) {
             return Ticket::query();
         }
 
-        // Non-admin: tickets are scoped to tenant first, then narrowed by role.
-        $query = Ticket::query()->where('tickets.company_id', $user->company_id);
         $projectIds = $user->teams()->pluck('teams.id');
+        $query      = Ticket::query()->whereIn('tickets.team_id', $projectIds);
 
         if ($user->isSupervisor()) {
-            return $query->whereIn('tickets.team_id', $projectIds);
+            return $query;
         }
 
         if ($user->isAgent()) {
-            return $query
-                ->whereIn('tickets.team_id', $projectIds)
-                ->where('tickets.assigned_to', $user->id);
+            return $query->where('tickets.assigned_to', $user->id);
         }
 
-        return $query
-            ->whereIn('tickets.team_id', $projectIds)
-            ->where('tickets.requester_id', $user->id);
+        return $query->where('tickets.requester_id', $user->id);
     }
 
     public function visibleProjects(User $user): Builder
     {
-        if ($user->canManageAllTickets()) {
+        if ($user->canManageAllTickets() || $user->isVip()) {
             return Team::query();
         }
 
         return Team::query()
-            ->where('teams.company_id', $user->company_id)
             ->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
     }
 
@@ -82,17 +75,17 @@ class Helpdesk
             return $preferredUserId;
         }
 
-        $agent = $members->firstWhere('role', 'agent');
+        $agent = $members->firstWhere('user_role', 'agent');
         if ($agent) {
             return $agent->id;
         }
 
-        $supervisor = $members->firstWhere('role', 'supervisor');
+        $supervisor = $members->firstWhere('user_role', 'supervisor');
         if ($supervisor) {
             return $supervisor->id;
         }
 
-        $admin = $members->firstWhere('role', 'admin');
+        $admin = $members->firstWhere('user_role', 'admin');
 
         return $admin?->id;
     }
@@ -144,11 +137,11 @@ class Helpdesk
     public function recordActivity(?Ticket $ticket, ?User $user, string $action, string $description, array $properties = []): void
     {
         ActivityLog::create([
-            'company_id' => $ticket?->company_id ?? $user?->company_id,
-            'ticket_id' => $ticket?->id,
-            'user_id' => $user?->id,
-            'action' => $action,
-            'description' => $description,
+            'company_id' => $ticket?->company_id,
+            'ticket_id'  => $ticket?->id,
+            'user_id'    => $user?->id,
+            'action'     => $action,
+            'description'=> $description,
             'properties' => $properties,
         ]);
     }
@@ -194,19 +187,19 @@ class Helpdesk
 
         // Narrow candidates in SQL with LIKE conditions, then apply exact
         // slug/email matching in PHP to avoid false positives from LIKE.
-        $query = User::query()->where('company_id', $actor->company_id);
+        $query = User::query();
 
         $query->where(function ($builder) use ($needles): void {
             foreach ($needles as $needle) {
-                $builder->orWhere('email', 'like', $needle . '@%')
-                        ->orWhere('name', 'like', '%' . $needle . '%');
+                $builder->orWhere('user_email', 'like', $needle . '@%')
+                        ->orWhere('user_name', 'like', '%' . $needle . '%');
             }
         });
 
         return $query->get()
             ->filter(function (User $user) use ($needles): bool {
-                $emailLocal = Str::before(Str::lower($user->email), '@');
-                $nameSlug   = Str::slug($user->name, '');
+                $emailLocal = Str::before(Str::lower($user->user_email), '@');
+                $nameSlug   = Str::slug($user->user_name, '');
 
                 return $needles->contains($emailLocal) || $needles->contains($nameSlug);
             })
@@ -216,7 +209,6 @@ class Helpdesk
     public function defaultCustomFields(User $user): Collection
     {
         return CustomField::query()
-            ->where('company_id', $user->company_id)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -240,7 +232,7 @@ class Helpdesk
 
     private function shouldSendEmailNotification(User $user, ?Ticket $ticket, string $type): bool
     {
-        if (! $user->email || ! $ticket) {
+        if (! $user->user_email || ! $ticket) {
             return false;
         }
 
@@ -266,9 +258,9 @@ class Helpdesk
         // requester/client, while global CC is injected from configuration.
         $send = function () use ($user, $ticket, $title, $message, $data): void {
             try {
-                $mail = Mail::to($user->email);
+                $mail = Mail::to($user->user_email);
                 $ccRecipients = collect(config('helpdesk.mail.cc', []))
-                    ->filter(fn ($email) => filled($email) && strcasecmp($email, $user->email) !== 0)
+                    ->filter(fn ($email) => filled($email) && strcasecmp($email, $user->user_email) !== 0)
                     ->unique()
                     ->values()
                     ->all();
@@ -282,7 +274,7 @@ class Helpdesk
                 Log::warning('Failed to send ticket notification email.', [
                     'ticket_id' => $ticket?->id,
                     'user_id' => $user->id,
-                    'email' => $user->email,
+                    'email' => $user->user_email,
                     'error' => $exception->getMessage(),
                 ]);
             }

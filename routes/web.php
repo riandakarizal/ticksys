@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectDeviceController;
 use App\Http\Controllers\Admin\SlaPolicyController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ManpowerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
@@ -35,14 +37,26 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
     Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
 
-    Route::middleware('role:supervisor,admin')->group(function (): void {
+    Route::middleware('role:supervisor,admin,vip')->group(function (): void {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
+
+        // Project sub-pages (stubs)
+        Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
+        Route::get('/project/manpower', [ManpowerController::class, 'index'])->name('project.manpower');
+
+        // Vendor pages (stubs)
+        Route::get('/vendor', fn () => view('vendor.main'))->name('vendor.main');
+        Route::get('/vendor/contracts', fn () => view('vendor.contracts'))->name('vendor.contracts');
+
+        // Report sub-pages (stubs)
+        Route::get('/report/issues', fn () => view('report.issues'))->name('report.issues');
+        Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
 
         Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
             Route::get('/', [MonitoringController::class, 'index'])->name('index');
 
-            Route::middleware('role:admin')->group(function (): void {
+            Route::middleware('role:admin,supervisor')->group(function (): void {
                 Route::post('/{type}', [MonitoringController::class, 'store'])->name('store');
                 Route::put('/{type}/{id}', [MonitoringController::class, 'update'])->name('update');
                 Route::delete('/{type}/{id}', [MonitoringController::class, 'destroy'])->name('destroy');

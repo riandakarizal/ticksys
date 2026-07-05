@@ -16,7 +16,7 @@
         <select class="field" name="status"><option value="" disabled hidden @selected(blank(request('status')))>Select status</option>@foreach(['open','in_progress','pending','resolved','closed'] as $status)<option value="{{ $status }}" @selected(request('status') === $status)>{{ \Illuminate\Support\Str::headline($status) }}</option>@endforeach</select>
         <select class="field" name="priority"><option value="" disabled hidden @selected(blank(request('priority')))>Select priority</option>@foreach(['low','medium','high','critical'] as $priority)<option value="{{ $priority }}" @selected(request('priority') === $priority)>{{ \Illuminate\Support\Str::headline($priority) }}</option>@endforeach</select>
         <select class="field" name="category_id"><option value="" disabled hidden @selected(blank(request('category_id')))>Select category</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach</select>
-        <select class="field" name="requester_id"><option value="" disabled hidden @selected(blank(request('requester_id')))>Select client</option>@foreach($clients as $client)<option value="{{ $client->id }}" @selected((string) request('requester_id') === (string) $client->id)>{{ $client->name }}</option>@endforeach</select>
+        <select class="field" name="requester_id"><option value="" disabled hidden @selected(blank(request('requester_id')))>Select client</option>@foreach($clients as $client)<option value="{{ $client->id }}" @selected((string) request('requester_id') === (string) $client->id)>{{ $client->user_name }}</option>@endforeach</select>
         <button class="btn-primary md:col-span-7 md:w-max" type="submit">Apply Filters</button>
     </form>
 </div>
@@ -41,11 +41,11 @@
                     @foreach($tickets as $ticket)
                         <tr>
                             <td class="py-3"><a class="font-semibold hover:text-blue-600" href="{{ route('tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a><div class="text-slate-500">{{ $ticket->subject }}</div></td>
-                            <td class="py-3">{{ $ticket->requester?->name }}</td>
+                            <td class="py-3">{{ $ticket->requester?->user_name }}</td>
                             <td class="py-3">{{ $ticket->team?->name ?? '-' }}</td>
                             <td class="py-3">{{ $ticket->category?->name ?? '-' }}</td>
                             <td class="py-3">{{ \Illuminate\Support\Str::headline($ticket->status) }}</td>
-                            <td class="py-3">{{ $ticket->assignee?->name ?? 'Unassigned' }}</td>
+                            <td class="py-3">{{ $ticket->assignee?->user_name ?? 'Unassigned' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

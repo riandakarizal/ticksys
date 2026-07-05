@@ -24,15 +24,15 @@ class CategoryController extends AdminController
         $data = $request->validated();
 
         $parentCategory = ! empty($data['parent_id'])
-            ? Category::query()->where('company_id', $authUser->company_id)->find($data['parent_id'])
+            ? Category::query()->find($data['parent_id'])
             : null;
 
         Category::create([
-            'company_id' => $authUser->company_id,
+            'company_id' => 1,
             'name' => $data['name'],
             'slug' => $data['slug'],
             'parent_id' => $data['parent_id'] ?? null,
-            'color' => $this->resolveCategoryColor($authUser->company_id, $data['color'] ?? null, $parentCategory),
+            'color' => $this->resolveCategoryColor(1, $data['color'] ?? null, $parentCategory),
             'is_active' => $request->boolean('is_active', true),
         ]);
 
@@ -50,7 +50,7 @@ class CategoryController extends AdminController
         }
 
         $parentCategory = ! empty($data['parent_id'])
-            ? Category::query()->where('company_id', auth()->user()->company_id)->find($data['parent_id'])
+            ? Category::query()->find($data['parent_id'])
             : null;
 
         $category->update([
@@ -58,7 +58,7 @@ class CategoryController extends AdminController
             'slug' => $data['slug'],
             'parent_id' => $data['parent_id'] ?? null,
             'color' => $this->resolveCategoryColor(
-                auth()->user()->company_id,
+                1,
                 $data['color'] ?? null,
                 $parentCategory,
                 $category->color

@@ -7,6 +7,12 @@
 
 @theme {
     --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --color-brand-50:  #f0fafa;
+    --color-brand-100: #d0f0f0;
+    --color-brand-200: #9ce0e0;
+    --color-brand-500: #1ab5b5;
+    --color-brand-600: #17a2a2;
+    --color-brand-700: #0e7a7a;
 }
 
 @layer base {
@@ -44,7 +50,7 @@
     }
 
     .btn-primary {
-        @apply inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700;
+        @apply inline-flex items-center justify-center rounded-2xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700;
     }
 
     .btn-secondary {
@@ -56,7 +62,7 @@
     }
 
     .field {
-        @apply w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
+        @apply w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
     }
 
     .label {
@@ -88,11 +94,11 @@
     }
 
     .choice-card:hover .choice-card-box {
-        @apply border-blue-200 bg-blue-50/70;
+        @apply border-brand-200 bg-brand-50/70;
     }
 
     .choice-card input:checked + .choice-card-box {
-        @apply border-blue-500 bg-blue-50 text-blue-700 shadow-md shadow-blue-100/80;
+        @apply border-brand-500 bg-brand-50 text-brand-700 shadow-md shadow-brand-100/80;
     }
 
     .choice-indicator {
@@ -100,7 +106,7 @@
     }
 
     .choice-card input:checked + .choice-card-box .choice-indicator {
-        @apply border-blue-500 bg-blue-600 text-white;
+        @apply border-brand-500 bg-brand-600 text-white;
     }
 }
 
@@ -121,7 +127,7 @@
 
     .datatable-shell .datatable-selector,
     .datatable-shell .datatable-input {
-        @apply rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
+        @apply rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
     }
 
     .datatable-shell .datatable-input {

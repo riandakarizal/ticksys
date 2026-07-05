@@ -11,7 +11,7 @@
         <div class="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
             <div class="stat"><p class="text-sm text-slate-500">Users</p><p class="mt-2 text-3xl font-black">{{ $users->count() }}</p></div>
             <div class="stat"><p class="text-sm text-slate-500">Projects</p><p class="mt-2 text-3xl font-black">{{ $projects->count() }}</p></div>
-            <div class="stat"><p class="text-sm text-slate-500">Active</p><p class="mt-2 text-3xl font-black">{{ $users->where('is_active', true)->count() }}</p></div>
+            <div class="stat"><p class="text-sm text-slate-500">Active</p><p class="mt-2 text-3xl font-black">{{ $users->where('user_status', 'active')->count() }}</p></div>
         </div>
     </div>
 
@@ -29,9 +29,10 @@
                 <thead>
                     <tr class="text-left text-slate-500">
                         <th>Name</th>
+                        <th>Employee ID</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Project</th>
+                        <th>Division / Unit</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -40,15 +41,16 @@
                     @foreach($users as $user)
                         <tr>
                             <td>
-                                <p class="font-semibold text-slate-900">{{ $user->name }}</p>
-                                <span class="text-xs text-slate-500">{{ $user->job_title ?: '-' }}</span>
+                                <p class="font-semibold text-slate-900">{{ $user->user_name }}</p>
+                                <span class="text-xs text-slate-500">{{ $user->user_level ?: '-' }}</span>
                             </td>
-                            <td>{{ $user->email }}</td>
-                            <td>{{ \Illuminate\Support\Str::headline($user->role) }}</td>
-                            <td>{{ $user->teams->pluck('name')->join(', ') ?: '-' }}</td>
+                            <td class="text-slate-600">{{ $user->user_empid }}</td>
+                            <td>{{ $user->user_email }}</td>
+                            <td>{{ \Illuminate\Support\Str::headline($user->user_role) }}</td>
+                            <td class="text-slate-600">{{ $user->user_div }} / {{ $user->user_unit }}</td>
                             <td>
-                                <span class="badge {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
-                                    {{ $user->is_active ? 'Active' : 'Inactive' }}
+                                <span class="badge {{ $user->user_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                                    {{ \Illuminate\Support\Str::headline($user->user_status) }}
                                 </span>
                             </td>
                             <td>
@@ -65,6 +67,7 @@
     </div>
 </div>
 
+{{-- ── CREATE DIALOG ─────────────────────────────────────────────────────── --}}
 <dialog id="user-create-dialog" class="max-w-4xl">
     <form method="POST" action="{{ route('admin.users.store') }}" data-ajax-form class="panel m-0">
         @csrf
@@ -76,18 +79,27 @@
             <button type="button" class="btn-soft" data-close-dialog>Close</button>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
-            <input class="field" name="name" placeholder="Full Name" required>
-            <input class="field" type="email" name="email" placeholder="Email" required>
-            <select class="field" name="role" required>
+            <input class="field" name="id"         placeholder="User ID (maks 20 karakter)"  required maxlength="20">
+            <input class="field" name="user_empid" placeholder="Employee ID"                 required maxlength="20">
+            <input class="field" name="user_name"  placeholder="Nama (maks 20 karakter)"     required maxlength="20">
+            <input class="field" type="email" name="user_email" placeholder="Email"          required>
+            <select class="field" name="user_role" required>
                 <option value="" disabled hidden>Select Role</option>
                 <option value="client">Client</option>
                 <option value="agent">Agent</option>
                 <option value="supervisor">Coordinator</option>
                 <option value="admin">Admin</option>
+                <option value="vip">VIP</option>
             </select>
-            <input class="field" name="job_title" placeholder="Job Title">
-            <input class="field" name="phone" placeholder="Phone">
-            <input class="field" name="password" type="password" placeholder="Password" required>
+            <input class="field" name="user_level"  placeholder="Level (cth: L3)"            required maxlength="20">
+            <input class="field" name="user_unit"   placeholder="Unit"                        required>
+            <input class="field" name="user_div"    placeholder="Divisi"                      required>
+            <input class="field" name="user_parid"  placeholder="Parent ID (atasan/unit)"     required>
+            <input class="field" name="user_pass"   type="password" placeholder="Password"   required>
+            <select class="field" name="user_status" required>
+                <option value="active" selected>Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
             <div class="md:col-span-2">
                 <label class="label">Assigned Projects</label>
                 <div class="choice-panel">
@@ -106,9 +118,8 @@
                         @endforeach
                     </div>
                 </div>
-                <p class="mt-2 text-xs text-slate-500">Select at least one project for client, agent, or coordinator roles.</p>
+                <p class="mt-2 text-xs text-slate-500">Select at least one project for non-admin roles.</p>
             </div>
-            <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" checked> Active User</label>
         </div>
         <div class="mt-5 flex justify-end">
             <button class="btn-primary" type="submit">Save</button>
@@ -116,6 +127,7 @@
     </form>
 </dialog>
 
+{{-- ── EDIT / DELETE DIALOGS ─────────────────────────────────────────────── --}}
 @foreach($users as $user)
     <dialog id="user-edit-{{ $user->id }}" class="max-w-4xl">
         <form method="POST" action="{{ route('admin.users.update', $user) }}" data-ajax-form class="panel m-0">
@@ -129,17 +141,25 @@
                 <button type="button" class="btn-soft" data-close-dialog>Close</button>
             </div>
             <div class="grid gap-4 md:grid-cols-2">
-                <input class="field" name="name" value="{{ $user->name }}" required>
-                <input class="field" type="email" name="email" value="{{ $user->email }}" required>
-                <select class="field" name="role" required>
-                    <option value="client" @selected($user->role === 'client')>Client</option>
-                    <option value="agent" @selected($user->role === 'agent')>Agent</option>
-                    <option value="supervisor" @selected($user->role === 'supervisor')>Coordinator</option>
-                    <option value="admin" @selected($user->role === 'admin')>Admin</option>
+                <input class="field" name="user_empid" value="{{ $user->user_empid }}" placeholder="Employee ID" required maxlength="20">
+                <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="20">
+                <input class="field" type="email" name="user_email" value="{{ $user->user_email }}" required>
+                <select class="field" name="user_role" required>
+                    <option value="client"     @selected($user->user_role === 'client')>Client</option>
+                    <option value="agent"      @selected($user->user_role === 'agent')>Agent</option>
+                    <option value="supervisor" @selected($user->user_role === 'supervisor')>Coordinator</option>
+                    <option value="admin"      @selected($user->user_role === 'admin')>Admin</option>
+                    <option value="vip"        @selected($user->user_role === 'vip')>VIP</option>
                 </select>
-                <input class="field" name="job_title" value="{{ $user->job_title }}" placeholder="Job Title">
-                <input class="field" name="phone" value="{{ $user->phone }}" placeholder="Phone">
-                <input class="field" name="password" type="password" placeholder="New password (optional)">
+                <input class="field" name="user_level"  value="{{ $user->user_level }}"  placeholder="Level" required maxlength="20">
+                <input class="field" name="user_unit"   value="{{ $user->user_unit }}"   placeholder="Unit" required>
+                <input class="field" name="user_div"    value="{{ $user->user_div }}"    placeholder="Divisi" required>
+                <input class="field" name="user_parid"  value="{{ $user->user_parid }}"  placeholder="Parent ID" required>
+                <input class="field" name="user_pass"   type="password" placeholder="New password (optional)">
+                <select class="field" name="user_status" required>
+                    <option value="active"   @selected($user->user_status === 'active')>Active</option>
+                    <option value="inactive" @selected($user->user_status === 'inactive')>Inactive</option>
+                </select>
                 <div class="md:col-span-2">
                     <label class="label">Assigned Projects</label>
                     <div class="choice-panel">
@@ -158,9 +178,7 @@
                             @endforeach
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-slate-500">Select at least one project for client, agent, or coordinator roles.</p>
                 </div>
-                <label class="flex items-center gap-3 text-sm text-slate-500 md:col-span-2"><input type="checkbox" name="is_active" value="1" @checked($user->is_active)> Active User</label>
             </div>
             <div class="mt-5 flex justify-end">
                 <button class="btn-primary" type="submit">Update</button>

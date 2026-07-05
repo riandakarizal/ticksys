@@ -14,18 +14,21 @@ class UserUpdateRequest extends FormRequest
 
     public function rules(): array
     {
-        $companyId = auth()->user()->company_id;
+        $userId = $this->route('managedUser')->id;
 
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->route('managedUser')->id)],
-            'role' => ['required', 'in:client,agent,supervisor,admin'],
-            'job_title' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'password' => ['nullable', 'string', 'min:6'],
-            'is_active' => ['nullable', 'boolean'],
-            'project_ids' => ['nullable', 'array'],
-            'project_ids.*' => [Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            'user_empid'  => ['required', 'string', 'max:20'],
+            'user_name'   => ['required', 'string', 'max:20'],
+            'user_email'  => ['required', 'email', 'max:225', Rule::unique('users', 'user_email')->ignore($userId, 'id')],
+            'user_pass'   => ['nullable', 'string', 'min:6'],
+            'user_level'  => ['required', 'string', 'max:20'],
+            'user_role'   => ['required', 'in:client,agent,supervisor,admin,vip'],
+            'user_unit'   => ['required', 'string', 'max:225'],
+            'user_div'    => ['required', 'string', 'max:225'],
+            'user_parid'  => ['required', 'string', 'max:225'],
+            'user_status' => ['required', 'in:active,inactive'],
+            'project_ids'   => ['nullable', 'array'],
+            'project_ids.*' => [Rule::exists('teams', 'id')],
         ];
     }
 }

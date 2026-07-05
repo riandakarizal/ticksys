@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -18,39 +17,47 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'company_id' => Company::factory(),
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
-            'role' => 'client',
-            'is_active' => true,
+            'id'          => strtoupper(Str::random(8)),
+            'user_empid'  => strtoupper('EMP' . fake()->unique()->numerify('####')),
+            'user_name'   => fake()->name(),
+            'user_email'  => fake()->unique()->safeEmail(),
+            'user_pass'   => static::$password ??= Hash::make('password'),
+            'user_level'  => fake()->randomElement(['L3', 'L4', 'L5', 'L6', 'L7']),
+            'user_role'   => 'client',
+            'user_unit'   => fake()->randomElement(['FM', 'IT', 'HR', 'Finance', 'Operations']),
+            'user_div'    => fake()->randomElement(['Airport', 'Industrial', 'Commercial']),
+            'user_parid'  => '-',
+            'user_status' => 'active',
         ];
-    }
-
-    public function unverified(): static
-    {
-        return $this->state(['email_verified_at' => null]);
     }
 
     public function admin(): static
     {
-        return $this->state(['role' => 'admin']);
+        return $this->state(['user_role' => 'admin', 'user_level' => 'L1']);
     }
 
     public function supervisor(): static
     {
-        return $this->state(['role' => 'supervisor']);
+        return $this->state(['user_role' => 'supervisor', 'user_level' => 'L2']);
     }
 
     public function agent(): static
     {
-        return $this->state(['role' => 'agent']);
+        return $this->state(['user_role' => 'agent', 'user_level' => 'L5']);
     }
 
     public function client(): static
     {
-        return $this->state(['role' => 'client']);
+        return $this->state(['user_role' => 'client', 'user_level' => 'L7']);
+    }
+
+    public function vip(): static
+    {
+        return $this->state(['user_role' => 'vip', 'user_level' => 'L1']);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(['user_status' => 'inactive']);
     }
 }

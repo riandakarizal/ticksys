@@ -17,7 +17,7 @@ class EnsureRole
     {
         $user = $request->user();
 
-        abort_unless($user && in_array($user->role, $roles, true), 403);
+        abort_unless($user && in_array($user->user_role, $roles, true), 403);
 
         return $next($request);
     }

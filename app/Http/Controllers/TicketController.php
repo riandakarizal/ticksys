@@ -75,7 +75,7 @@ class TicketController extends Controller
         return view('tickets.index', [
             'tickets'    => $query->latest()->paginate(12)->withQueryString(),
             'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->orderBy('name')->get(),
-            'clients'    => $members->where('role', 'client')->sortBy('name')->values(),
+            'clients'    => $members->where('user_role', 'client')->sortBy('user_name')->values(),
             'projects'   => $projects,
             'statuses'   => Ticket::STATUSES,
             'priorities' => Ticket::PRIORITIES,
@@ -87,7 +87,7 @@ class TicketController extends Controller
         $user = Auth::user();
         $projects = $helpdesk->visibleProjects($user)
             ->with([
-                'members' => fn ($query) => $query->orderBy('name'),
+                'members' => fn ($query) => $query->orderBy('user_name'),
                 'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
             ])
             ->orderBy('name')
@@ -103,11 +103,11 @@ class TicketController extends Controller
             'categories'  => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
             'projects'    => $projects,
             'devices'     => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
-            'agents'      => $members->whereIn('role', ['agent', 'supervisor', 'admin'])->sortBy('name')->values(),
-            'clients'     => $members->where('role', 'client')->sortBy('name')->values(),
+            'agents'      => $members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->sortBy('user_name')->values(),
+            'clients'     => $members->where('user_role', 'client')->sortBy('user_name')->values(),
             'customFields' => $customFields,
             'priorities'  => Ticket::PRIORITIES,
-            'slaPolicies' => SlaPolicy::query()->where('company_id', $user->company_id)->orderByDesc('is_default')->orderBy('name')->get(),
+            'slaPolicies' => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
         ]);
     }
 
@@ -115,10 +115,10 @@ class TicketController extends Controller
     {
         $ticket = $ticketManager->createTicket(auth()->user(), $request, $helpdesk);
         $project = $helpdesk->visibleProjects(auth()->user())
-            ->with(['members:id,name,email,role'])
+            ->with(['members:id,user_name,user_email,user_role'])
             ->find($ticket->team_id);
 
-        $supervisors = $project?->members->whereIn('role', ['supervisor', 'admin']) ?? collect();
+        $supervisors = $project?->members->whereIn('user_role', ['supervisor', 'admin']) ?? collect();
 
         $helpdesk->notifyUsers(
             $helpdesk->participants($ticket)->merge($supervisors),
@@ -164,7 +164,7 @@ class TicketController extends Controller
 
         $projects = $helpdesk->visibleProjects($user)
             ->with([
-                'members' => fn ($query) => $query->orderBy('name'),
+                'members' => fn ($query) => $query->orderBy('user_name'),
                 'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
             ])
             ->orderBy('name')
@@ -190,11 +190,11 @@ class TicketController extends Controller
 
         return view('tickets.show', [
             'ticket'       => $ticket,
-            'agents'       => $members->whereIn('role', ['agent', 'supervisor', 'admin'])->sortBy('name')->values(),
+            'agents'       => $members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->sortBy('user_name')->values(),
             'projects'     => $projects,
             'devices'      => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
             'categories'   => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            'clients'      => $members->where('role', 'client')->sortBy('name')->values(),
+            'clients'      => $members->where('user_role', 'client')->sortBy('user_name')->values(),
             'statuses'     => Ticket::STATUSES,
             'priorities'   => Ticket::PRIORITIES,
             'mergeTargets' => $helpdesk->visibleTickets($user)
@@ -253,7 +253,7 @@ class TicketController extends Controller
 
     private function categoryQuery(User $user, Collection $projectIds): Builder
     {
-        $query = Category::query()->where('company_id', $user->company_id);
+        $query = Category::query();
 
         if ($projectIds->isNotEmpty()) {
             $query->whereHas('projects', fn (Builder $q) => $q->whereIn('teams.id', $projectIds));

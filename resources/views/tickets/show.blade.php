@@ -53,7 +53,7 @@
                         <div class="rounded-3xl {{ $message->is_internal ? 'bg-amber-50' : 'bg-slate-100' }} p-5">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
-                                    <p class="font-semibold">{{ $message->user?->name ?? 'Deleted user' }}</p>
+                                    <p class="font-semibold">{{ $message->user?->user_name ?? 'Deleted user' }}</p>
                                     <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ $message->is_internal ? 'Internal Note' : 'Reply' }}</p>
                                 </div>
                                 <p class="text-sm text-slate-500">{{ $message->created_at->format('d M Y H:i') }}</p>
@@ -145,7 +145,7 @@
                                 <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
                             </div>
                         @endif
-                        <p class="mt-1 text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
+                        <p class="mt-1 text-slate-500">{{ $log->user?->user_name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
                     </div>
                 @empty
                     <p class="text-sm text-slate-500">No activity log yet.</p>
@@ -176,7 +176,7 @@
                                         <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
                                     </div>
                                 @endif
-                                <p class="mt-1 text-slate-500">{{ $log->user?->name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
+                                <p class="mt-1 text-slate-500">{{ $log->user?->user_name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -189,8 +189,8 @@
         <div class="panel">
             <h3 class="text-xl font-black">Ticket Details</h3>
             <dl class="mt-4 space-y-3 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Requester</dt><dd>{{ $ticket->requester?->name }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Assigned To</dt><dd>{{ $ticket->assignee?->name ?? 'Unassigned' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Requester</dt><dd>{{ $ticket->requester?->user_name }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Assigned To</dt><dd>{{ $ticket->assignee?->user_name ?? 'Unassigned' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Project</dt><dd>{{ $ticket->team?->name ?? '-' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Affected Device</dt><dd>{{ $ticket->device?->name ?? '-' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Category</dt><dd>{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? '-' }}</dd></div>
@@ -211,7 +211,7 @@
                     @if($ticket->assignee)
                         <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm">
                             <p class="text-slate-500">Handled by</p>
-                            <p class="mt-1 font-semibold text-slate-900">{{ $ticket->assignee->name }}</p>
+                            <p class="mt-1 font-semibold text-slate-900">{{ $ticket->assignee->user_name }}</p>
                         </div>
                     @else
                         <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
@@ -249,14 +249,14 @@
                         <select class="field" name="assigned_to" data-ticket-assignee>
                             <option value="" disabled hidden @selected(blank($ticket->assigned_to))>Select assignee</option>
                             @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}" @selected($ticket->assigned_to === $agent->id)>{{ $agent->name }}</option>
+                                <option value="{{ $agent->id }}" @selected($ticket->assigned_to === $agent->id)>{{ $agent->user_name }}</option>
                             @endforeach
                         </select>
                         <label class="label">Project <span class="text-rose-500">*</span></label>
                         <select class="field" name="team_id" data-ticket-project required>
                             <option value="" disabled hidden @selected(blank($ticket->team_id))>Select project</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected($ticket->team_id === $project->id)>{{ $project->name }}</option>
+                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected($ticket->team_id === $project->id)>{{ $project->name }}</option>
                             @endforeach
                         </select>
                         <label class="label">Affected Device <span class="text-rose-500">*</span></label>
@@ -285,7 +285,7 @@
                         <label class="label">Requester <span class="text-rose-500">*</span></label>
                         <select class="field" name="requester_id" data-ticket-requester required>
                             @foreach($clients as $client)
-                                <option value="{{ $client->id }}" @selected($ticket->requester_id === $client->id)>{{ $client->name }}</option>
+                                <option value="{{ $client->id }}" @selected($ticket->requester_id === $client->id)>{{ $client->user_name }}</option>
                             @endforeach
                         </select>
                         <button class="btn-primary" type="button" data-open-dialog="close-confirm-dialog" id="save-workflow-btn" data-default-submit>Save Changes</button>

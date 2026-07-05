@@ -17,7 +17,7 @@ class TicketPolicy
 
     public function update(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient()) {
+        if ($user->isClient() || $user->isVip()) {
             return false;
         }
 
@@ -26,7 +26,7 @@ class TicketPolicy
 
     public function merge(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient()) {
+        if ($user->isClient() || $user->isVip()) {
             return false;
         }
 
@@ -35,7 +35,7 @@ class TicketPolicy
 
     public function split(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient()) {
+        if ($user->isClient() || $user->isVip()) {
             return false;
         }
 
@@ -54,16 +54,10 @@ class TicketPolicy
 
     private function visible(User $user, Ticket $ticket): bool
     {
-        if ($user->isAdmin()) {
-            return $ticket->company_id === $user->company_id;
+        if ($user->isAdmin() || $user->isVip()) {
+            return true;
         }
 
-        if ($ticket->company_id !== $user->company_id) {
-            return false;
-        }
-
-        // Bug 4 fix: gunakan query langsung agar tidak bergantung pada eager load
-        // Bug 5 fix: agent bisa lihat semua tiket di team-nya, termasuk yang belum di-assign
         if ($user->isSupervisor() || $user->isAgent()) {
             return $ticket->team_id !== null
                 && $user->teams()->where('teams.id', $ticket->team_id)->exists();

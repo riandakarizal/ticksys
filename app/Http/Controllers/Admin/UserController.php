@@ -20,20 +20,22 @@ class UserController extends AdminController
 
     public function store(UserStoreRequest $request): RedirectResponse|JsonResponse
     {
-        $authUser = auth()->user();
-        $data     = $request->validated();
+        $data = $request->validated();
 
-        $this->ensureProjectAssignmentForRole($data['role'], $data['project_ids'] ?? []);
+        $this->ensureProjectAssignmentForRole($data['user_role'], $data['project_ids'] ?? []);
 
         $user = User::create([
-            'company_id' => $authUser->company_id,
-            'name'      => $data['name'],
-            'email'     => $data['email'],
-            'password'  => $data['password'],
-            'role'      => $data['role'],
-            'job_title' => $data['job_title'] ?? null,
-            'phone'     => $data['phone'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
+            'id'          => $data['id'],
+            'user_empid'  => $data['user_empid'],
+            'user_name'   => $data['user_name'],
+            'user_email'  => $data['user_email'],
+            'user_pass'   => $data['user_pass'],
+            'user_level'  => $data['user_level'],
+            'user_role'   => $data['user_role'],
+            'user_unit'   => $data['user_unit'],
+            'user_div'    => $data['user_div'],
+            'user_parid'  => $data['user_parid'],
+            'user_status' => $data['user_status'],
         ]);
 
         $user->teams()->sync($data['project_ids'] ?? []);
@@ -43,22 +45,24 @@ class UserController extends AdminController
 
     public function update(UserUpdateRequest $request, User $managedUser): RedirectResponse|JsonResponse
     {
-        $this->ensureCompanyRecord($managedUser);
-
         $data = $request->validated();
-        $this->ensureProjectAssignmentForRole($data['role'], $data['project_ids'] ?? []);
+
+        $this->ensureProjectAssignmentForRole($data['user_role'], $data['project_ids'] ?? []);
 
         $managedUser->fill([
-            'name'      => $data['name'],
-            'email'     => $data['email'],
-            'role'      => $data['role'],
-            'job_title' => $data['job_title'] ?? null,
-            'phone'     => $data['phone'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
+            'user_empid'  => $data['user_empid'],
+            'user_name'   => $data['user_name'],
+            'user_email'  => $data['user_email'],
+            'user_level'  => $data['user_level'],
+            'user_role'   => $data['user_role'],
+            'user_unit'   => $data['user_unit'],
+            'user_div'    => $data['user_div'],
+            'user_parid'  => $data['user_parid'],
+            'user_status' => $data['user_status'],
         ]);
 
-        if (! empty($data['password'])) {
-            $managedUser->password = $data['password'];
+        if (! empty($data['user_pass'])) {
+            $managedUser->user_pass = bcrypt($data['user_pass']);
         }
 
         $managedUser->save();
@@ -69,7 +73,6 @@ class UserController extends AdminController
 
     public function destroy(Request $request, User $managedUser): RedirectResponse|JsonResponse
     {
-        $this->ensureCompanyRecord($managedUser);
         abort_if($managedUser->id === auth()->id(), 422, 'Tidak dapat menghapus akun sendiri.');
 
         $managedUser->teams()->detach();

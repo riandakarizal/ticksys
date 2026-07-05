@@ -21,11 +21,11 @@ class SlaPolicyController extends AdminController
         $data = $request->validated();
 
         if ($request->boolean('is_default')) {
-            SlaPolicy::query()->where('company_id', $authUser->company_id)->update(['is_default' => false]);
+            SlaPolicy::query()->update(['is_default' => false]);
         }
 
         SlaPolicy::create([
-            'company_id' => $authUser->company_id,
+            'company_id' => 1,
             'name' => $data['name'],
             'response_minutes' => $data['response_minutes'],
             'resolution_minutes' => $data['resolution_minutes'],
@@ -42,7 +42,6 @@ class SlaPolicyController extends AdminController
 
         if ($request->boolean('is_default')) {
             SlaPolicy::query()
-                ->where('company_id', auth()->user()->company_id)
                 ->whereKeyNot($slaPolicy->id)
                 ->update(['is_default' => false]);
         }

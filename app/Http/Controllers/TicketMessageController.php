@@ -82,7 +82,7 @@ class TicketMessageController extends Controller
             $ticket,
             $isInternal ? 'internal_note' : 'ticket_reply',
             'Update pada ticket ' . $ticket->ticket_number,
-            $user->name . ' menambahkan ' . ($isInternal ? 'catatan internal.' : 'balasan baru.'),
+            $user->user_name . ' menambahkan ' . ($isInternal ? 'catatan internal.' : 'balasan baru.'),
             [
                 'ticket_id'    => $ticket->id,
                 'comment_body' => Str::limit(strip_tags($validated['body']), 180),
