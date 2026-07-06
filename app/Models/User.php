@@ -105,20 +105,32 @@ class User extends Model implements AuthenticatableContract
         };
     }
 
+    public function roleLabel(): string
+    {
+        return match ($this->user_role) {
+            'superadmin' => 'Super Admin',
+            'admin'      => 'Admin',
+            'siteadmin'  => 'Site Admin',
+            'user'       => 'User',
+            'vip'        => 'VIP',
+            default      => $this->user_role ?? '-',
+        };
+    }
+
+    public function isSuperAdmin(): bool { return $this->user_role === 'superadmin'; }
     public function isAdmin(): bool      { return $this->user_role === 'admin'; }
-    public function isSupervisor(): bool { return $this->user_role === 'supervisor'; }
-    public function isAgent(): bool      { return $this->user_role === 'agent'; }
-    public function isClient(): bool     { return $this->user_role === 'client'; }
+    public function isSiteAdmin(): bool  { return $this->user_role === 'siteadmin'; }
+    public function isUser(): bool       { return $this->user_role === 'user'; }
     public function isVip(): bool        { return $this->user_role === 'vip'; }
     public function isActive(): bool     { return $this->user_status === 'active'; }
 
     public function canManageAllTickets(): bool
     {
-        return $this->isAdmin();
+        return $this->isSuperAdmin();
     }
 
     public function canViewReports(): bool
     {
-        return $this->isAdmin() || $this->isSupervisor() || $this->isVip();
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();
     }
 }

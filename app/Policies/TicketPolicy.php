@@ -10,6 +10,11 @@ class TicketPolicy
 {
     use HandlesAuthorization;
 
+    public function create(User $user): bool
+    {
+        return ! $user->isVip();
+    }
+
     public function view(User $user, Ticket $ticket): bool
     {
         return $this->visible($user, $ticket);
@@ -17,7 +22,7 @@ class TicketPolicy
 
     public function update(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient() || $user->isVip()) {
+        if ($user->isUser() || $user->isVip()) {
             return false;
         }
 
@@ -26,7 +31,7 @@ class TicketPolicy
 
     public function merge(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient() || $user->isVip()) {
+        if (! ($user->isSuperAdmin() || $user->isAdmin())) {
             return false;
         }
 
@@ -35,7 +40,7 @@ class TicketPolicy
 
     public function split(User $user, Ticket $ticket): bool
     {
-        if ($user->isClient() || $user->isVip()) {
+        if (! ($user->isSuperAdmin() || $user->isAdmin())) {
             return false;
         }
 
@@ -54,15 +59,15 @@ class TicketPolicy
 
     private function visible(User $user, Ticket $ticket): bool
     {
-        if ($user->isAdmin() || $user->isVip()) {
+        if ($user->isSuperAdmin() || $user->isVip()) {
             return true;
         }
 
-        if ($user->isSupervisor() || $user->isAgent()) {
+        if ($user->isAdmin() || $user->isSiteAdmin()) {
             return $ticket->team_id !== null
                 && $user->teams()->where('teams.id', $ticket->team_id)->exists();
         }
 
-        return $ticket->requester_id === $user->id && $user->isClient();
+        return $ticket->requester_id === $user->id && $user->isUser();
     }
 }

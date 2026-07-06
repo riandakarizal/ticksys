@@ -6,44 +6,44 @@ use App\Models\User;
 function userWithRole(string $role): User
 {
     $u = new User();
-    $u->role = $role;
+    $u->user_role = $role;
     return $u;
 }
 
+test('isSuperAdmin() hanya true untuk role superadmin', function () {
+    expect(userWithRole('superadmin')->isSuperAdmin())->toBeTrue();
+    expect(userWithRole('admin')->isSuperAdmin())->toBeFalse();
+    expect(userWithRole('siteadmin')->isSuperAdmin())->toBeFalse();
+    expect(userWithRole('user')->isSuperAdmin())->toBeFalse();
+});
+
 test('isAdmin() hanya true untuk role admin', function () {
     expect(userWithRole('admin')->isAdmin())->toBeTrue();
-    expect(userWithRole('supervisor')->isAdmin())->toBeFalse();
-    expect(userWithRole('agent')->isAdmin())->toBeFalse();
-    expect(userWithRole('client')->isAdmin())->toBeFalse();
+    expect(userWithRole('superadmin')->isAdmin())->toBeFalse();
+    expect(userWithRole('siteadmin')->isAdmin())->toBeFalse();
+    expect(userWithRole('user')->isAdmin())->toBeFalse();
 });
 
-test('isSupervisor() hanya true untuk role supervisor', function () {
-    expect(userWithRole('supervisor')->isSupervisor())->toBeTrue();
-    expect(userWithRole('admin')->isSupervisor())->toBeFalse();
-    expect(userWithRole('agent')->isSupervisor())->toBeFalse();
-    expect(userWithRole('client')->isSupervisor())->toBeFalse();
+test('isSiteAdmin() hanya true untuk role siteadmin', function () {
+    expect(userWithRole('siteadmin')->isSiteAdmin())->toBeTrue();
+    expect(userWithRole('admin')->isSiteAdmin())->toBeFalse();
 });
 
-test('isAgent() hanya true untuk role agent', function () {
-    expect(userWithRole('agent')->isAgent())->toBeTrue();
-    expect(userWithRole('admin')->isAgent())->toBeFalse();
+test('isUser() hanya true untuk role user', function () {
+    expect(userWithRole('user')->isUser())->toBeTrue();
+    expect(userWithRole('admin')->isUser())->toBeFalse();
 });
 
-test('isClient() hanya true untuk role client', function () {
-    expect(userWithRole('client')->isClient())->toBeTrue();
-    expect(userWithRole('admin')->isClient())->toBeFalse();
-});
-
-test('canViewReports() true untuk admin dan supervisor', function () {
+test('canViewReports() true untuk superadmin dan admin', function () {
+    expect(userWithRole('superadmin')->canViewReports())->toBeTrue();
     expect(userWithRole('admin')->canViewReports())->toBeTrue();
-    expect(userWithRole('supervisor')->canViewReports())->toBeTrue();
-    expect(userWithRole('agent')->canViewReports())->toBeFalse();
-    expect(userWithRole('client')->canViewReports())->toBeFalse();
+    expect(userWithRole('siteadmin')->canViewReports())->toBeFalse();
+    expect(userWithRole('user')->canViewReports())->toBeFalse();
 });
 
-test('canManageAllTickets() hanya true untuk admin', function () {
-    expect(userWithRole('admin')->canManageAllTickets())->toBeTrue();
-    expect(userWithRole('supervisor')->canManageAllTickets())->toBeFalse();
-    expect(userWithRole('agent')->canManageAllTickets())->toBeFalse();
-    expect(userWithRole('client')->canManageAllTickets())->toBeFalse();
+test('canManageAllTickets() hanya true untuk superadmin', function () {
+    expect(userWithRole('superadmin')->canManageAllTickets())->toBeTrue();
+    expect(userWithRole('admin')->canManageAllTickets())->toBeFalse();
+    expect(userWithRole('siteadmin')->canManageAllTickets())->toBeFalse();
+    expect(userWithRole('user')->canManageAllTickets())->toBeFalse();
 });

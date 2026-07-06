@@ -70,7 +70,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        @if(!auth()->user()->isClient())
+                        @if(!auth()->user()->isUser())
                             <div class="min-w-0">
                                 <label class="label">Client</label>
                                 <select class="field" name="requester_id">

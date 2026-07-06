@@ -9,7 +9,7 @@ class UserUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->isSuperAdmin();
     }
 
     public function rules(): array
@@ -22,7 +22,7 @@ class UserUpdateRequest extends FormRequest
             'user_email'  => ['required', 'email', 'max:225', Rule::unique('users', 'user_email')->ignore($userId, 'id')],
             'user_pass'   => ['nullable', 'string', 'min:6'],
             'user_level'  => ['required', 'string', 'max:20'],
-            'user_role'   => ['required', 'in:client,agent,supervisor,admin,vip'],
+            'user_role'   => ['required', 'in:user,siteadmin,admin,superadmin,vip'],
             'user_unit'   => ['required', 'string', 'max:225'],
             'user_div'    => ['required', 'string', 'max:225'],
             'user_parid'  => ['required', 'string', 'max:225'],

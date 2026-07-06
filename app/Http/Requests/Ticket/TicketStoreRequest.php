@@ -10,7 +10,7 @@ class TicketStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        return auth()->check() && ! auth()->user()->isVip();
     }
 
     public function rules(): array
@@ -25,8 +25,8 @@ class TicketStoreRequest extends FormRequest
             'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereNull('parent_id'))],
             'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'requester_id' => [auth()->user()->isClient() ? 'nullable' : 'required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->where('role', 'client'))],
-            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['agent', 'supervisor', 'admin']))],
+            'requester_id' => [auth()->user()->isUser() ? 'nullable' : 'required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->where('role', 'user'))],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['siteadmin', 'admin', 'superadmin']))],
             'sla_policy_id' => ['nullable', Rule::exists('sla_policies', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
             'tags' => ['nullable', 'string'],
             'attachments' => ['nullable', 'array'],

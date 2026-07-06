@@ -23,7 +23,7 @@ class TicketMessageController extends Controller
         $validated   = $request->validated();
         $isInternal  = (bool) ($validated['is_internal'] ?? false);
 
-        abort_if($isInternal && $user->isClient(), 403);
+        abort_if($isInternal && $user->isUser(), 403);
 
         $beforeStatus   = $ticket->status;
         $mentionedUsers = $helpdesk->extractMentionedUsers($validated['body'], $user);
@@ -37,21 +37,21 @@ class TicketMessageController extends Controller
 
         $helpdesk->storeAttachments($ticket, $request->file('attachments', []), $user->id, $message->id);
 
-        if (! $user->isClient() && ! $ticket->first_responded_at) {
+        if (! $user->isUser() && ! $ticket->first_responded_at) {
             $ticket->first_responded_at = now();
         }
 
         $ticket->last_reply_at = now();
 
         // Auto-transition: client reply reopens a pending/resolved ticket.
-        if ($user->isClient() && in_array($ticket->status, ['pending', 'resolved'], true)) {
+        if ($user->isUser() && in_array($ticket->status, ['pending', 'resolved'], true)) {
             $ticket->status              = 'open';
             $ticket->resolved_at         = null;
             $ticket->auto_close_warned_at = null;
         }
 
         // Auto-transition: first agent/staff reply moves ticket to in_progress.
-        if (! $user->isClient() && $ticket->status === 'open') {
+        if (! $user->isUser() && $ticket->status === 'open') {
             $ticket->status = 'in_progress';
         }
 

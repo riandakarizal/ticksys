@@ -46,7 +46,7 @@
                             </td>
                             <td class="text-slate-600">{{ $user->user_empid }}</td>
                             <td>{{ $user->user_email }}</td>
-                            <td>{{ \Illuminate\Support\Str::headline($user->user_role) }}</td>
+                            <td>{{ $user->roleLabel() }}</td>
                             <td class="text-slate-600">{{ $user->user_div }} / {{ $user->user_unit }}</td>
                             <td>
                                 <span class="badge {{ $user->user_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
@@ -85,10 +85,10 @@
             <input class="field" type="email" name="user_email" placeholder="Email"          required>
             <select class="field" name="user_role" required>
                 <option value="" disabled hidden>Select Role</option>
-                <option value="client">Client</option>
-                <option value="agent">Agent</option>
-                <option value="supervisor">Coordinator</option>
+                <option value="user">User</option>
+                <option value="siteadmin">Site Admin</option>
                 <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
                 <option value="vip">VIP</option>
             </select>
             <input class="field" name="user_level"  placeholder="Level (cth: L3)"            required maxlength="20">
@@ -145,10 +145,10 @@
                 <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="20">
                 <input class="field" type="email" name="user_email" value="{{ $user->user_email }}" required>
                 <select class="field" name="user_role" required>
-                    <option value="client"     @selected($user->user_role === 'client')>Client</option>
-                    <option value="agent"      @selected($user->user_role === 'agent')>Agent</option>
-                    <option value="supervisor" @selected($user->user_role === 'supervisor')>Coordinator</option>
+                    <option value="user"       @selected($user->user_role === 'user')>User</option>
+                    <option value="siteadmin"  @selected($user->user_role === 'siteadmin')>Site Admin</option>
                     <option value="admin"      @selected($user->user_role === 'admin')>Admin</option>
+                    <option value="superadmin" @selected($user->user_role === 'superadmin')>Super Admin</option>
                     <option value="vip"        @selected($user->user_role === 'vip')>VIP</option>
                 </select>
                 <input class="field" name="user_level"  value="{{ $user->user_level }}"  placeholder="Level" required maxlength="20">

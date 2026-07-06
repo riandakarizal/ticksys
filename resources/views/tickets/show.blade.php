@@ -49,7 +49,7 @@
             <h3 class="text-xl font-black">Conversation</h3>
             <div class="mt-6 space-y-4">
                 @forelse($ticket->messages as $message)
-                    @if(! $message->is_internal || ! auth()->user()->isClient())
+                    @if(! $message->is_internal || ! auth()->user()->isUser())
                         <div class="rounded-3xl {{ $message->is_internal ? 'bg-amber-50' : 'bg-slate-100' }} p-5">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
@@ -85,7 +85,7 @@
                     @csrf
                     <textarea class="field min-h-36" name="body" placeholder="Write a reply. Mention users with @username"></textarea>
                     <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white file:transition hover:file:bg-blue-700" type="file" name="attachments[]" multiple>
-                    @if(! auth()->user()->isClient())
+                    @if(! auth()->user()->isUser())
                         <label class="flex items-center gap-3 text-sm text-slate-500"><input type="checkbox" name="is_internal" value="1"> Internal note</label>
                     @endif
                     <button class="btn-primary" type="submit">Send</button>
@@ -200,7 +200,7 @@
             </dl>
         </div>
 
-        @if(auth()->user()->isClient())
+        @if(auth()->user()->isUser())
             <div class="panel">
                 <h3 class="text-xl font-black">Handling Status</h3>
                 <div class="mt-4 space-y-3">
@@ -222,7 +222,7 @@
             </div>
         @endif
 
-        @if(! auth()->user()->isClient())
+        @if(! auth()->user()->isUser())
             <div class="panel">
                 <h3 class="text-xl font-black">Update Ticket</h3>
                 @if($ticket->isClosed())
@@ -256,7 +256,7 @@
                         <select class="field" name="team_id" data-ticket-project required>
                             <option value="" disabled hidden @selected(blank($ticket->team_id))>Select project</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected($ticket->team_id === $project->id)>{{ $project->name }}</option>
+                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'user')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected($ticket->team_id === $project->id)>{{ $project->name }}</option>
                             @endforeach
                         </select>
                         <label class="label">Affected Device <span class="text-rose-500">*</span></label>

@@ -35,7 +35,7 @@ class ReportController extends Controller
             'averageResolutionMinutes' => $averageResolutionMinutes,
             'breachRate' => $breachRate,
             'categories' => Category::query()->whereNull('parent_id')->orderBy('name')->get(),
-            'clients' => $helpdesk->visibleProjects($user)->with('members:id,user_name,user_role')->get()->flatMap->members->where('user_role', 'client')->unique('id')->sortBy('user_name')->values(),
+            'clients' => $helpdesk->visibleProjects($user)->with('members:id,user_name,user_role')->get()->flatMap->members->where('user_role', 'user')->unique('id')->sortBy('user_name')->values(),
             'projects' => $helpdesk->visibleProjects($user)->orderBy('name')->get(),
         ]);
     }

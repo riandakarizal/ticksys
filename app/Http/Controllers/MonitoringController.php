@@ -63,7 +63,7 @@ class MonitoringController extends Controller
             'nilai'  => $allForKpi->sum('pjct_value'),
         ];
 
-        $isAdmin    = $user?->isAdmin() || $user?->isSupervisor();
+        $isAdmin    = $user?->isSuperAdmin() || $user?->isAdmin();
         $changeLogs = collect();
 
         return view('monitoring.index', compact(
@@ -106,15 +106,16 @@ class MonitoringController extends Controller
 
     private const UNIT_DIV_MAP = [
         'Technology Operation & Maintenance' => ['TC'],
-        'Equipment Operation & Maintenance'  => ['EQ'],
+        'Equipment Operation & Maintenance'  => ['EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
         'Technology Commercial'              => ['TCC', 'TC'],
-        'Equipment Commercial'               => ['EQC', 'EQ'],
+        'Equipment Commercial'               => ['EQC', 'EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
     ];
 
     // Returns null = no filter (sees all), array = whitelist of pjct_div codes
     private function allowedDivCodes(User $user): ?array
     {
-        if ($user->isVip()) {
+        // Super Admin (role=superadmin) and VIP see every division, unrestricted.
+        if ($user->isVip() || $user->isSuperAdmin()) {
             return null;
         }
 

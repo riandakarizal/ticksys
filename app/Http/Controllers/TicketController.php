@@ -75,7 +75,7 @@ class TicketController extends Controller
         return view('tickets.index', [
             'tickets'    => $query->latest()->paginate(12)->withQueryString(),
             'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->orderBy('name')->get(),
-            'clients'    => $members->where('user_role', 'client')->sortBy('user_name')->values(),
+            'clients'    => $members->where('user_role', 'user')->sortBy('user_name')->values(),
             'projects'   => $projects,
             'statuses'   => Ticket::STATUSES,
             'priorities' => Ticket::PRIORITIES,
@@ -103,8 +103,8 @@ class TicketController extends Controller
             'categories'  => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
             'projects'    => $projects,
             'devices'     => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
-            'agents'      => $members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->sortBy('user_name')->values(),
-            'clients'     => $members->where('user_role', 'client')->sortBy('user_name')->values(),
+            'agents'      => $members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->sortBy('user_name')->values(),
+            'clients'     => $members->where('user_role', 'user')->sortBy('user_name')->values(),
             'customFields' => $customFields,
             'priorities'  => Ticket::PRIORITIES,
             'slaPolicies' => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
@@ -118,7 +118,7 @@ class TicketController extends Controller
             ->with(['members:id,user_name,user_email,user_role'])
             ->find($ticket->team_id);
 
-        $supervisors = $project?->members->whereIn('user_role', ['supervisor', 'admin']) ?? collect();
+        $supervisors = $project?->members->whereIn('user_role', ['admin', 'superadmin']) ?? collect();
 
         $helpdesk->notifyUsers(
             $helpdesk->participants($ticket)->merge($supervisors),
@@ -190,11 +190,11 @@ class TicketController extends Controller
 
         return view('tickets.show', [
             'ticket'       => $ticket,
-            'agents'       => $members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->sortBy('user_name')->values(),
+            'agents'       => $members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->sortBy('user_name')->values(),
             'projects'     => $projects,
             'devices'      => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
             'categories'   => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            'clients'      => $members->where('user_role', 'client')->sortBy('user_name')->values(),
+            'clients'      => $members->where('user_role', 'user')->sortBy('user_name')->values(),
             'statuses'     => Ticket::STATUSES,
             'priorities'   => Ticket::PRIORITIES,
             'mergeTargets' => $helpdesk->visibleTickets($user)

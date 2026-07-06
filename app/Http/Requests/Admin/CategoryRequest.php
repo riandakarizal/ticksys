@@ -9,7 +9,7 @@ class CategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && (auth()->user()->isSuperAdmin() || auth()->user()->isAdmin());
     }
 
     public function rules(): array

@@ -40,7 +40,7 @@ class TicketManager
 
             $ticket = Ticket::create([
                 'company_id'     => 1,
-                'requester_id'  => $user->isClient() ? $user->id : $request->validated('requester_id'),
+                'requester_id'  => $user->isUser() ? $user->id : $request->validated('requester_id'),
                 'created_by'    => $user->id,
                 'assigned_to'   => $assignedUserId,
                 'team_id'       => $project->id,
@@ -198,7 +198,7 @@ class TicketManager
         $projectId     = (int) $request->input('team_id');
         $categoryId    = $request->input('category_id');
         $subcategoryId = $request->input('subcategory_id');
-        $requesterId   = $user->isClient() ? $user->id : (int) $request->input('requester_id');
+        $requesterId   = $user->isUser() ? $user->id : (int) $request->input('requester_id');
         $assignedTo    = $request->input('assigned_to') ? (int) $request->input('assigned_to') : null;
         $deviceId      = $request->input('device_id') ? (int) $request->input('device_id') : null;
 

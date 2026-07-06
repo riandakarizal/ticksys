@@ -13,6 +13,7 @@ class NotificationController extends Controller
     public function destroy(Request $request, AppNotification $notification): RedirectResponse|JsonResponse
     {
         abort_unless($notification->user_id === Auth::id(), 404);
+        abort_if(Auth::user()->isVip(), 403);
 
         $notification->delete();
 

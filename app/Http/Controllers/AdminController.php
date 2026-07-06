@@ -31,10 +31,10 @@ class AdminController extends Controller
         $users = User::query()
             ->with('teams:id,name')
             ->orderByRaw("CASE user_role
-                WHEN 'admin'      THEN 0
-                WHEN 'supervisor' THEN 1
-                WHEN 'agent'      THEN 2
-                WHEN 'client'     THEN 3
+                WHEN 'superadmin' THEN 0
+                WHEN 'admin'      THEN 1
+                WHEN 'siteadmin'  THEN 2
+                WHEN 'user'       THEN 3
                 WHEN 'vip'        THEN 4
                 ELSE 5 END")
             ->orderBy('user_name')
@@ -53,9 +53,9 @@ class AdminController extends Controller
             'categories'       => Category::query()->with(['children', 'parent'])->orderBy('name')->get(),
             'slaPolicies'      => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
             'devices'          => collect(),
-            'projectUsers'     => $users->where('user_role', '!=', 'admin')->values(),
-            'assignableAgents' => $users->whereIn('user_role', ['admin', 'supervisor', 'agent'])->values(),
-            'coordinators'     => $users->whereIn('user_role', ['admin', 'supervisor'])->values(),
+            'projectUsers'     => $users->where('user_role', '!=', 'superadmin')->values(),
+            'assignableAgents' => $users->whereIn('user_role', ['superadmin', 'admin', 'siteadmin'])->values(),
+            'coordinators'     => $users->whereIn('user_role', ['superadmin', 'admin'])->values(),
         ];
     }
 
@@ -78,7 +78,7 @@ class AdminController extends Controller
 
     protected function ensureProjectAssignmentForRole(string $role, array $projectIds): void
     {
-        if ($role !== 'admin' && $role !== 'vip' && empty($projectIds)) {
+        if ($role !== 'superadmin' && $role !== 'vip' && empty($projectIds)) {
             throw ValidationException::withMessages([
                 'project_ids' => 'Non-admin users must be assigned to at least one project.',
             ]);

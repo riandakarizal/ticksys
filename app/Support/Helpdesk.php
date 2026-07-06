@@ -30,11 +30,11 @@ class Helpdesk
         $projectIds = $user->teams()->pluck('teams.id');
         $query      = Ticket::query()->whereIn('tickets.team_id', $projectIds);
 
-        if ($user->isSupervisor()) {
+        if ($user->isAdmin()) {
             return $query;
         }
 
-        if ($user->isAgent()) {
+        if ($user->isSiteAdmin()) {
             return $query->where('tickets.assigned_to', $user->id);
         }
 
@@ -68,26 +68,26 @@ class Helpdesk
     public function autoAssignUserForProject(Team $project, ?int $preferredUserId = null): ?int
     {
         // Assignment falls back in priority order so ticket intake can stay simple:
-        // explicit assignee -> first agent -> supervisor -> admin.
+        // explicit assignee -> first site admin -> admin -> super admin.
         $members = $project->members;
 
         if ($preferredUserId && $members->contains('id', $preferredUserId)) {
             return $preferredUserId;
         }
 
-        $agent = $members->firstWhere('user_role', 'agent');
-        if ($agent) {
-            return $agent->id;
-        }
-
-        $supervisor = $members->firstWhere('user_role', 'supervisor');
-        if ($supervisor) {
-            return $supervisor->id;
+        $siteAdmin = $members->firstWhere('user_role', 'siteadmin');
+        if ($siteAdmin) {
+            return $siteAdmin->id;
         }
 
         $admin = $members->firstWhere('user_role', 'admin');
+        if ($admin) {
+            return $admin->id;
+        }
 
-        return $admin?->id;
+        $superAdmin = $members->firstWhere('user_role', 'superadmin');
+
+        return $superAdmin?->id;
     }
 
     public function applySlaDeadlines(Ticket $ticket, ?SlaPolicy $policy = null): void
@@ -248,7 +248,7 @@ class Helpdesk
         return match (config('helpdesk.mail.audience', 'client_only')) {
             'all'  => true,
             'none' => false,
-            default => $user->isClient() && $user->id === $ticket->requester_id,
+            default => $user->isUser() && $user->id === $ticket->requester_id,
         };
     }
 

@@ -11,10 +11,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Admins bypass all policy checks within their own tenant.
-        // Non-admin abilities are evaluated by the relevant Policy class.
+        // Super Admins bypass all policy checks within their own tenant.
+        // Non-super-admin abilities are evaluated by the relevant Policy class.
         Gate::before(function ($user, string $ability): ?bool {
-            return $user->isAdmin() ? true : null;
+            return $user->isSuperAdmin() ? true : null;
         });
     }
 }

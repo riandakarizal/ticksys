@@ -23,7 +23,7 @@ class UserFactory extends Factory
             'user_email'  => fake()->unique()->safeEmail(),
             'user_pass'   => static::$password ??= Hash::make('password'),
             'user_level'  => fake()->randomElement(['L3', 'L4', 'L5', 'L6', 'L7']),
-            'user_role'   => 'client',
+            'user_role'   => 'user',
             'user_unit'   => fake()->randomElement(['FM', 'IT', 'HR', 'Finance', 'Operations']),
             'user_div'    => fake()->randomElement(['Airport', 'Industrial', 'Commercial']),
             'user_parid'  => '-',
@@ -33,22 +33,22 @@ class UserFactory extends Factory
 
     public function admin(): static
     {
-        return $this->state(['user_role' => 'admin', 'user_level' => 'L1']);
+        return $this->state(['user_role' => 'superadmin', 'user_level' => 'L1']);
     }
 
     public function supervisor(): static
     {
-        return $this->state(['user_role' => 'supervisor', 'user_level' => 'L2']);
+        return $this->state(['user_role' => 'admin', 'user_level' => 'L2']);
     }
 
     public function agent(): static
     {
-        return $this->state(['user_role' => 'agent', 'user_level' => 'L5']);
+        return $this->state(['user_role' => 'siteadmin', 'user_level' => 'L5']);
     }
 
     public function client(): static
     {
-        return $this->state(['user_role' => 'client', 'user_level' => 'L7']);
+        return $this->state(['user_role' => 'user', 'user_level' => 'L7']);
     }
 
     public function vip(): static

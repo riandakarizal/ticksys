@@ -83,7 +83,7 @@
                         <select class="field" name="team_id" data-ticket-project required>
                             <option value="" disabled hidden @selected(blank(old('team_id')))>Select project</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'client')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['agent', 'supervisor', 'admin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
+                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'user')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -153,7 +153,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            @if(!auth()->user()->isClient())
+                            @if(!auth()->user()->isUser())
                                 <div>
                                     <label class="label">Requester <span class="text-rose-500">*</span></label>
                                     <select class="field" name="requester_id" data-ticket-requester required>
