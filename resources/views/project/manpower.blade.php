@@ -86,6 +86,7 @@
                     <th class="px-3 py-2 font-medium">Site / Area</th>
                     <th class="px-3 py-2 font-medium">Region</th>
                     <th class="px-3 py-2 font-medium">No. PKWT</th>
+                    <th class="px-3 py-2 font-medium">Periode PKWT</th>
                     <th class="px-3 py-2 font-medium">Kontak</th>
                 </tr>
             </thead>
@@ -109,11 +110,24 @@
                     <td class="px-3 py-2.5 text-slate-600 whitespace-nowrap">{{ $e->emp_div ?: '-' }}</td>
                     <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap">{{ $e->emp_area ?: '-' }}</td>
                     <td class="px-3 py-2.5 text-slate-500 max-w-[180px] truncate text-[10px]" title="{{ $e->emp_coid }}">{{ $e->emp_coid ?: '-' }}</td>
+                    <td class="px-3 py-2.5 whitespace-nowrap text-[10px]">
+                        @if($e->emp_costart && $e->emp_coend)
+                            @php $coend = \Carbon\Carbon::parse($e->emp_coend); @endphp
+                            <span class="text-slate-500">{{ \Carbon\Carbon::parse($e->emp_costart)->format('d/m/y') }} - {{ $coend->format('d/m/y') }}</span>
+                            @if($coend->isPast())
+                                <span class="ml-1 inline-flex items-center rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-semibold text-rose-700">Expired</span>
+                            @elseif($coend->diffInDays(now()) <= 30)
+                                <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">Segera berakhir</span>
+                            @endif
+                        @else
+                            <span class="text-slate-300">-</span>
+                        @endif
+                    </td>
                     <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap font-mono text-[10px]">{{ $e->emp_contact ?: '-' }}</td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="px-4 py-12 text-center text-slate-400">Tidak ada data manpower.</td>
+                    <td colspan="10" class="px-4 py-12 text-center text-slate-400">Tidak ada data manpower.</td>
                 </tr>
                 @endforelse
             </tbody>
