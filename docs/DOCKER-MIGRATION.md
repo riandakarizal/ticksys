@@ -4,12 +4,13 @@
 Copy seluruh folder `prism/` (termasuk folder `docker/`, `.env`, dan `docker/db-init/01-prism.sql`)
 ke PC tujuan. **Jangan** copy `vendor/`, `node_modules/`, `public/build` — semua di-build ulang oleh Docker.
 
-`docker/db-init/01-prism.sql` adalah dump database saat ini (hasil `mysqldump`). Saat container
-`db` pertama kali dibuat, MySQL otomatis import file ini — database langsung terisi data yang sama.
+`docker/db-init/01-prism.sql` adalah dump database saat ini (hasil `mysqldump`, terakhir di-regenerate
+2026-07-07 — sudah termasuk tabel `pjct_doc`). Saat container `db` pertama kali dibuat, MySQL otomatis
+import file ini — database langsung terisi data yang sama. Sudah dites import bersih ke image `mysql:8.0`
+yang dipakai `docker-compose.yml`.
 
-> **Perlu di-refresh:** dump ini dibuat sebelum tabel `pjct_doc` ada, jadi kolom "Doc" di halaman
-> Monitoring tidak akan berfungsi di PC baru sampai dump-nya di-regenerate (`mysqldump` ulang dari
-> database `prism` yang aktif) dan menimpa file ini.
+> **Ingat regenerate lagi** kalau ada perubahan data/schema signifikan setelah tanggal di atas:
+> `mysqldump -u root --default-character-set=utf8mb4 prism > docker/db-init/01-prism.sql`
 
 ## Yang dibutuhkan di PC tujuan
 - Docker Desktop (Windows/Mac/Linux)
