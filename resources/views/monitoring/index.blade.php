@@ -81,7 +81,7 @@ $rp = function($n) {
     <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <div class="flex items-center gap-3">
             <h3 class="text-sm font-bold text-slate-800">Project List</h3>
-            <span class="text-xs text-slate-400">{{ $projects->count() }} project{{ $projects->count() !== 1 ? 's' : '' }}</span>
+            <span class="text-xs text-slate-400">{{ $projects->total() }} project{{ $projects->total() !== 1 ? 's' : '' }}</span>
         </div>
         @if($isAdmin)
             <button type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold" onclick="document.getElementById('modal-project').showModal()">+ Add Project</button>
@@ -103,6 +103,7 @@ $rp = function($n) {
                     <th class="py-2 pr-3 font-medium">End</th>
                     <th class="py-2 pr-3 font-medium">Status</th>
                     <th class="py-2 pr-3 font-medium">Assets</th>
+                    <th class="py-2 pr-3 font-medium">Doc</th>
                     <th class="py-2 pr-3 font-medium">Notes</th>
                     @if($isAdmin)<th class="py-2 pr-4"></th>@endif
                 </tr>
@@ -110,7 +111,7 @@ $rp = function($n) {
             <tbody class="divide-y divide-slate-100">
                 @forelse($projects as $i => $p)
                     <tr class="{{ $p->trashed() ? 'opacity-50 bg-slate-50' : 'hover:bg-slate-50/50' }}">
-                        <td class="px-4 py-2 text-slate-400">{{ $i+1 }}</td>
+                        <td class="px-4 py-2 text-slate-400">{{ ($projects->currentPage()-1)*$projects->perPage()+$i+1 }}</td>
                         <td class="py-2 pr-3 text-slate-500 max-w-[160px] truncate font-mono text-[10px]" title="{{ $p->pjct_contract }}">
                             {{ $p->pjct_contract ?: '-' }}
                         </td>
@@ -140,6 +141,18 @@ $rp = function($n) {
                                 <span class="text-slate-300">—</span>
                             @endif
                         </td>
+                        <td class="py-2 pr-3 whitespace-nowrap">
+                            @php $docsByType = $p->docs->groupBy('doc_type')->map->first(); @endphp
+                            @if($docsByType->isEmpty())
+                                <span class="text-slate-300">—</span>
+                            @else
+                                @foreach(['KONTRAK','RKST','RAB','BAST','SOP'] as $dt)
+                                    @continue(!$docsByType->has($dt))
+                                    <a href="{{ route('monitoring.docs.show', $docsByType[$dt]->id) }}" target="_blank" rel="noopener"
+                                       class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold mr-1 hover:opacity-75 transition {{ \App\Models\PjctDoc::badgeClassFor($dt) }}">{{ $dt }}</a>
+                                @endforeach
+                            @endif
+                        </td>
                         <td class="py-2 pr-3 text-slate-500 max-w-[160px] text-[10px]">{{ $p->pjct_misc ?: '' }}</td>
                         @if($isAdmin)
                             <td class="py-2 pr-4 whitespace-nowrap text-right">
@@ -159,11 +172,16 @@ $rp = function($n) {
                         @endif
                     </tr>
                 @empty
-                    <tr><td colspan="13" class="px-4 py-10 text-center text-slate-400">No projects found.</td></tr>
+                    <tr><td colspan="14" class="px-4 py-10 text-center text-slate-400">No projects found.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
+    @if($projects->hasPages())
+    <div class="px-4 py-3 border-t border-slate-100">
+        {{ $projects->links() }}
+    </div>
+    @endif
 </div>
 
 {{-- ══ Modal: Add / Edit Project (Admin only) ══ --}}

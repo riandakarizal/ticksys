@@ -409,7 +409,7 @@ const initDataTables = () => {
         wrapper?.classList.add('datatable-shell');
 
         new DataTable(table, {
-            perPage: 10,
+            perPage: 25,
             perPageSelect: [10, 25, 50, 100],
             searchable: true,
             fixedHeight: false,

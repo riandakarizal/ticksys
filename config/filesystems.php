@@ -47,6 +47,14 @@ return [
             'report' => false,
         ],
 
+        'docfile' => [
+            'driver' => 'local',
+            'root' => base_path('docfile'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

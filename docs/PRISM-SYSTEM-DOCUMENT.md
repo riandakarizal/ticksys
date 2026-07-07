@@ -191,6 +191,7 @@ Admin/supervisor input proyek baru di PRISM Monitoring
 | FR-28 | Admin | CRUD SLA Policy (response & resolution time per policy) | Admin |
 | FR-29 | Admin | CRUD tim/proyek internal (buat tim, assign lead & member) | Admin |
 | FR-30 | Laporan | Export data tiket ke CSV | Supervisor, Admin |
+| FR-31 | Monitoring | Tampilkan badge dokumen (Kontrak/RKST/RAB/BAST/SOP) per proyek, klik untuk buka dokumen di tab baru | Semua (sesuai scope divisi) |
 
 ---
 
@@ -527,6 +528,8 @@ Sidebar (kiri, collapsible)
 - Model `PjctMain` dengan status/type badge methods
 - `MonitoringController` dengan filter multi-parameter
 - Halaman monitoring dengan tabel, KPI, modal CRUD
+- Tabel `pjct_doc` (Kontrak/RKST/RAB/BAST/SOP) + kolom "Doc" di tabel monitoring, badge-nya klik untuk buka
+  dokumen asli (`docfile/PJxxxx/`) di tab baru via `PjctDocController`
 
 ### Phase 2 — UI Redesign ✅ DONE
 - Migrasi layout dari top navbar ke left collapsible sidebar

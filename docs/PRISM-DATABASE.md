@@ -12,6 +12,7 @@
 | `pjct_main` | 66 | Data project Equipment & Technology |
 | `ast_main` | 3,583 | Inventory aset per project |
 | `pjct_emp` | 45 | Manpower / karyawan per project |
+| `pjct_doc` | 65 | Dokumen legal/administratif per project (Kontrak, RKST, RAB, BAST, SOP) |
 | `pjct_budget` | 0 | Budget project (belum diisi) |
 | `pjct_expense` | 0 | Pengeluaran project (belum diisi) |
 | `tickets` | — | Tiket helpdesk |
@@ -92,7 +93,7 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_misc` | text | Catatan tambahan |
 | `deleted_at` | timestamp | Soft delete |
 
-**Division scoping (MonitoringController):**
+**Division scoping (`User::allowedDivCodes()`, dipakai oleh `MonitoringController` dan `PjctDocController`):**
 
 | User unit | Bisa lihat pjct_div |
 |---|---|
@@ -163,12 +164,36 @@ Data manpower / karyawan yang terlibat dalam project. 45 baris.
 
 ---
 
+### `pjct_doc`
+Dokumen legal/administratif per project (Kontrak, RKST, RAB, BAST, SOP). 65 baris, diisi dari file fisik di
+folder `docfile/PJxxxx/` (level teratas project saja, bukan subfolder). File yang nama-nya tidak mengandung
+salah satu dari 5 keyword doc_type sengaja tidak diinsert.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | varchar(20) PK | Format: `DOC00001`, auto-generate via Eloquent `creating` event |
+| `doc_number` | varchar(225) | Nomor dokumen (diekstrak dari prefix nama file sebelum " - ", atau nama file itu sendiri kalau tidak ada pemisah) |
+| `doc_pjctid` | varchar(20) | FK → `pjct_main.id` |
+| `doc_type` | varchar(225) | `KONTRAK` / `RKST` / `RAB` / `BAST` / `SOP` |
+| `doc_filetype` | varchar(225) | Ekstensi file (`pdf`, `xlsx`, dll) |
+| `doc_filename` | text | Nama file asli |
+| `doc_filepath` | text | Path relatif ke disk `docfile` (mis. `PJ0001/nama-file.pdf`) |
+| `doc_desc` | text | Deskripsi (bagian nama file setelah " - ", atau nama file itu sendiri) |
+
+Diakses via route `monitoring.docs.show` (`PjctDocController@show`) — stream file langsung dari disk `docfile`
+(`config/filesystems.php`) dengan `Content-Disposition: inline` supaya PDF terbuka di tab browser baru
+(document viewer bawaan browser). Akses dibatasi oleh `User::allowedDivCodes()` — user tidak bisa buka dokumen
+project di luar divisinya. Badge doc_type di kolom "Doc" halaman Monitoring adalah link ke route ini.
+
+---
+
 ## Relasi Antar Tabel
 
 ```
 pjct_main (id)
     └── ast_main (ast_pjctid)       — 1 project → banyak aset
     └── pjct_emp (emp_pjctid)       — via nomor kontrak (belum FK formal)
+    └── pjct_doc (doc_pjctid)       — 1 project → banyak dokumen (Kontrak/RKST/RAB/BAST/SOP)
     └── pjct_budget (id)            — 1 project → 1 budget
     └── pjct_expense (pjct_id)      — 1 project → banyak pengeluaran
 
@@ -184,3 +209,4 @@ users (id)
 - `users` tidak pakai `timestamps` — kolom `password` adalah virtual attribute yang map ke `user_pass`
 - Auth Laravel: `getAuthPasswordName()` return `'password'`, `getAuthPassword()` return `user_pass`
 - Import data: `ast_main` dari `ast_main.csv` (latin-1, delimiter `;`), `pjct_emp` dari `pjct_emp.csv` + fix NIK dari `Rekon TC & OM (1).xlsx` sheet Manpower
+- `pjct_doc` diisi manual (one-off script, tidak ada migration) dari folder `docfile/PJxxxx/` yang ikut di-commit ke repo — lihat `docs/DOCKER-MIGRATION.md` soal implikasinya saat migrasi ke PC/server lain

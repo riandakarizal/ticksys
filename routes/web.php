@@ -13,6 +13,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PjctDocController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     // Project monitoring view (M-02 Project Main — all ✓)
     Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
         Route::get('/', [MonitoringController::class, 'index'])->name('index');
+        Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
     });
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {

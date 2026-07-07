@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 #[Fillable([
     'id',
@@ -132,5 +133,48 @@ class User extends Model implements AuthenticatableContract
     public function canViewReports(): bool
     {
         return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();
+    }
+
+    // ── Division-based project visibility ──────────────────────────────────────
+    private const UNIT_DIV_MAP = [
+        'Technology Operation & Maintenance' => ['TC'],
+        'Equipment Operation & Maintenance'  => ['EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
+        'Technology Commercial'              => ['TCC', 'TC'],
+        'Equipment Commercial'               => ['EQC', 'EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
+    ];
+
+    // Returns null = no filter (sees all), array = whitelist of pjct_div codes
+    public function allowedDivCodes(): ?array
+    {
+        if ($this->isVip() || $this->isSuperAdmin()) {
+            return null;
+        }
+
+        $codes = collect();
+
+        if ($this->user_unit && isset(self::UNIT_DIV_MAP[$this->user_unit])) {
+            $codes = $codes->merge(self::UNIT_DIV_MAP[$this->user_unit]);
+        }
+
+        $codes = $codes->merge($this->subordinateDivCodes($this->id));
+
+        $result = $codes->unique()->values()->all();
+
+        return empty($result) ? null : $result;
+    }
+
+    private function subordinateDivCodes(string $userId): Collection
+    {
+        $codes = collect();
+        $subs  = static::where('user_parid', $userId)->get();
+
+        foreach ($subs as $sub) {
+            if ($sub->user_unit && isset(self::UNIT_DIV_MAP[$sub->user_unit])) {
+                $codes = $codes->merge(self::UNIT_DIV_MAP[$sub->user_unit]);
+            }
+            $codes = $codes->merge($sub->subordinateDivCodes($sub->id));
+        }
+
+        return $codes;
     }
 }

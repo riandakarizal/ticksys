@@ -33,7 +33,7 @@ class AssetController extends Controller
             });
         }
 
-        $assets = $query->orderBy('id')->paginate(50)->withQueryString();
+        $assets = $query->orderBy('id')->paginate(25)->withQueryString();
 
         $all   = AstMain::query();
         $kpi   = [

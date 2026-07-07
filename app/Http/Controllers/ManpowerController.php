@@ -27,7 +27,7 @@ class ManpowerController extends Controller
             });
         }
 
-        $employees = $query->orderBy('emp_unit')->orderBy('emp_area')->orderBy('emp_name')->paginate(50)->withQueryString();
+        $employees = $query->orderBy('emp_unit')->orderBy('emp_area')->orderBy('emp_name')->paginate(25)->withQueryString();
 
         $all = PjctEmp::query();
         $kpi = [

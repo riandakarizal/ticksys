@@ -73,7 +73,7 @@ class TicketController extends Controller
         $members = $this->projectMembers($projects);
 
         return view('tickets.index', [
-            'tickets'    => $query->latest()->paginate(12)->withQueryString(),
+            'tickets'    => $query->latest()->paginate(25)->withQueryString(),
             'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->orderBy('name')->get(),
             'clients'    => $members->where('user_role', 'user')->sortBy('user_name')->values(),
             'projects'   => $projects,

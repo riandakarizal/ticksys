@@ -44,6 +44,11 @@ class PjctMain extends Model
         return $this->hasMany(AstMain::class, 'ast_pjctid', 'id');
     }
 
+    public function docs()
+    {
+        return $this->hasMany(PjctDoc::class, 'doc_pjctid', 'id');
+    }
+
     public function statusLabel(): string
     {
         return match ($this->pjct_status) {

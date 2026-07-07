@@ -18,7 +18,7 @@ class ReportController extends Controller
         abort_unless($user->canViewReports(), 403);
 
         $query = $this->filteredQuery($request, $helpdesk);
-        $tickets = (clone $query)->with(['requester', 'category', 'assignee'])->latest()->paginate(20)->withQueryString();
+        $tickets = (clone $query)->with(['requester', 'category', 'assignee'])->latest()->paginate(25)->withQueryString();
         $collection = (clone $query)->with(['requester', 'category', 'assignee'])->get();
 
         $averageResolutionMinutes = round($collection

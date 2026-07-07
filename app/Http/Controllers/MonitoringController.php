@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EqtChangeLog;
 use App\Models\PjctMain;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 class MonitoringController extends Controller
 {
@@ -19,7 +17,7 @@ class MonitoringController extends Controller
         $showArchived = $request->boolean('archived', false);
 
         $user        = auth()->user();
-        $allowedDivs = $this->allowedDivCodes($user);
+        $allowedDivs = $user->allowedDivCodes();
 
         $query = $showArchived ? PjctMain::withTrashed() : PjctMain::query();
         if ($allowedDivs !== null) {
@@ -44,7 +42,9 @@ class MonitoringController extends Controller
             });
         }
 
-        $projects = $query->withCount('assets')->orderByRaw('pjct_codate DESC')->orderBy('id')->get();
+        $projects = $query->withCount('assets')
+            ->with(['docs:id,doc_pjctid,doc_type'])
+            ->orderByRaw('pjct_codate DESC')->orderBy('id')->paginate(25)->withQueryString();
 
         $kpiQuery = PjctMain::query();
         if ($allowedDivs !== null) {
@@ -103,49 +103,6 @@ class MonitoringController extends Controller
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────
-
-    private const UNIT_DIV_MAP = [
-        'Technology Operation & Maintenance' => ['TC'],
-        'Equipment Operation & Maintenance'  => ['EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
-        'Technology Commercial'              => ['TCC', 'TC'],
-        'Equipment Commercial'               => ['EQC', 'EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
-    ];
-
-    // Returns null = no filter (sees all), array = whitelist of pjct_div codes
-    private function allowedDivCodes(User $user): ?array
-    {
-        // Super Admin (role=superadmin) and VIP see every division, unrestricted.
-        if ($user->isVip() || $user->isSuperAdmin()) {
-            return null;
-        }
-
-        $codes = collect();
-
-        if ($user->user_unit && isset(self::UNIT_DIV_MAP[$user->user_unit])) {
-            $codes = $codes->merge(self::UNIT_DIV_MAP[$user->user_unit]);
-        }
-
-        $codes = $codes->merge($this->subordinateDivCodes($user->id));
-
-        $result = $codes->unique()->values()->all();
-
-        return empty($result) ? null : $result;
-    }
-
-    private function subordinateDivCodes(string $userId): Collection
-    {
-        $codes = collect();
-        $subs  = User::where('user_parid', $userId)->get();
-
-        foreach ($subs as $sub) {
-            if ($sub->user_unit && isset(self::UNIT_DIV_MAP[$sub->user_unit])) {
-                $codes = $codes->merge(self::UNIT_DIV_MAP[$sub->user_unit]);
-            }
-            $codes = $codes->merge($this->subordinateDivCodes($sub->id));
-        }
-
-        return $codes;
-    }
 
     private function projectData(Request $request): array
     {
