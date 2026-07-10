@@ -31,7 +31,7 @@ $rp = function($n) {
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
         <p class="text-2xl font-black text-slate-600">{{ $rp($kpi['nilai']) }}</p>
         <p class="text-xs text-slate-500 mt-1">Total Contract Value</p>
-        <p class="text-[10px] text-slate-400 mt-0.5">HVR {{ $kpi['hvr'] }} · END {{ $kpi['end'] }}</p>
+        <p class="text-[10px] text-slate-400 mt-0.5">UPC {{ $kpi['upc'] }} · HVR {{ $kpi['hvr'] }} · END {{ $kpi['end'] }}</p>
     </div>
 </div>
 
@@ -46,6 +46,7 @@ $rp = function($n) {
         </select>
         <select name="status" onchange="this.form.submit()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:border-blue-400 focus:outline-none">
             <option value="all" @selected($statusFilter==='all')>All Status</option>
+            <option value="UPC" @selected($statusFilter==='UPC')>Upcoming</option>
             <option value="OG"  @selected($statusFilter==='OG')>On Going</option>
             <option value="HVR" @selected($statusFilter==='HVR')>Hand Over</option>
             <option value="DLY" @selected($statusFilter==='DLY')>Delay</option>
@@ -57,6 +58,11 @@ $rp = function($n) {
             <option value="SUPPLY" @selected($typeFilter==='SUPPLY')>Supply</option>
             <option value="JASA"   @selected($typeFilter==='JASA')>Jasa</option>
         </select>
+        <select name="unit" onchange="this.form.submit()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:border-blue-400 focus:outline-none">
+            <option value="all" @selected($unitFilter==='all')>All Units</option>
+            <option value="TC"  @selected($unitFilter==='TC')>Technology</option>
+            <option value="EQ"  @selected($unitFilter==='EQ')>Equipment</option>
+        </select>
         <input type="text" name="search" value="{{ $search }}" placeholder="Search name / client / area / contract..."
             class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:border-blue-400 focus:outline-none min-w-[200px] flex-1">
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">Search</button>
@@ -66,7 +72,7 @@ $rp = function($n) {
                 {{ $showArchived ? '✓ Archived' : 'Show Archived' }}
             </a>
         @endif
-        @if($yearFilter!=='all'||$statusFilter!=='all'||$typeFilter!=='all'||$search)
+        @if($yearFilter!=='all'||$statusFilter!=='all'||$typeFilter!=='all'||$unitFilter!=='all'||$search)
             <a href="{{ route('monitoring.index') }}" class="text-xs text-slate-500 hover:text-slate-800 px-2 py-1.5">Reset</a>
         @endif
     </form>
@@ -211,6 +217,7 @@ $rp = function($n) {
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Status *</label>
                     <select name="pjct_status" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_status">
+                        <option value="UPC">Upcoming</option>
                         <option value="OG">On Going</option>
                         <option value="HVR">Hand Over</option>
                         <option value="DLY">Delay</option>

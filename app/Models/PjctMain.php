@@ -52,6 +52,7 @@ class PjctMain extends Model
     public function statusLabel(): string
     {
         return match ($this->pjct_status) {
+            'UPC' => 'Upcoming',
             'OG'  => 'On Going',
             'HVR' => 'Hand Over',
             'DLY' => 'Delay',
@@ -63,6 +64,7 @@ class PjctMain extends Model
     public function statusBadgeClass(): string
     {
         return match ($this->pjct_status) {
+            'UPC' => 'bg-purple-100 text-purple-700',
             'OG'  => 'bg-green-100 text-green-700',
             'HVR' => 'bg-blue-100 text-blue-700',
             'DLY' => 'bg-amber-100 text-amber-700',

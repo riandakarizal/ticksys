@@ -13,6 +13,7 @@ class MonitoringController extends Controller
         $yearFilter   = $request->input('year', 'all');
         $statusFilter = $request->input('status', 'all');
         $typeFilter   = $request->input('type', 'all');
+        $unitFilter   = $request->input('unit', 'all');
         $search       = $request->input('search', '');
         $showArchived = $request->boolean('archived', false);
 
@@ -32,6 +33,9 @@ class MonitoringController extends Controller
         }
         if ($typeFilter !== 'all') {
             $query->where('pjct_type', $typeFilter);
+        }
+        if ($unitFilter !== 'all') {
+            $query->where('pjct_div', 'like', $unitFilter.'%');
         }
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -53,6 +57,7 @@ class MonitoringController extends Controller
         $allForKpi = $kpiQuery->get();
         $kpi = [
             'total'  => $allForKpi->count(),
+            'upc'    => $allForKpi->where('pjct_status', 'UPC')->count(),
             'og'     => $allForKpi->where('pjct_status', 'OG')->count(),
             'hvr'    => $allForKpi->where('pjct_status', 'HVR')->count(),
             'dly'    => $allForKpi->where('pjct_status', 'DLY')->count(),
@@ -68,7 +73,7 @@ class MonitoringController extends Controller
 
         return view('monitoring.index', compact(
             'projects', 'kpi',
-            'yearFilter', 'statusFilter', 'typeFilter', 'search', 'showArchived',
+            'yearFilter', 'statusFilter', 'typeFilter', 'unitFilter', 'search', 'showArchived',
             'isAdmin', 'changeLogs'
         ));
     }
@@ -118,7 +123,7 @@ class MonitoringController extends Controller
             'pjct_costart'     => 'nullable|date',
             'pjct_totalperiod' => 'nullable|integer|min:0',
             'pjct_coend_m'     => 'nullable|date',
-            'pjct_status'      => 'required|in:OG,HVR,DLY,END',
+            'pjct_status'      => 'required|in:UPC,OG,HVR,DLY,END',
             'pjct_misc'        => 'nullable|string|max:1000',
         ]);
     }
