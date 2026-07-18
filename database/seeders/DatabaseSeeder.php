@@ -7,11 +7,12 @@ use App\Models\Device;
 use App\Models\CustomField;
 use App\Models\SlaPolicy;
 use App\Models\Team;
-use App\Models\Tenant;
+use App\Models\Company;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -20,7 +21,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $tenant = Tenant::create([
+        $company = Company::create([
             'name' => 'Acme Indonesia',
             'code' => 'ACME-ID',
             'contact_email' => 'hello@acme.test',
@@ -28,7 +29,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $admin = User::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Alya Admin',
             'email' => 'admin@acme.test',
             'role' => 'admin',
@@ -37,7 +38,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $supervisor = User::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Surya Supervisor',
             'email' => 'supervisor@acme.test',
             'role' => 'supervisor',
@@ -46,7 +47,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $agent = User::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Arif Agent',
             'email' => 'agent@acme.test',
             'role' => 'agent',
@@ -55,7 +56,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $client = User::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Citra Client',
             'email' => 'client@acme.test',
             'role' => 'client',
@@ -64,7 +65,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $itTeam = Team::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'lead_user_id' => $supervisor->id,
             'name' => 'IT Operations',
             'code' => 'IT-OPS',
@@ -72,7 +73,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $appTeam = Team::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'lead_user_id' => $supervisor->id,
             'name' => 'Application Support',
             'code' => 'APP-SUP',
@@ -83,7 +84,7 @@ class DatabaseSeeder extends Seeder
         $appTeam->members()->sync([$agent->id, $supervisor->id, $client->id]);
 
         $standardSla = SlaPolicy::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Standard',
             'response_minutes' => 60,
             'resolution_minutes' => 240,
@@ -91,7 +92,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         SlaPolicy::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Critical',
             'response_minutes' => 15,
             'resolution_minutes' => 120,
@@ -99,7 +100,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $network = Category::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'team_id' => $itTeam->id,
             'auto_assign_user_id' => $agent->id,
             'name' => 'Network',
@@ -108,7 +109,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $vpn = Category::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'parent_id' => $network->id,
             'team_id' => $itTeam->id,
             'auto_assign_user_id' => $agent->id,
@@ -118,7 +119,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $application = Category::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'team_id' => $appTeam->id,
             'auto_assign_user_id' => $supervisor->id,
             'name' => 'Application',
@@ -127,7 +128,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Category::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'parent_id' => $application->id,
             'team_id' => $appTeam->id,
             'auto_assign_user_id' => $supervisor->id,
@@ -137,7 +138,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         CustomField::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'name' => 'Affected Device',
             'key' => 'affected_device',
             'type' => 'text',
@@ -145,7 +146,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $vpnLaptop = Device::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'team_id' => $itTeam->id,
             'name' => 'Laptop Finance-01',
             'asset_code' => 'ACME-LPT-001',
@@ -158,7 +159,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Device::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'team_id' => $itTeam->id,
             'name' => 'VPN Router Branch-01',
             'asset_code' => 'ACME-RTR-014',
@@ -171,7 +172,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Device::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'team_id' => $appTeam->id,
             'name' => 'ERP Application Server',
             'asset_code' => 'ACME-SRV-002',
@@ -184,7 +185,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $ticket = Ticket::create([
-            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
             'requester_id' => $client->id,
             'created_by' => $client->id,
             'assigned_to' => $agent->id,
@@ -216,8 +217,61 @@ class DatabaseSeeder extends Seeder
             'is_internal' => true,
         ]);
 
-        Ticket::create([
-            'tenant_id' => $tenant->id,
+        DB::table('activity_logs')->insert([
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $client->id,
+                'action'      => 'ticket_created',
+                'description' => 'Ticket dibuat',
+                'properties'  => json_encode(['status' => 'open', 'priority' => 'high', 'assigned_to' => $agent->id]),
+                'created_at'  => now()->subMinutes(30),
+                'updated_at'  => now()->subMinutes(30),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $client->id,
+                'action'      => 'ticket_status_changed',
+                'description' => 'Status awal ticket: Open',
+                'properties'  => json_encode(['from' => null, 'to' => 'open']),
+                'created_at'  => now()->subMinutes(30),
+                'updated_at'  => now()->subMinutes(30),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $agent->id,
+                'action'      => 'reply_added',
+                'description' => 'Reply added',
+                'properties'  => json_encode([]),
+                'created_at'  => now()->subMinutes(20),
+                'updated_at'  => now()->subMinutes(20),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $agent->id,
+                'action'      => 'ticket_status_changed',
+                'description' => 'Status ticket berubah dari Open ke In Progress',
+                'properties'  => json_encode(['from' => 'open', 'to' => 'in_progress']),
+                'created_at'  => now()->subMinutes(20),
+                'updated_at'  => now()->subMinutes(20),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $supervisor->id,
+                'action'      => 'internal_note_added',
+                'description' => 'Internal note added',
+                'properties'  => json_encode([]),
+                'created_at'  => now()->subMinutes(10),
+                'updated_at'  => now()->subMinutes(10),
+            ],
+        ]);
+
+        $pendingTicket = Ticket::create([
+            'company_id' => $company->id,
             'requester_id' => $client->id,
             'created_by' => $client->id,
             'assigned_to' => $supervisor->id,
@@ -229,6 +283,39 @@ class DatabaseSeeder extends Seeder
             'status' => 'pending',
             'priority' => 'medium',
             'last_reply_at' => now()->subHours(3),
+        ]);
+
+        DB::table('activity_logs')->insert([
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $pendingTicket->id,
+                'user_id'     => $client->id,
+                'action'      => 'ticket_created',
+                'description' => 'Ticket dibuat',
+                'properties'  => json_encode(['status' => 'open', 'priority' => 'medium', 'assigned_to' => $supervisor->id]),
+                'created_at'  => now()->subHours(4),
+                'updated_at'  => now()->subHours(4),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $pendingTicket->id,
+                'user_id'     => $client->id,
+                'action'      => 'ticket_status_changed',
+                'description' => 'Status awal ticket: Open',
+                'properties'  => json_encode(['from' => null, 'to' => 'open']),
+                'created_at'  => now()->subHours(4),
+                'updated_at'  => now()->subHours(4),
+            ],
+            [
+                'company_id'  => $company->id,
+                'ticket_id'   => $pendingTicket->id,
+                'user_id'     => $supervisor->id,
+                'action'      => 'ticket_status_changed',
+                'description' => 'Status ticket berubah dari Open ke Pending',
+                'properties'  => json_encode(['from' => 'open', 'to' => 'pending']),
+                'created_at'  => now()->subHours(3),
+                'updated_at'  => now()->subHours(3),
+            ],
         ]);
     }
 }

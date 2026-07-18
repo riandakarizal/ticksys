@@ -1,0 +1,64 @@
+<svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="b1" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="b2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="b3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- White light beam gradient -->
+    <linearGradient id="beamIn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.95)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Prism: standing triangle in 3/4 perspective -->
+  <!-- Front: apex=(95,12), BL=(52,128), BR=(138,128) -->
+  <!-- Depth +32,+10 -->
+  <!-- apex'=(127,22), BL'=(84,138), BR'=(170,138) -->
+
+  <!-- Bottom face -->
+  <polygon points="52,128 138,128 170,138 84,138" fill="url(#b3)" opacity="0.9"/>
+
+  <!-- Right face -->
+  <polygon points="95,12 138,128 170,138 127,22" fill="url(#b2)"/>
+
+  <!-- Front face -->
+  <polygon points="95,12 52,128 138,128" fill="url(#b1)"/>
+
+  <!-- Glass/refraction highlight on front face -->
+  <polygon points="95,12 52,128 138,128" fill="rgba(255,255,255,0.06)"/>
+
+  <!-- Edge highlights -->
+  <line x1="95" y1="12" x2="52" y2="128" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+  <line x1="95" y1="12" x2="127" y2="22" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+  <line x1="95" y1="12" x2="138" y2="128" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+  <!-- Input white beam (enters left face around midpoint) -->
+  <line x1="5" y1="75" x2="74" y2="75" stroke="url(#beamIn)" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- inner beam highlight -->
+  <line x1="5" y1="75" x2="74" y2="75" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Spectrum rays exiting right face -->
+  <!-- exit origin ~(115, 70) on the right face edge -->
+  <line x1="116" y1="68" x2="198" y2="30" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="116" y1="70" x2="198" y2="46" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="116" y1="72" x2="198" y2="62" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="116" y1="74" x2="198" y2="79" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="116" y1="76" x2="198" y2="96" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="116" y1="78" x2="198" y2="113" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- Refraction point glow -->
+  <circle cx="116" cy="73" r="4" fill="rgba(255,255,255,0.4)"/>
+</svg>

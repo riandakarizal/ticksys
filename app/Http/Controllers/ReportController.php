@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Ticket;
+use App\Support\Helpdesk;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,13 +12,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function index(Request $request, \App\Support\Helpdesk $helpdesk): View
+    public function index(Request $request, Helpdesk $helpdesk): View
     {
         $user = Auth::user();
         abort_unless($user->canViewReports(), 403);
 
         $query = $this->filteredQuery($request, $helpdesk);
-        $tickets = (clone $query)->with(['requester', 'category', 'assignee'])->latest()->paginate(20)->withQueryString();
+        $tickets = (clone $query)->with(['requester', 'category', 'assignee'])->latest()->paginate(25)->withQueryString();
         $collection = (clone $query)->with(['requester', 'category', 'assignee'])->get();
 
         $averageResolutionMinutes = round($collection
@@ -33,13 +34,13 @@ class ReportController extends Controller
             'byCategory' => $collection->groupBy(fn ($ticket) => $ticket->category?->name ?? 'Uncategorized')->map->count(),
             'averageResolutionMinutes' => $averageResolutionMinutes,
             'breachRate' => $breachRate,
-            'categories' => Category::query()->where('tenant_id', $user->tenant_id)->whereNull('parent_id')->orderBy('name')->get(),
-            'clients' => $helpdesk->visibleProjects($user)->with('members:id,name,role')->get()->flatMap->members->where('role', 'client')->unique('id')->sortBy('name')->values(),
+            'categories' => Category::query()->whereNull('parent_id')->orderBy('name')->get(),
+            'clients' => $helpdesk->visibleProjects($user)->with('members:id,user_name,user_role')->get()->flatMap->members->where('user_role', 'user')->unique('id')->sortBy('user_name')->values(),
             'projects' => $helpdesk->visibleProjects($user)->orderBy('name')->get(),
         ]);
     }
 
-    public function export(Request $request, \App\Support\Helpdesk $helpdesk): StreamedResponse
+    public function export(Request $request, Helpdesk $helpdesk): StreamedResponse
     {
         $user = Auth::user();
         abort_unless($user->canViewReports(), 403);
@@ -56,9 +57,9 @@ class ReportController extends Controller
                     $ticket->subject,
                     $ticket->status,
                     $ticket->priority,
-                    $ticket->requester?->name,
+                    $ticket->requester?->user_name,
                     $ticket->category?->name,
-                    $ticket->assignee?->name,
+                    $ticket->assignee?->user_name,
                     $ticket->team?->name,
                     $ticket->created_at->format('Y-m-d H:i'),
                 ]);
@@ -68,7 +69,7 @@ class ReportController extends Controller
         }, 'ticket-report-'.now()->format('Ymd-His').'.csv');
     }
 
-    private function filteredQuery(Request $request, \App\Support\Helpdesk $helpdesk)
+    private function filteredQuery(Request $request, Helpdesk $helpdesk)
     {
         $query = $helpdesk->visibleTickets(Auth::user());
 

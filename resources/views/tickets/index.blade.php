@@ -10,24 +10,18 @@
 
 <div class="panel overflow-hidden">
     <div class="flex flex-col gap-5 border-b border-slate-200 pb-5">
-        <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-                <h2 class="text-xl font-black text-slate-900">Ticket Directory</h2>
-                <p class="text-sm text-slate-500">Manage your open tickets with just a click</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button class="btn-primary rounded-xl px-3 py-2 text-xs" type="submit" form="ticket-filter-form">Apply</button>
-                <a class="btn-soft rounded-xl px-3 py-2 text-xs" href="{{ route('tickets.index') }}">Reset</a>
-            </div>
+        <div>
+            <h2 class="text-xl font-black text-slate-900">Ticket List</h2>
+            <p class="text-sm text-slate-500">Manage your tickets easily</p>
         </div>
 
         <form id="ticket-filter-form" method="GET" class="space-y-3">
-            <div class="flex flex-wrap items-end gap-3 xl:flex-nowrap xl:gap-2.5">
-                <div class="w-full xl:flex-none" style="width: 47rem;">
+            <div class="flex items-end gap-2">
+                <div class="flex-1 min-w-0">
                     <label class="label">Search</label>
-                    <input class="field" type="text" name="search" value="{{ request('search') }}" placeholder="Search">
+                    <input class="field" type="text" name="search" value="{{ request('search') }}" placeholder="Search tickets...">
                 </div>
-                <div class="w-full sm:w-[11rem] xl:flex-none" style="width: 8.5rem;">
+                <div class="w-36 shrink-0">
                     <label class="label">Project</label>
                     <select class="field" name="project_id">
                         <option value="" disabled hidden @selected(blank(request('project_id')))>Select project</option>
@@ -36,7 +30,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="w-full sm:w-[10rem] xl:flex-none" style="width: 7.5rem;">
+                <div class="w-32 shrink-0">
                     <label class="label">Status</label>
                     <select class="field" name="status">
                         <option value="" disabled hidden @selected(blank(request('status')))>Select status</option>
@@ -45,7 +39,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="w-full sm:w-[10rem] xl:flex-none" style="width: 7.5rem;">
+                <div class="w-32 shrink-0">
                     <label class="label">Priority</label>
                     <select class="field" name="priority">
                         <option value="" disabled hidden @selected(blank(request('priority')))>Select priority</option>
@@ -54,11 +48,15 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="shrink-0 flex items-end gap-2 pb-0.5">
+                    <button class="btn-primary rounded-xl px-3 py-2 text-xs" type="submit">Apply</button>
+                    <a class="btn-soft rounded-xl px-3 py-2 text-xs" href="{{ route('tickets.index') }}">Reset</a>
+                </div>
             </div>
 
             <details class="relative inline-block w-[7.5rem] align-top" @if($hasMoreFilters) open @endif>
                 <summary class="relative flex w-[7.5rem] cursor-pointer list-none items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-200/70">
-                    <span class="truncate">More filters</span>
+                    <span class="truncate">Advanced Filters</span>
                     <span class="absolute right-3 text-xs text-slate-400">v</span>
                 </summary>
                 <div class="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-[34rem] max-w-[calc(100vw-4rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/80">
@@ -72,23 +70,23 @@
                                 @endforeach
                             </select>
                         </div>
-                        @if(!auth()->user()->isClient())
+                        @if(!auth()->user()->isUser())
                             <div class="min-w-0">
                                 <label class="label">Client</label>
                                 <select class="field" name="requester_id">
                                     <option value="" disabled hidden @selected(blank(request('requester_id')))>Select client</option>
                                     @foreach($clients as $client)
-                                        <option value="{{ $client->id }}" @selected((string) request('requester_id') === (string) $client->id)>{{ $client->name }}</option>
+                                        <option value="{{ $client->id }}" @selected((string) request('requester_id') === (string) $client->id)>{{ $client->user_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         @endif
                         <div class="min-w-0">
-                            <label class="label">Date from</label>
+                            <label class="label">From date</label>
                             <input class="field" type="date" name="date_from" value="{{ request('date_from') }}">
                         </div>
                         <div class="min-w-0">
-                            <label class="label">Date to</label>
+                            <label class="label">To date</label>
                             <input class="field" type="date" name="date_to" value="{{ request('date_to') }}">
                         </div>
                     </div>
@@ -97,7 +95,29 @@
         </form>
     </div>
 
-    <div class="mt-6 overflow-x-auto">
+    {{-- Mobile: card layout --}}
+    <div class="mt-6 space-y-3 md:hidden">
+        @forelse($tickets as $ticket)
+            <a href="{{ route('tickets.show', $ticket) }}" class="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{{ $ticket->ticket_number }}</p>
+                        <p class="mt-1 truncate font-semibold text-slate-900">{{ $ticket->subject }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ $ticket->requester?->user_name }} · {{ $ticket->team?->name ?? '-' }}</p>
+                    </div>
+                    <div class="flex shrink-0 flex-col items-end gap-2">
+                        <span class="badge {{ $ticket->statusBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->status) }}</span>
+                        <span class="badge {{ $ticket->priorityBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</span>
+                    </div>
+                </div>
+            </a>
+        @empty
+            <p class="py-8 text-center text-slate-500">No tickets found.</p>
+        @endforelse
+    </div>
+
+    {{-- Desktop: table layout --}}
+    <div class="mt-6 hidden overflow-x-auto md:block">
         <table class="min-w-full text-sm">
             <thead class="text-left text-slate-500">
                 <tr>
@@ -115,10 +135,10 @@
                 @forelse($tickets as $ticket)
                     <tr>
                         <td class="py-4 font-semibold"><a href="{{ route('tickets.show', $ticket) }}" class="hover:text-blue-600">{{ $ticket->ticket_number }}</a></td>
-                        <td class="py-4"><p class="font-semibold">{{ $ticket->subject }}</p><p class="text-slate-500">{{ $ticket->assignee?->name ?? 'Unassigned' }}</p></td>
-                        <td class="py-4">{{ $ticket->requester?->name }}</td>
+                        <td class="py-4"><p class="font-semibold">{{ $ticket->subject }}</p><p class="text-slate-500">{{ $ticket->assignee?->user_name ?? 'Unassigned' }}</p></td>
+                        <td class="py-4">{{ $ticket->requester?->user_name }}</td>
                         <td class="py-4">{{ $ticket->team?->name ?? '-' }}</td>
-                        <td class="py-4">{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? 'Uncategorized' }}</td>
+                        <td class="py-4">{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? 'No category' }}</td>
                         <td class="py-4"><span class="badge {{ $ticket->statusBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->status) }}</span></td>
                         <td class="py-4"><span class="badge {{ $ticket->priorityBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</span></td>
                         <td class="py-4">
@@ -131,7 +151,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="py-8 text-center text-slate-500">Belum ada ticket.</td>
+                        <td colspan="8" class="py-8 text-center text-slate-500">No tickets found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -141,5 +161,3 @@
     <div class="mt-6">{{ $tickets->links() }}</div>
 </div>
 @endsection
-
-

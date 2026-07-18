@@ -139,7 +139,7 @@
             <div>
                 <label class="label">CSV file</label>
                 <input class="field" type="file" name="file" accept=".csv,.txt" required>
-                <p class="mt-2 text-xs text-slate-500">Kolom yang didukung: <code>name, asset_code, device_type, serial_number, ip_address, location, notes</code>. Baris header boleh ada atau tidak.</p>
+                <p class="mt-2 text-xs text-slate-500">Supported columns: <code>name, asset_code, device_type, serial_number, ip_address, location, notes</code>. Header row is optional.</p>
             </div>
         </div>
         <div class="mt-5 flex justify-end"><button class="btn-primary" type="submit">Upload devices</button></div>
@@ -189,7 +189,7 @@
                 <h3 class="text-xl font-black">Delete device</h3>
                 <button type="button" class="btn-soft" data-close-dialog>Close</button>
             </div>
-            <p class="text-sm text-slate-500">Perangkat <span class="font-semibold text-slate-900">{{ $device->name }}</span> akan dihapus dari inventori project.</p>
+            <p class="text-sm text-slate-500">Device <span class="font-semibold text-slate-900">{{ $device->name }}</span> will be removed from the project inventory.</p>
             <div class="mt-6 flex justify-end gap-2">
                 <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
                 <button class="btn-primary" type="submit">Delete device</button>

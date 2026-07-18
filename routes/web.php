@@ -1,9 +1,19 @@
 <?php
 
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DeviceController;
+use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\ProjectDeviceController;
+use App\Http\Controllers\Admin\SlaPolicyController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ManpowerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EqtImportController;
+use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PjctDocController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -11,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'create'])->name('home');
 Route::get('/login', [AuthController::class, 'create'])->name('login');
-Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+Route::post('/login', [AuthController::class, 'store'])->name('login.store')->middleware('throttle:5,1');
 
 Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
@@ -28,42 +38,90 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
     Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
 
-    Route::middleware('role:supervisor,admin')->group(function (): void {
+    // Project sub-pages: open to every role (M-03 Asset, M-04 Manpower — all ✓)
+    Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
+    Route::get('/project/manpower', [ManpowerController::class, 'index'])->name('project.manpower');
+
+    // Report Issues (M-07 — all ✓)
+    Route::get('/report/issues', fn () => view('report.issues'))->name('report.issues');
+
+    // Project monitoring view (M-02 Project Main — all ✓)
+    Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
+        Route::get('/', [MonitoringController::class, 'index'])->name('index');
+        Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
+    });
+
+    Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {
+        // M-05/M-06 Vendor, M-08 Report Expenses — User (client-tier) excluded
+        Route::get('/vendor', fn () => view('vendor.main'))->name('vendor.main');
+        Route::get('/vendor/contracts', fn () => view('vendor.contracts'))->name('vendor.contracts');
+        Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
     });
 
-    Route::middleware('role:admin')->prefix('/admin')->name('admin.')->group(function (): void {
-        Route::get('/', fn () => redirect()->route('admin.users.index'))->name('index');
-        Route::get('/users', [AdminController::class, 'users'])->name('users.index');
-        Route::get('/sla-policies', [AdminController::class, 'slaPolicies'])->name('sla.index');
-        Route::get('/categories', [AdminController::class, 'categories'])->name('categories.index');
-        Route::get('/projects', [AdminController::class, 'projects'])->name('projects.index');
-        Route::get('/projects/{team}/devices', [AdminController::class, 'projectDevices'])->name('projects.devices');
-        Route::get('/devices', [AdminController::class, 'devices'])->name('devices.index');
-        Route::get('/devices/template', [AdminController::class, 'downloadDeviceTemplate'])->name('devices.template');
-        Route::get('/devices/export/csv', [AdminController::class, 'exportDevices'])->name('devices.export');
+    Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
+        // T-17 Edit proyek: Site Admin can also edit
+        Route::middleware('role:superadmin,admin,siteadmin')->group(function (): void {
+            Route::put('/{type}/{id}', [MonitoringController::class, 'update'])->name('update');
+        });
 
-        Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-        Route::patch('/users/{managedUser}', [AdminController::class, 'updateUser'])->name('users.update');
-        Route::delete('/users/{managedUser}', [AdminController::class, 'destroyUser'])->name('users.destroy');
+        // T-16/18/19 Create/Delete/Restore proyek: Site Admin excluded
+        Route::middleware('role:superadmin,admin')->group(function (): void {
+            Route::post('/{type}', [MonitoringController::class, 'store'])->name('store');
+            Route::delete('/{type}/{id}', [MonitoringController::class, 'destroy'])->name('destroy');
+            Route::post('/{type}/{id}/restore', [MonitoringController::class, 'restore'])->name('restore');
 
-        Route::post('/projects', [AdminController::class, 'storeProject'])->name('projects.store');
-        Route::patch('/projects/{team}', [AdminController::class, 'updateProject'])->name('projects.update');
-        Route::delete('/projects/{team}', [AdminController::class, 'destroyProject'])->name('projects.destroy');
+            Route::get('/import', [EqtImportController::class, 'showImportPage'])->name('import.show');
+            Route::post('/import/preview', [EqtImportController::class, 'preview'])->name('import.preview');
+            Route::post('/import/confirm', [EqtImportController::class, 'confirm'])->name('import.confirm');
+            Route::get('/import/template', [EqtImportController::class, 'downloadTemplate'])->name('import.template');
+            Route::get('/import/template/{type}', [EqtImportController::class, 'downloadTemplateByType'])
+                ->name('import.template.type')
+                ->whereIn('type', ['project_eq','project_tech','handover','vehicle','maintenance']);
+            Route::get('/export', [EqtImportController::class, 'export'])->name('export');
+        });
+    });
 
-        Route::post('/devices/import', [AdminController::class, 'importDevices'])->name('devices.import');
-        Route::post('/devices', [AdminController::class, 'storeDevice'])->name('devices.store');
-        Route::patch('/devices/{device}', [AdminController::class, 'updateDevice'])->name('devices.update');
-        Route::delete('/devices/{device}', [AdminController::class, 'destroyDevice'])->name('devices.destroy');
+    Route::prefix('/admin')->name('admin.')->group(function (): void {
+        Route::middleware('role:superadmin')->group(function (): void {
+            Route::get('/', fn () => redirect()->route('admin.users.index'))->name('index');
+            Route::get('/devices', [DeviceController::class, 'index'])->name('devices.index');
+            Route::get('/devices/template', [DeviceController::class, 'downloadTemplate'])->name('devices.template');
+            Route::get('/devices/export/csv', [DeviceController::class, 'export'])->name('devices.export');
+            Route::post('/devices/import', [DeviceController::class, 'import'])->name('devices.import');
+            Route::post('/devices', [DeviceController::class, 'store'])->name('devices.store');
+            Route::patch('/devices/{device}', [DeviceController::class, 'update'])->name('devices.update');
+            Route::delete('/devices/{device}', [DeviceController::class, 'destroy'])->name('devices.destroy');
 
-        Route::post('/categories', [AdminController::class, 'storeCategory'])->name('categories.store');
-        Route::patch('/categories/{category}', [AdminController::class, 'updateCategory'])->name('categories.update');
-        Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory'])->name('categories.destroy');
+            Route::post('/users', [UserController::class, 'store'])->name('users.store');
+            Route::patch('/users/{managedUser}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('/users/{managedUser}', [UserController::class, 'destroy'])->name('users.destroy');
 
-        Route::post('/sla-policies', [AdminController::class, 'storeSla'])->name('sla.store');
-        Route::patch('/sla-policies/{slaPolicy}', [AdminController::class, 'updateSla'])->name('sla.update');
-        Route::delete('/sla-policies/{slaPolicy}', [AdminController::class, 'destroySla'])->name('sla.destroy');
+            Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+            Route::patch('/projects/{team}', [ProjectController::class, 'update'])->name('projects.update');
+            Route::delete('/projects/{team}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+
+            Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+            Route::patch('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+
+            Route::post('/sla-policies', [SlaPolicyController::class, 'store'])->name('sla.store');
+            Route::patch('/sla-policies/{slaPolicy}', [SlaPolicyController::class, 'update'])->name('sla.update');
+            Route::delete('/sla-policies/{slaPolicy}', [SlaPolicyController::class, 'destroy'])->name('sla.destroy');
+        });
+
+        // T-24 View users (VIP read-only) + M-11/12/13 view for Admin tier too
+        Route::middleware('role:superadmin,vip')->group(function (): void {
+            Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        });
+
+        Route::middleware('role:superadmin,admin,vip')->group(function (): void {
+            Route::get('/sla-policies', [SlaPolicyController::class, 'index'])->name('sla.index');
+            Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+            Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
+            Route::get('/projects/{team}/devices', [ProjectDeviceController::class, 'show'])->name('projects.devices');
+        });
     });
 });
 

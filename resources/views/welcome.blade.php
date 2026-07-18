@@ -11,7 +11,7 @@
         <div class="panel w-full text-center">
             <p class="text-sm uppercase tracking-[0.3em] text-blue-600">NusaDesk</p>
             <h1 class="mt-3 text-4xl font-black">Helpdesk ticketing system</h1>
-            <p class="mt-3 text-slate-600">Halaman default Laravel tidak dipakai. Akses aplikasi melalui halaman login.</p>
+            <p class="mt-3 text-slate-600">This is a placeholder page. Access the application via the login page.</p>
             <div class="mt-8">
                 <a href="{{ route('login') }}" class="btn-primary">Open Login</a>
             </div>

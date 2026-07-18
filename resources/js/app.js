@@ -1,5 +1,6 @@
 import './bootstrap';
 import Chart from 'chart.js/auto';
+window.Chart = Chart;
 import { DataTable } from 'simple-datatables';
 import 'simple-datatables/dist/style.css';
 
@@ -160,6 +161,11 @@ const initTicketForm = () => {
         filterSelectOptions(assigneeSelect, agentIds);
         filterSelectOptions(deviceSelect, deviceIds);
 
+        // P7: enable/disable device select based on whether a project is selected
+        if (deviceSelect) {
+            deviceSelect.disabled = !selectedOption?.value;
+        }
+
         if (projectHint) {
             projectHint.textContent = selectedOption?.value
                 ? `Project active: ${selectedOption.textContent.trim()}`
@@ -316,6 +322,32 @@ const initCharts = () => {
     }
 };
 
+const initMobileMenu = () => {
+    const toggleBtn = document.querySelector('[data-toggle-mobile-menu]');
+    const menu = document.querySelector('[data-mobile-menu]');
+    if (!toggleBtn || !menu) return;
+
+    const hamburgerIcon = toggleBtn.querySelector('[data-hamburger-icon]');
+    const closeIcon = toggleBtn.querySelector('[data-close-icon]');
+
+    toggleBtn.addEventListener('click', () => {
+        const isOpen = !menu.classList.contains('hidden');
+        menu.classList.toggle('hidden');
+        hamburgerIcon?.classList.toggle('hidden', !isOpen);
+        closeIcon?.classList.toggle('hidden', isOpen);
+        toggleBtn.setAttribute('aria-expanded', String(!isOpen));
+    });
+};
+
+const initUserDropdown = () => {
+    document.addEventListener('click', (event) => {
+        const dropdown = document.querySelector('[data-user-dropdown]');
+        if (dropdown && !dropdown.contains(event.target)) {
+            dropdown.removeAttribute('open');
+        }
+    });
+};
+
 const initNotificationActions = () => {
     if (document.body.dataset.notificationActionsReady === 'true') {
         return;
@@ -377,7 +409,7 @@ const initDataTables = () => {
         wrapper?.classList.add('datatable-shell');
 
         new DataTable(table, {
-            perPage: 10,
+            perPage: 25,
             perPageSelect: [10, 25, 50, 100],
             searchable: true,
             fixedHeight: false,
@@ -401,5 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDialogs();
     initCharts();
     initDataTables();
+    initMobileMenu();
+    initUserDropdown();
 });
 

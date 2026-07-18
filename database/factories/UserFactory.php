@@ -12,34 +12,52 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'id'          => strtoupper(Str::random(8)),
+            'user_empid'  => strtoupper('EMP' . fake()->unique()->numerify('####')),
+            'user_name'   => fake()->name(),
+            'user_email'  => fake()->unique()->safeEmail(),
+            'user_pass'   => static::$password ??= Hash::make('password'),
+            'user_level'  => fake()->randomElement(['L3', 'L4', 'L5', 'L6', 'L7']),
+            'user_role'   => 'user',
+            'user_unit'   => fake()->randomElement(['FM', 'IT', 'HR', 'Finance', 'Operations']),
+            'user_div'    => fake()->randomElement(['Airport', 'Industrial', 'Commercial']),
+            'user_parid'  => '-',
+            'user_status' => 'active',
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
+    public function admin(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(['user_role' => 'superadmin', 'user_level' => 'L1']);
+    }
+
+    public function supervisor(): static
+    {
+        return $this->state(['user_role' => 'admin', 'user_level' => 'L2']);
+    }
+
+    public function agent(): static
+    {
+        return $this->state(['user_role' => 'siteadmin', 'user_level' => 'L5']);
+    }
+
+    public function client(): static
+    {
+        return $this->state(['user_role' => 'user', 'user_level' => 'L7']);
+    }
+
+    public function vip(): static
+    {
+        return $this->state(['user_role' => 'vip', 'user_level' => 'L1']);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(['user_status' => 'inactive']);
     }
 }

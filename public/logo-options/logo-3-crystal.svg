@@ -1,0 +1,119 @@
+<svg viewBox="0 0 120 130" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c1" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#93c5fd"/>
+    </linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="c3" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="c4" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="c5" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="c6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <filter id="cshadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1e3a8a" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="60" cy="120" rx="32" ry="6" fill="#1e3a8a" opacity="0.2"/>
+
+  <!--
+    Crystal gem - diamond cut, front view
+    Key points:
+      Table top-L=(42,22), top-R=(78,22)
+      Crown tip=(60,8)
+      Girdle-L=(18,62), Girdle-R=(102,62)
+      Pavilion break-L=(38,90), break-R=(82,90)
+      Culet=(60,118)
+
+    Facets (crown = top half, pavilion = bottom half):
+      Crown facets (8 triangles):
+      1. Table-left-crown:    (60,8)–(42,22)–(18,62)
+      2. Table-top:           (60,8)–(42,22)–(78,22)        ← table itself
+      3. Table-right-crown:   (60,8)–(78,22)–(102,62)
+      4. Table inner-left:    (42,22)–(18,62)–(38,62)       ← inner table region
+      5. Table inner-right:   (78,22)–(38,62)–(82,62)–...
+         Let's simplify: use the "table" as a quad and surround with triangles.
+
+    Simpler breakdown:
+      Table quad:    (42,22),(78,22),(82,62),(38,62)
+      Crown far-L:   (60,8),(42,22),(38,62),(18,62)
+      Crown far-R:   (60,8),(78,22),(82,62),(102,62)
+      Crown top:     (60,8),(42,22),(78,22)  ← just the top triangle
+      Pavilion-L:    (18,62),(38,90),(60,118)
+      Pavilion-L2:   (18,62),(38,62),(38,90)
+      Pavilion-R:    (102,62),(82,90),(60,118)
+      Pavilion-R2:   (102,62),(82,62),(82,90)
+      Pavilion-mid-L:(38,62),(38,90),(60,118),(60,62)
+      Pavilion-mid-R:(82,62),(82,90),(60,118),(60,62)
+  -->
+
+  <g filter="url(#cshadow)">
+    <!-- Crown: top triangle (lightest — facing up) -->
+    <polygon points="60,8 42,22 78,22" fill="url(#c1)"/>
+
+    <!-- Crown: table quad -->
+    <polygon points="42,22 78,22 82,62 38,62" fill="url(#c2)"/>
+
+    <!-- Crown far-left facet -->
+    <polygon points="60,8 42,22 38,62 18,62" fill="url(#c3)"/>
+
+    <!-- Crown far-right facet -->
+    <polygon points="60,8 78,22 82,62 102,62" fill="url(#c1)" opacity="0.7"/>
+
+    <!-- Pavilion: lower-left outer -->
+    <polygon points="18,62 38,62 38,90 60,118" fill="url(#c4)"/>
+
+    <!-- Pavilion: lower-right outer -->
+    <polygon points="102,62 82,62 82,90 60,118" fill="url(#c5)"/>
+
+    <!-- Pavilion: center-left -->
+    <polygon points="38,62 60,62 60,118 38,90" fill="url(#c6)" opacity="0.85"/>
+
+    <!-- Pavilion: center-right -->
+    <polygon points="60,62 82,62 82,90 60,118" fill="url(#c4)" opacity="0.7"/>
+  </g>
+
+  <!-- Facet edge lines (white, subtle) -->
+  <g stroke="rgba(255,255,255,0.35)" stroke-width="0.8" fill="none">
+    <line x1="60" y1="8" x2="42" y2="22"/>
+    <line x1="60" y1="8" x2="78" y2="22"/>
+    <line x1="60" y1="8" x2="18" y2="62"/>
+    <line x1="60" y1="8" x2="102" y2="62"/>
+    <line x1="42" y1="22" x2="38" y2="62"/>
+    <line x1="78" y1="22" x2="82" y2="62"/>
+    <line x1="38" y1="62" x2="60" y2="62"/>
+    <line x1="60" y1="62" x2="82" y2="62"/>
+    <line x1="18" y1="62" x2="38" y2="90"/>
+    <line x1="102" y1="62" x2="82" y2="90"/>
+    <line x1="38" y1="62" x2="38" y2="90"/>
+    <line x1="82" y1="62" x2="82" y2="90"/>
+    <line x1="38" y1="90" x2="60" y2="118"/>
+    <line x1="82" y1="90" x2="60" y2="118"/>
+    <line x1="60" y1="62" x2="60" y2="118"/>
+  </g>
+
+  <!-- Outer silhouette -->
+  <polygon points="60,8 18,62 60,118 102,62" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>
+
+  <!-- Table edge highlight -->
+  <polygon points="42,22 78,22 82,62 38,62" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+
+  <!-- Apex sparkle -->
+  <circle cx="60" cy="8" r="2.5" fill="white" opacity="0.8"/>
+</svg>

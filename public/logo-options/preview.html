@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>PRISM Logo Options</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f172a; font-family: system-ui, sans-serif; padding: 40px; }
+    h1 { color: #94a3b8; font-size: 12px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 32px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; max-width: 960px; }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .card-label {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .sizes {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .size-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .size-item span {
+      color: #475569;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+    /* Dark panel preview (like the login page) */
+    .dark-bg {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+    .dark-bg .brand { color: #93c5fd; font-size: 14px; font-weight: 900; letter-spacing: 0.2em; }
+    .dark-bg .tagline { color: #94a3b8; font-size: 11px; margin-top: 2px; }
+    .description {
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
+      max-width: 340px;
+    }
+    .divider { border: none; border-top: 1px solid #1e293b; width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>PRISM — Logo Options (3D)</h1>
+  <div class="grid">
+
+    <!-- Option 1 -->
+    <div class="card">
+      <div class="card-label">Option 1 — Isometric Solid</div>
+      <div class="sizes">
+        <div class="size-item">
+          <img src="logo-1-isometric.svg" width="80" height="80"/>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-1-isometric.svg" width="48" height="48"/>
+          <span>48px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-1-isometric.svg" width="32" height="32"/>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-1-isometric.svg" width="20" height="20"/>
+          <span>20px</span>
+        </div>
+      </div>
+      <div class="dark-bg">
+        <img src="logo-1-isometric.svg" width="36" height="36"/>
+        <div>
+          <div class="brand">PRISM</div>
+          <div class="tagline">Helpdesk Workspace</div>
+        </div>
+      </div>
+      <p class="description">Clean isometric triangular prism. Tiga muka berbeda shade — atas terang, kiri medium, kanan gelap. Cocok untuk estetika tech/SaaS.</p>
+    </div>
+
+    <!-- Option 2 -->
+    <div class="card">
+      <div class="card-label">Option 2 — Light Dispersion</div>
+      <div class="sizes">
+        <div class="size-item">
+          <img src="logo-2-light.svg" width="120" height="96"/>
+          <span>120px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-2-light.svg" width="80" height="64"/>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-2-light.svg" width="50" height="40"/>
+          <span>50px</span>
+        </div>
+      </div>
+      <div class="dark-bg">
+        <img src="logo-2-light.svg" width="56" height="44"/>
+        <div>
+          <div class="brand">PRISM</div>
+          <div class="tagline">Helpdesk Workspace</div>
+        </div>
+      </div>
+      <p class="description">Prisma fisika klasik — sinar putih masuk kiri, spektrum pelangi keluar kanan. Berkesan ilmiah dan vibrant. Lebih cocok ukuran besar.</p>
+    </div>
+
+    <!-- Option 3 -->
+    <div class="card">
+      <div class="card-label">Option 3 — Crystal Gem</div>
+      <div class="sizes">
+        <div class="size-item">
+          <img src="logo-3-crystal.svg" width="72" height="80"/>
+          <span>72px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-3-crystal.svg" width="48" height="52"/>
+          <span>48px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-3-crystal.svg" width="32" height="35"/>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-3-crystal.svg" width="22" height="24"/>
+          <span>22px</span>
+        </div>
+      </div>
+      <div class="dark-bg">
+        <img src="logo-3-crystal.svg" width="36" height="40"/>
+        <div>
+          <div class="brand">PRISM</div>
+          <div class="tagline">Helpdesk Workspace</div>
+        </div>
+      </div>
+      <p class="description">Diamond cut-style crystal gem dengan banyak facet. Memberikan kesan premium dan detail. Setiap facet punya gradient berbeda untuk ilusi 3D.</p>
+    </div>
+
+    <!-- Option 4 -->
+    <div class="card">
+      <div class="card-label">Option 4 — Layered Stack</div>
+      <div class="sizes">
+        <div class="size-item">
+          <img src="logo-4-layered.svg" width="80" height="80"/>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-4-layered.svg" width="48" height="48"/>
+          <span>48px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-4-layered.svg" width="32" height="32"/>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <img src="logo-4-layered.svg" width="20" height="20"/>
+          <span>20px</span>
+        </div>
+      </div>
+      <div class="dark-bg">
+        <img src="logo-4-layered.svg" width="36" height="36"/>
+        <div>
+          <div class="brand">PRISM</div>
+          <div class="tagline">Helpdesk Workspace</div>
+        </div>
+      </div>
+      <p class="description">Tiga prisma ditumpuk dengan offset, menciptakan kedalaman 3D berlapis. Abstrak dan modern — memberi kesan "multiple layers of insight".</p>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -23,40 +23,32 @@ class Helpdesk
 {
     public function visibleTickets(User $user): Builder
     {
-        // Ticket visibility is project-scoped first, then narrowed again by role.
-        // This keeps multi-tenant and project access rules in one place.
-        $query = Ticket::query()->where('tickets.tenant_id', $user->tenant_id);
-
-        if ($user->canManageAllTickets()) {
-            return $query;
+        if ($user->canManageAllTickets() || $user->isVip()) {
+            return Ticket::query();
         }
 
         $projectIds = $user->teams()->pluck('teams.id');
+        $query      = Ticket::query()->whereIn('tickets.team_id', $projectIds);
 
-        if ($user->isCoordinator()) {
-            return $query->whereIn('tickets.team_id', $projectIds);
+        if ($user->isAdmin()) {
+            return $query;
         }
 
-        if ($user->isAgent()) {
-            return $query
-                ->whereIn('tickets.team_id', $projectIds)
-                ->where('tickets.assigned_to', $user->id);
+        if ($user->isSiteAdmin()) {
+            return $query->where('tickets.assigned_to', $user->id);
         }
 
-        return $query
-            ->whereIn('tickets.team_id', $projectIds)
-            ->where('tickets.requester_id', $user->id);
+        return $query->where('tickets.requester_id', $user->id);
     }
 
     public function visibleProjects(User $user): Builder
     {
-        $query = Team::query()->where('teams.tenant_id', $user->tenant_id);
-
-        if ($user->canManageAllTickets()) {
-            return $query;
+        if ($user->canManageAllTickets() || $user->isVip()) {
+            return Team::query();
         }
 
-        return $query->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
+        return Team::query()
+            ->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
     }
 
     public function parseTags(?string $tags): array
@@ -76,26 +68,26 @@ class Helpdesk
     public function autoAssignUserForProject(Team $project, ?int $preferredUserId = null): ?int
     {
         // Assignment falls back in priority order so ticket intake can stay simple:
-        // explicit assignee -> first agent -> supervisor -> admin.
+        // explicit assignee -> first site admin -> admin -> super admin.
         $members = $project->members;
 
         if ($preferredUserId && $members->contains('id', $preferredUserId)) {
             return $preferredUserId;
         }
 
-        $agent = $members->firstWhere('role', 'agent');
-        if ($agent) {
-            return $agent->id;
+        $siteAdmin = $members->firstWhere('user_role', 'siteadmin');
+        if ($siteAdmin) {
+            return $siteAdmin->id;
         }
 
-        $supervisor = $members->firstWhere('role', 'supervisor');
-        if ($supervisor) {
-            return $supervisor->id;
+        $admin = $members->firstWhere('user_role', 'admin');
+        if ($admin) {
+            return $admin->id;
         }
 
-        $admin = $members->firstWhere('role', 'admin');
+        $superAdmin = $members->firstWhere('user_role', 'superadmin');
 
-        return $admin?->id;
+        return $superAdmin?->id;
     }
 
     public function applySlaDeadlines(Ticket $ticket, ?SlaPolicy $policy = null): void
@@ -145,11 +137,11 @@ class Helpdesk
     public function recordActivity(?Ticket $ticket, ?User $user, string $action, string $description, array $properties = []): void
     {
         ActivityLog::create([
-            'tenant_id' => $ticket?->tenant_id ?? $user?->tenant_id,
-            'ticket_id' => $ticket?->id,
-            'user_id' => $user?->id,
-            'action' => $action,
-            'description' => $description,
+            'company_id' => $ticket?->company_id,
+            'ticket_id'  => $ticket?->id,
+            'user_id'    => $user?->id,
+            'action'     => $action,
+            'description'=> $description,
             'properties' => $properties,
         ]);
     }
@@ -187,18 +179,27 @@ class Helpdesk
     {
         preg_match_all('/@([A-Za-z0-9._-]+)/', $body, $matches);
 
-        $needles = collect($matches[1] ?? [])->map(fn (string $value) => Str::lower($value))->unique();
+        $needles = collect($matches[1] ?? [])->map(fn (string $value) => Str::lower($value))->unique()->values();
 
         if ($needles->isEmpty()) {
             return collect();
         }
 
-        return User::query()
-            ->where('tenant_id', $actor->tenant_id)
-            ->get()
+        // Narrow candidates in SQL with LIKE conditions, then apply exact
+        // slug/email matching in PHP to avoid false positives from LIKE.
+        $query = User::query();
+
+        $query->where(function ($builder) use ($needles): void {
+            foreach ($needles as $needle) {
+                $builder->orWhere('user_email', 'like', $needle . '@%')
+                        ->orWhere('user_name', 'like', '%' . $needle . '%');
+            }
+        });
+
+        return $query->get()
             ->filter(function (User $user) use ($needles): bool {
-                $emailLocal = Str::before(Str::lower($user->email), '@');
-                $nameSlug = Str::slug($user->name, '');
+                $emailLocal = Str::before(Str::lower($user->user_email), '@');
+                $nameSlug   = Str::slug($user->user_name, '');
 
                 return $needles->contains($emailLocal) || $needles->contains($nameSlug);
             })
@@ -208,7 +209,6 @@ class Helpdesk
     public function defaultCustomFields(User $user): Collection
     {
         return CustomField::query()
-            ->where('tenant_id', $user->tenant_id)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -232,7 +232,7 @@ class Helpdesk
 
     private function shouldSendEmailNotification(User $user, ?Ticket $ticket, string $type): bool
     {
-        if (! $user->email || ! $ticket) {
+        if (! $user->user_email || ! $ticket) {
             return false;
         }
 
@@ -240,10 +240,15 @@ class Helpdesk
             return false;
         }
 
+        // Staff-facing types bypass the client_only audience filter.
+        if (in_array($type, config('helpdesk.mail.staff_types', []), true)) {
+            return true;
+        }
+
         return match (config('helpdesk.mail.audience', 'client_only')) {
-            'all' => true,
+            'all'  => true,
             'none' => false,
-            default => $user->isClient() && $user->id === $ticket->requester_id,
+            default => $user->isUser() && $user->id === $ticket->requester_id,
         };
     }
 
@@ -253,9 +258,9 @@ class Helpdesk
         // requester/client, while global CC is injected from configuration.
         $send = function () use ($user, $ticket, $title, $message, $data): void {
             try {
-                $mail = Mail::to($user->email);
+                $mail = Mail::to($user->user_email);
                 $ccRecipients = collect(config('helpdesk.mail.cc', []))
-                    ->filter(fn ($email) => filled($email) && strcasecmp($email, $user->email) !== 0)
+                    ->filter(fn ($email) => filled($email) && strcasecmp($email, $user->user_email) !== 0)
                     ->unique()
                     ->values()
                     ->all();
@@ -269,7 +274,7 @@ class Helpdesk
                 Log::warning('Failed to send ticket notification email.', [
                     'ticket_id' => $ticket?->id,
                     'user_id' => $user->id,
-                    'email' => $user->email,
+                    'email' => $user->user_email,
                     'error' => $exception->getMessage(),
                 ]);
             }

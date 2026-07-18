@@ -19,10 +19,41 @@ class RunHelpdeskAutomation extends Command
     public function handle(Helpdesk $helpdesk): int
     {
         $escalated = 0;
-        $closed = 0;
+        $warned    = 0;
+        $closed    = 0;
+
+        // === Warning: kirim notifikasi 1 hari sebelum auto-close ===
+        Ticket::query()
+            ->where('status', 'resolved')
+            ->with(['company', 'requester'])
+            ->whereNotNull('resolved_at')
+            ->whereNull('auto_close_warned_at')
+            ->get()
+            ->each(function (Ticket $ticket) use (&$warned, $helpdesk): void {
+                $days = $ticket->company->auto_close_days;
+                if ($days < 2) {
+                    return; // jeda terlalu pendek, tidak ada waktu untuk warning
+                }
+                if ($ticket->resolved_at->addDays($days - 1)->isFuture()) {
+                    return;
+                }
+
+                $ticket->update(['auto_close_warned_at' => now()]);
+
+                $helpdesk->notifyUsers(
+                    collect([$ticket->requester]),
+                    $ticket,
+                    'ticket_auto_close_warning',
+                    'Ticket ' . $ticket->ticket_number . ' akan ditutup otomatis',
+                    'Ticket Anda akan ditutup otomatis dalam 1 hari karena tidak ada balasan. '
+                        . 'Balas ticket ini jika masalah belum terselesaikan.',
+                    ['ticket_id' => $ticket->id]
+                );
+                $warned++;
+            });
 
         Ticket::query()
-            ->with(['tenant'])
+            ->with(['company'])
             ->whereIn('status', ['open', 'in_progress', 'pending'])
             ->where(function ($query): void {
                 $query->where(function ($inner): void {
@@ -37,7 +68,7 @@ class RunHelpdeskAutomation extends Command
                 }
 
                 $supervisors = User::query()
-                    ->where('tenant_id', $ticket->tenant_id)
+                    ->where('company_id', $ticket->company_id)
                     ->whereIn('role', ['supervisor', 'admin'])
                     ->get();
 
@@ -50,13 +81,12 @@ class RunHelpdeskAutomation extends Command
             });
 
         Ticket::query()
-            ->with('tenant')
             ->where('status', 'resolved')
-            ->with(['tenant', 'requester', 'assignee', 'team'])
+            ->with(['company', 'requester', 'assignee', 'team'])
             ->whereNotNull('resolved_at')
             ->get()
             ->each(function (Ticket $ticket) use (&$closed, $helpdesk): void {
-                if ($ticket->resolved_at->addDays($ticket->tenant->auto_close_days)->isFuture()) {
+                if ($ticket->resolved_at->addDays($ticket->company->auto_close_days)->isFuture()) {
                     return;
                 }
 
@@ -81,7 +111,7 @@ class RunHelpdeskAutomation extends Command
                 $closed++;
             });
 
-        $this->info("Escalated: {$escalated}; Auto closed: {$closed}");
+        $this->info("Escalated: {$escalated}; Warned: {$warned}; Auto closed: {$closed}");
 
         return self::SUCCESS;
     }

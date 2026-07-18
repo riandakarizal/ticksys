@@ -15,7 +15,7 @@ class Device extends Model
     public const STATUS_UNDER_REPARATION = 'Under Reparation';
 
     protected $fillable = [
-        'tenant_id',
+        'company_id',
         'team_id',
         'name',
         'asset_code',
@@ -34,9 +34,9 @@ class Device extends Model
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function team(): BelongsTo
