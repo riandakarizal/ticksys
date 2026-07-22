@@ -79,7 +79,7 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `id` | varchar(10) PK | Format: `PJ0001` |
 | `pjct_contract` | varchar(255) | Nomor kontrak |
 | `pjct_codate` | date | Tanggal kontrak |
-| `pjct_div` | varchar(225) | Kode divisi: `TC`, `EQ`, `TCC`, `EQC` |
+| `pjct_div` | varchar(225) | Kode divisi: `TC`, `TCREG1`, `TCREG2`, `EQ`, `EQC`, `EQREG1`, `EQREG2`, `EQREG3` |
 | `pjct_name` | varchar(255) | Nama project |
 | `pjct_type` | varchar(255) | `RENT` / `SUPPLY` / `JASA` |
 | `pjct_client` | varchar(255) | Nama klien |
@@ -98,9 +98,9 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | User unit | Bisa lihat pjct_div |
 |---|---|
 | Technology Operation & Maintenance | TC |
-| Equipment Operation & Maintenance | EQ |
-| Technology Commercial | TCC, TC |
-| Equipment Commercial | EQC, EQ |
+| Equipment Operation & Maintenance | EQ, EQREG1, EQREG2, EQREG3 |
+| Technology Commercial | TC, TCREG1, TCREG2 |
+| Equipment Commercial | EQC, EQ, EQREG1, EQREG2, EQREG3 |
 | Parent user | Semua div dari user bawahannya |
 | VIP | Semua (no filter) |
 

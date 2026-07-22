@@ -150,7 +150,7 @@ class User extends Model implements AuthenticatableContract
     private const UNIT_DIV_MAP = [
         'Technology Operation & Maintenance' => ['TC'],
         'Equipment Operation & Maintenance'  => ['EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
-        'Technology Commercial'              => ['TCC', 'TC'],
+        'Technology Commercial'              => ['TC', 'TCREG1', 'TCREG2'],
         'Equipment Commercial'               => ['EQC', 'EQ', 'EQREG1', 'EQREG2', 'EQREG3'],
     ];
 
