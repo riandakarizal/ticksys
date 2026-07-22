@@ -26,7 +26,7 @@ class UserController extends AdminController
             'user_empid'  => $data['user_empid'],
             'user_name'   => $data['user_name'],
             'user_email'  => $data['user_email'],
-            'user_pass'   => $data['user_pass'],
+            'user_pass'   => bcrypt($data['user_pass']),
             'user_level'  => $data['user_level'],
             'user_role'   => $data['user_role'],
             'user_unit'   => $data['user_unit'],

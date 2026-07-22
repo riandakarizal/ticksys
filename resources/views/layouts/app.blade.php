@@ -152,8 +152,8 @@
                 <span class="sidebar-label">Tickets</span>
             </a>
 
-            {{-- ADMIN (Super Admin, Admin, VIP) --}}
-            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAdmin() || auth()->user()->isVip())
+            {{-- ADMIN (Super Admin, VIP only — plain Admin has no accessible admin page) --}}
+            @if(auth()->user()->isSuperAdmin() || auth()->user()->isVip())
             @php $adminActive = request()->routeIs('admin.*'); @endphp
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $adminActive ? 'active' : '' }} w-full text-left">
@@ -167,9 +167,7 @@
                     </svg>
                 </button>
                 <div data-nav-sub class="{{ $adminActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
-                    @if(auth()->user()->isSuperAdmin() || auth()->user()->isVip())
                     <a href="{{ route('admin.users.index') }}" class="nav-subitem {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">IAM Role</a>
-                    @endif
                 </div>
             </div>
             @endif

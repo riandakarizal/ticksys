@@ -16,7 +16,12 @@ class DashboardController extends Controller
         $visible = $helpdesk->visibleTickets($user);
 
         // ── Project analytics ────────────────────────────────────────────
-        $allProjects = PjctMain::all();
+        $allowedDivs = $user->allowedDivCodes();
+        $projectQuery = PjctMain::query();
+        if ($allowedDivs !== null) {
+            $projectQuery->whereIn('pjct_div', $allowedDivs);
+        }
+        $allProjects = $projectQuery->get();
 
         $projectKpi = [
             'total'  => $allProjects->count(),
@@ -46,7 +51,11 @@ class DashboardController extends Controller
             ->map->count()
             ->sortKeys();
 
-        $recentProjects = PjctMain::latest('pjct_codate')->limit(8)->get();
+        $recentProjectsQuery = PjctMain::query();
+        if ($allowedDivs !== null) {
+            $recentProjectsQuery->whereIn('pjct_div', $allowedDivs);
+        }
+        $recentProjects = $recentProjectsQuery->latest('pjct_codate')->limit(8)->get();
 
         // ── Ticket quick-stats ───────────────────────────────────────────
         $ticketCounts = [
