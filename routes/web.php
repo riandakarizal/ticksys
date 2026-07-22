@@ -1,10 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\CategoryController;
-use App\Http\Controllers\Admin\DeviceController;
-use App\Http\Controllers\Admin\ProjectController;
-use App\Http\Controllers\Admin\ProjectDeviceController;
-use App\Http\Controllers\Admin\SlaPolicyController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\ManpowerController;
@@ -86,41 +81,15 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::prefix('/admin')->name('admin.')->group(function (): void {
         Route::middleware('role:superadmin')->group(function (): void {
             Route::get('/', fn () => redirect()->route('admin.users.index'))->name('index');
-            Route::get('/devices', [DeviceController::class, 'index'])->name('devices.index');
-            Route::get('/devices/template', [DeviceController::class, 'downloadTemplate'])->name('devices.template');
-            Route::get('/devices/export/csv', [DeviceController::class, 'export'])->name('devices.export');
-            Route::post('/devices/import', [DeviceController::class, 'import'])->name('devices.import');
-            Route::post('/devices', [DeviceController::class, 'store'])->name('devices.store');
-            Route::patch('/devices/{device}', [DeviceController::class, 'update'])->name('devices.update');
-            Route::delete('/devices/{device}', [DeviceController::class, 'destroy'])->name('devices.destroy');
 
             Route::post('/users', [UserController::class, 'store'])->name('users.store');
             Route::patch('/users/{managedUser}', [UserController::class, 'update'])->name('users.update');
             Route::delete('/users/{managedUser}', [UserController::class, 'destroy'])->name('users.destroy');
-
-            Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
-            Route::patch('/projects/{team}', [ProjectController::class, 'update'])->name('projects.update');
-            Route::delete('/projects/{team}', [ProjectController::class, 'destroy'])->name('projects.destroy');
-
-            Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
-            Route::patch('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
-            Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-
-            Route::post('/sla-policies', [SlaPolicyController::class, 'store'])->name('sla.store');
-            Route::patch('/sla-policies/{slaPolicy}', [SlaPolicyController::class, 'update'])->name('sla.update');
-            Route::delete('/sla-policies/{slaPolicy}', [SlaPolicyController::class, 'destroy'])->name('sla.destroy');
         });
 
         // T-24 View users (VIP read-only) + M-11/12/13 view for Admin tier too
         Route::middleware('role:superadmin,vip')->group(function (): void {
             Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        });
-
-        Route::middleware('role:superadmin,admin,vip')->group(function (): void {
-            Route::get('/sla-policies', [SlaPolicyController::class, 'index'])->name('sla.index');
-            Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-            Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
-            Route::get('/projects/{team}/devices', [ProjectDeviceController::class, 'show'])->name('projects.devices');
         });
     });
 });
