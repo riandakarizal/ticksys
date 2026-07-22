@@ -1,7 +1,11 @@
 @extends('layouts.app', ['title' => 'Users — Admin', 'heading' => 'Admin'])
 
 @section('content')
-@include('admin._tabs')
+<div class="panel mb-6">
+    <p class="text-sm uppercase tracking-[0.28em] text-slate-500">Admin Workspace</p>
+    <h2 class="mt-2 text-3xl font-black text-slate-900">{{ $pageTitle }}</h2>
+    <p class="mt-2 text-sm text-slate-500">{{ $pageDescription }}</p>
+</div>
 
 <div class="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
     <div class="panel-soft">
@@ -21,7 +25,7 @@
                 <h3 class="text-xl font-black text-slate-900">Users</h3>
                 <p class="text-sm text-slate-500">Complete list of all users.</p>
             </div>
-            <button type="button" class="btn-primary" data-open-dialog="user-create-dialog">Add User</button>
+            <button type="button" class="btn-primary" data-open-dialog="user-create-dialog">+User</button>
         </div>
 
         <div class="datatable-shell mt-5">
@@ -74,52 +78,56 @@
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
                 <h3 class="text-xl font-black">Add User</h3>
-                <p class="text-sm text-slate-500">Non-admin users must have at least one project assignment.</p>
             </div>
             <button type="button" class="btn-soft" data-close-dialog>Close</button>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
-            <input class="field" name="id"         placeholder="User ID (maks 20 karakter)"  required maxlength="20">
             <input class="field" name="user_empid" placeholder="Employee ID"                 required maxlength="20">
             <input class="field" name="user_name"  placeholder="Nama (maks 20 karakter)"     required maxlength="20">
             <input class="field" type="email" name="user_email" placeholder="Email"          required>
+            <input class="field" name="user_pass"   type="password" placeholder="Password"   required>
             <select class="field" name="user_role" required>
-                <option value="" disabled hidden>Select Role</option>
+                <option value="" disabled hidden selected>Select Role</option>
                 <option value="user">User</option>
                 <option value="siteadmin">Site Admin</option>
                 <option value="admin">Admin</option>
                 <option value="superadmin">Super Admin</option>
                 <option value="vip">VIP</option>
             </select>
-            <input class="field" name="user_level"  placeholder="Level (cth: L3)"            required maxlength="20">
-            <input class="field" name="user_unit"   placeholder="Unit"                        required>
-            <input class="field" name="user_div"    placeholder="Divisi"                      required>
-            <input class="field" name="user_parid"  placeholder="Parent ID (atasan/unit)"     required>
-            <input class="field" name="user_pass"   type="password" placeholder="Password"   required>
+            <select class="field" name="user_level" required>
+                <option value="" disabled hidden selected>Select Level</option>
+                <option value="L1">L1 — Direktur</option>
+                <option value="L2">L2 — Grouphead</option>
+                <option value="L3">L3 — Divisionhead</option>
+                <option value="L4">L4 — Analyst</option>
+                <option value="L5">L5 — Senior Officer</option>
+                <option value="L6">L6 — Officer</option>
+                <option value="L7">L7 — Project Employee</option>
+            </select>
+            <select class="field" name="user_div" required>
+                <option value="" disabled hidden selected>Select Divisi</option>
+                <option value="-">— Tidak ada (Direktorat) —</option>
+                <option value="Equipment & Technology Commercial">Equipment & Technology Commercial</option>
+                <option value="Equipment & Technology Operation & Maintenance">Equipment & Technology Operation & Maintenance</option>
+            </select>
+            <select class="field" name="user_unit" required>
+                <option value="" disabled hidden selected>Select Unit</option>
+                <option value="-">— Tidak ada —</option>
+                <option value="Technology Commercial">Technology Commercial</option>
+                <option value="Equipment Commercial">Equipment Commercial</option>
+                <option value="Technology Operation & Maintenance">Technology Operation & Maintenance</option>
+                <option value="Equipment Operation & Maintenance">Equipment Operation & Maintenance</option>
+            </select>
+            <select class="field" name="user_parid">
+                <option value="">— Tidak ada (Top Level) —</option>
+                @foreach($users as $u)
+                    <option value="{{ $u->id }}">{{ $u->user_name }} ({{ $u->id }})</option>
+                @endforeach
+            </select>
             <select class="field" name="user_status" required>
                 <option value="active" selected>Active</option>
                 <option value="inactive">Inactive</option>
             </select>
-            <div class="md:col-span-2">
-                <label class="label">Assigned Projects</label>
-                <div class="choice-panel">
-                    <div class="choice-list">
-                        @foreach($projects as $project)
-                            <label class="choice-card">
-                                <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}">
-                                <span class="choice-card-box">
-                                    <span class="choice-indicator">✓</span>
-                                    <span>
-                                        <span class="block font-semibold text-slate-900">{{ $project->name }}</span>
-                                        <span class="mt-1 block text-xs text-slate-500">{{ $project->code ?: 'Project assignment' }}</span>
-                                    </span>
-                                </span>
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-                <p class="mt-2 text-xs text-slate-500">Select at least one project for non-admin roles.</p>
-            </div>
         </div>
         <div class="mt-5 flex justify-end">
             <button class="btn-primary" type="submit">Save</button>
@@ -136,7 +144,7 @@
             <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
                 <div>
                     <h3 class="text-xl font-black">Edit User</h3>
-                    <p class="text-sm text-slate-500">Update profile, role, and project assignments.</p>
+                    <p class="text-sm text-slate-500">Update profile and role.</p>
                 </div>
                 <button type="button" class="btn-soft" data-close-dialog>Close</button>
             </div>
@@ -151,34 +159,39 @@
                     <option value="superadmin" @selected($user->user_role === 'superadmin')>Super Admin</option>
                     <option value="vip"        @selected($user->user_role === 'vip')>VIP</option>
                 </select>
-                <input class="field" name="user_level"  value="{{ $user->user_level }}"  placeholder="Level" required maxlength="20">
-                <input class="field" name="user_unit"   value="{{ $user->user_unit }}"   placeholder="Unit" required>
-                <input class="field" name="user_div"    value="{{ $user->user_div }}"    placeholder="Divisi" required>
-                <input class="field" name="user_parid"  value="{{ $user->user_parid }}"  placeholder="Parent ID" required>
+                <select class="field" name="user_level" required>
+                    <option value="L1" @selected($user->user_level === 'L1')>L1 — Direktur</option>
+                    <option value="L2" @selected($user->user_level === 'L2')>L2 — Grouphead</option>
+                    <option value="L3" @selected($user->user_level === 'L3')>L3 — Divisionhead</option>
+                    <option value="L4" @selected($user->user_level === 'L4')>L4 — Analyst</option>
+                    <option value="L5" @selected($user->user_level === 'L5')>L5 — Senior Officer</option>
+                    <option value="L6" @selected($user->user_level === 'L6')>L6 — Officer</option>
+                    <option value="L7" @selected($user->user_level === 'L7')>L7 — Project Employee</option>
+                </select>
+                <select class="field" name="user_div" required>
+                    <option value="-" @selected($user->user_div === '-')>— Tidak ada (Direktorat) —</option>
+                    <option value="Equipment & Technology Commercial" @selected($user->user_div === 'Equipment & Technology Commercial')>Equipment & Technology Commercial</option>
+                    <option value="Equipment & Technology Operation & Maintenance" @selected($user->user_div === 'Equipment & Technology Operation & Maintenance')>Equipment & Technology Operation & Maintenance</option>
+                </select>
+                <select class="field" name="user_unit" required>
+                    <option value="-" @selected($user->user_unit === '-')>— Tidak ada —</option>
+                    <option value="Technology Commercial" @selected($user->user_unit === 'Technology Commercial')>Technology Commercial</option>
+                    <option value="Equipment Commercial" @selected($user->user_unit === 'Equipment Commercial')>Equipment Commercial</option>
+                    <option value="Technology Operation & Maintenance" @selected($user->user_unit === 'Technology Operation & Maintenance')>Technology Operation & Maintenance</option>
+                    <option value="Equipment Operation & Maintenance" @selected($user->user_unit === 'Equipment Operation & Maintenance')>Equipment Operation & Maintenance</option>
+                </select>
+                <select class="field" name="user_parid">
+                    <option value="" @selected($user->user_parid === '')>— Tidak ada (Top Level) —</option>
+                    @foreach($users as $u)
+                        @continue($u->id === $user->id)
+                        <option value="{{ $u->id }}" @selected($user->user_parid === $u->id)>{{ $u->user_name }} ({{ $u->id }})</option>
+                    @endforeach
+                </select>
                 <input class="field" name="user_pass"   type="password" placeholder="New password (optional)">
                 <select class="field" name="user_status" required>
                     <option value="active"   @selected($user->user_status === 'active')>Active</option>
                     <option value="inactive" @selected($user->user_status === 'inactive')>Inactive</option>
                 </select>
-                <div class="md:col-span-2">
-                    <label class="label">Assigned Projects</label>
-                    <div class="choice-panel">
-                        <div class="choice-list">
-                            @foreach($projects as $project)
-                                <label class="choice-card">
-                                    <input class="sr-only" type="checkbox" name="project_ids[]" value="{{ $project->id }}" @checked($user->teams->contains('id', $project->id))>
-                                    <span class="choice-card-box">
-                                        <span class="choice-indicator">✓</span>
-                                        <span>
-                                            <span class="block font-semibold text-slate-900">{{ $project->name }}</span>
-                                            <span class="mt-1 block text-xs text-slate-500">{{ $project->code ?: 'Project assignment' }}</span>
-                                        </span>
-                                    </span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
             </div>
             <div class="mt-5 flex justify-end">
                 <button class="btn-primary" type="submit">Update</button>

@@ -22,10 +22,7 @@ class UserController extends AdminController
     {
         $data = $request->validated();
 
-        $this->ensureProjectAssignmentForRole($data['user_role'], $data['project_ids'] ?? []);
-
-        $user = User::create([
-            'id'          => $data['id'],
+        User::create([
             'user_empid'  => $data['user_empid'],
             'user_name'   => $data['user_name'],
             'user_email'  => $data['user_email'],
@@ -34,11 +31,9 @@ class UserController extends AdminController
             'user_role'   => $data['user_role'],
             'user_unit'   => $data['user_unit'],
             'user_div'    => $data['user_div'],
-            'user_parid'  => $data['user_parid'],
+            'user_parid'  => $data['user_parid'] ?? '',
             'user_status' => $data['user_status'],
         ]);
-
-        $user->teams()->sync($data['project_ids'] ?? []);
 
         return $this->respond($request, 'User created successfully.', route('admin.users.index'));
     }
@@ -46,8 +41,6 @@ class UserController extends AdminController
     public function update(UserUpdateRequest $request, User $managedUser): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
-
-        $this->ensureProjectAssignmentForRole($data['user_role'], $data['project_ids'] ?? []);
 
         $managedUser->fill([
             'user_empid'  => $data['user_empid'],
@@ -57,7 +50,7 @@ class UserController extends AdminController
             'user_role'   => $data['user_role'],
             'user_unit'   => $data['user_unit'],
             'user_div'    => $data['user_div'],
-            'user_parid'  => $data['user_parid'],
+            'user_parid'  => $data['user_parid'] ?? '',
             'user_status' => $data['user_status'],
         ]);
 
@@ -66,7 +59,6 @@ class UserController extends AdminController
         }
 
         $managedUser->save();
-        $managedUser->teams()->sync($data['project_ids'] ?? []);
 
         return $this->respond($request, 'User updated successfully.', route('admin.users.index'));
     }

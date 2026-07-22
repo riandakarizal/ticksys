@@ -37,6 +37,17 @@ class User extends Model implements AuthenticatableContract
     public $timestamps   = false;
     protected $keyType   = 'string';
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $model): void {
+            if (empty($model->id)) {
+                $max = static::max('id'); // e.g. 'USR-012'
+                $num = $max ? ((int) substr($max, 4)) + 1 : 1;
+                $model->id = 'USR-' . str_pad($num, 3, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [];
