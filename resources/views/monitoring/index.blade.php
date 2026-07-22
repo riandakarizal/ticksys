@@ -89,8 +89,12 @@ $rp = function($n) {
             <h3 class="text-sm font-bold text-slate-800">Project List</h3>
             <span class="text-xs text-slate-400">{{ $projects->total() }} project{{ $projects->total() !== 1 ? 's' : '' }}</span>
         </div>
-        @if($isAdmin)
-            <button type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold" onclick="document.getElementById('modal-project').showModal()">+ Add Project</button>
+        @if($canCreateProject)
+            <button type="button"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                    onclick="document.getElementById('modal-project-tc').showModal()">
+                +Project
+            </button>
         @endif
     </div>
     <div class="overflow-x-auto">
@@ -274,6 +278,63 @@ $rp = function($n) {
 </dialog>
 @endif
 
+{{-- ══ Modal: Project Baru — Equipment & Technology Commercial (quick create, status fixed) ══ --}}
+@if($canCreateProject)
+<dialog id="modal-project-tc" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Project Baru</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Equipment &amp; Technology Commercial &middot; Status awal: Upcoming</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+        <form method="POST" action="{{ route('monitoring.store', ['type'=>'projects']) }}">
+            @csrf
+            <input type="hidden" name="pjct_status" value="UPC">
+            <div class="grid gap-3">
+                @if(auth()->user()->isSuperAdmin())
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Divisi *</label>
+                        <select name="pjct_div" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option value="TC">Technology Commercial (TC)</option>
+                            <option value="EQ">Equipment Commercial (EQ)</option>
+                        </select>
+                    </div>
+                @endif
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Project *</label>
+                    <input type="text" name="pjct_name" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Project *</label>
+                    <select name="pjct_type" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="RENT">Rental (RENT)</option>
+                        <option value="SUPPLY">Supply (SUPPLY)</option>
+                        <option value="JASA">Jasa (JASA)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Area Pekerjaan</label>
+                    <input type="text" name="pjct_area" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan</label>
+                    <textarea name="pjct_misc" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Create Project
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+@endif
+
 @push('scripts')
 <script>
 @if($isAdmin)
@@ -304,6 +365,10 @@ document.getElementById('modal-project')?.addEventListener('close', function() {
     form.action = STORE_URL;
     document.getElementById('form-method').innerHTML = '';
     document.getElementById('modal-title').textContent = 'New Project';
+});
+
+document.getElementById('modal-project-tc')?.addEventListener('close', function() {
+    this.querySelector('form').reset();
 });
 @endif
 </script>

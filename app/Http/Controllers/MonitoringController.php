@@ -69,19 +69,40 @@ class MonitoringController extends Controller
         ];
 
         $isAdmin    = $user?->isSuperAdmin() || $user?->isAdmin();
+        $canCreateProject = $user?->isSuperAdmin()
+            || ($user?->isAdmin() && $user?->user_div === 'Equipment & Technology Commercial');
         $changeLogs = collect();
 
         return view('monitoring.index', compact(
             'projects', 'kpi',
             'yearFilter', 'statusFilter', 'typeFilter', 'unitFilter', 'search', 'showArchived',
-            'isAdmin', 'changeLogs'
+            'isAdmin', 'canCreateProject', 'changeLogs'
         ));
     }
 
     public function store(Request $request, string $type)
     {
         abort_unless($type === 'projects', 404);
-        $record = PjctMain::create($this->projectData($request));
+
+        $user = auth()->user();
+        $canCreate = $user->isSuperAdmin()
+            || ($user->isAdmin() && $user->user_div === 'Equipment & Technology Commercial');
+        abort_unless($canCreate, 403);
+
+        $data = $this->projectData($request);
+
+        if ($user->isSuperAdmin()) {
+            $data['pjct_div'] = $request->validate(['pjct_div' => 'required|in:TC,EQ'])['pjct_div'];
+        } else {
+            $data['pjct_div'] = match ($user->user_unit) {
+                'Technology Commercial' => 'TC',
+                'Equipment Commercial'  => 'EQ',
+                default => null,
+            };
+            abort_if($data['pjct_div'] === null, 403, 'Unit Anda tidak terdaftar untuk membuat project pada divisi manapun.');
+        }
+
+        $record = PjctMain::create($data);
         return back()->with('success', 'Project added successfully.');
     }
 
