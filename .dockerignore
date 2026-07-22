@@ -1,7 +1,9 @@
 .git
 .env
 .env.backup
+.env.production
 docker/db-init
+docfile
 bootstrap/cache/*.php
 node_modules
 vendor
