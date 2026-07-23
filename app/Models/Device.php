@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Device extends Model
 {
+    use LogsSystemActivity;
+
     public const STATUS_ACTIVE = 'Active';
 
     public const STATUS_INACTIVE = 'Inactive';

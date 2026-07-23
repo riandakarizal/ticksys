@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\AstMain;
+use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class PjctMain extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsSystemActivity;
 
     protected $table      = 'pjct_main';
     public    $incrementing = false;
@@ -22,6 +24,10 @@ class PjctMain extends Model
                 $num = $max ? ((int) substr($max, 2)) + 1 : 1;
                 $model->id = 'PJ' . str_pad($num, 4, '0', STR_PAD_LEFT);
             }
+        });
+
+        static::created(function (self $model): void {
+            Storage::disk('docfile')->makeDirectory($model->id);
         });
     }
 

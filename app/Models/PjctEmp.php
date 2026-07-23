@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class PjctEmp extends Model
 {
+    use LogsSystemActivity;
+
     protected $table      = 'pjct_emp';
     public    $incrementing = false;
     protected $keyType    = 'string';

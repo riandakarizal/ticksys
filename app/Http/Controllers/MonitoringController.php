@@ -106,7 +106,7 @@ class MonitoringController extends Controller
         return back()->with('success', 'Project added successfully.');
     }
 
-    public function update(Request $request, string $type, int $id)
+    public function update(Request $request, string $type, string $id)
     {
         abort_unless($type === 'projects', 404);
         $record = PjctMain::findOrFail($id);

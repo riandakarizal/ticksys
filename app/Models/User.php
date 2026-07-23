@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsSystemActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
@@ -31,7 +32,7 @@ use Illuminate\Support\Collection;
 #[Hidden(['user_pass'])]
 class User extends Model implements AuthenticatableContract
 {
-    use Authenticatable, HasFactory, Notifiable;
+    use Authenticatable, HasFactory, Notifiable, LogsSystemActivity;
 
     public $incrementing = false;
     public $timestamps   = false;
