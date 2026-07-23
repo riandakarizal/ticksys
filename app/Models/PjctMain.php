@@ -49,6 +49,11 @@ class PjctMain extends Model
         return $this->hasMany(PjctDoc::class, 'doc_pjctid', 'id');
     }
 
+    public function budgets()
+    {
+        return $this->hasMany(PjctBudget::class, 'bdg_pjctid', 'id');
+    }
+
     public function statusLabel(): string
     {
         return match ($this->pjct_status) {

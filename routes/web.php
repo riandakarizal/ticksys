@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
@@ -75,6 +76,8 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
                 ->name('import.template.type')
                 ->whereIn('type', ['project_eq','project_tech','handover','vehicle','maintenance']);
             Route::get('/export', [EqtImportController::class, 'export'])->name('export');
+
+            Route::post('/projects/{project}/boq', [PjctBudgetController::class, 'store'])->name('boq.store');
         });
     });
 
