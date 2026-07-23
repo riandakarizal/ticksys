@@ -20,7 +20,7 @@ class PjctBudgetController extends Controller
         $data = $request->validate([
             'components'              => ['required', 'array', 'min:1'],
             'components.*.bdg_name'   => ['required', 'string', 'max:225'],
-            'components.*.bdg_type'   => ['required', 'in:PENGADAAN,PEKERJAAN'],
+            'components.*.bdg_type'   => ['required', 'in:PENGADAAN,PEKERJAAN,JASA'],
             'components.*.bdg_type2'  => ['required', 'string', 'max:20'],
             'components.*.bdg_value'  => ['required', 'integer', 'min:0'],
             'boq_file'                => ['nullable', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,xlsx,xls,doc,docx'],

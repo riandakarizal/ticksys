@@ -78,6 +78,7 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
             Route::get('/export', [EqtImportController::class, 'export'])->name('export');
 
             Route::post('/projects/{project}/boq', [PjctBudgetController::class, 'store'])->name('boq.store');
+            Route::post('/projects/{project}/docs', [PjctDocController::class, 'store'])->name('docs.store');
         });
     });
 

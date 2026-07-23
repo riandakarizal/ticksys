@@ -172,10 +172,18 @@ $rp = function($n) {
                                         <button type="submit" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Restore</button>
                                     </form>
                                 @elseif($canCreateProject)
-                                    <button type="button" onclick="openBoq('{{ $p->id }}', {{ $p->toJson() }})"
-                                            class="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                                        INPUT
-                                    </button>
+                                    <details class="relative inline-block text-left" data-row-menu>
+                                        <summary class="cursor-pointer list-none inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                                            INPUT
+                                            <span class="text-[10px]">▾</span>
+                                        </summary>
+                                        <div class="absolute right-0 top-[calc(100%+0.25rem)] z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-200/80 text-left">
+                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openBoq('{{ $p->id }}', {{ $p->toJson() }})"
+                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-slate-50">BoQ</button>
+                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openKak('{{ $p->id }}', {{ $p->toJson() }})"
+                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50">KAK/RKST</button>
+                                        </div>
+                                    </details>
                                 @endif
                             </td>
                         @endif
@@ -250,6 +258,37 @@ $rp = function($n) {
 </dialog>
 @endif
 
+{{-- ══ Modal: Upload KAK/RKST (Equipment & Technology Commercial) ══ --}}
+@if($canCreateProject)
+<dialog id="modal-kak" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Upload KAK/RKST</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="kak-project-name">&nbsp;</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+        <form id="form-kak" method="POST" enctype="multipart/form-data">
+            @csrf
+            <input type="hidden" name="doc_type" value="RKST">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Dokumen KAK/RKST *</label>
+                <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Upload
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+@endif
+
 {{-- ══ Modal: Input BoQ (Equipment & Technology Commercial) ══ --}}
 @if($canCreateProject)
 <dialog id="modal-boq" class="max-w-4xl w-full">
@@ -307,9 +346,10 @@ function boqRowTemplate(i) {
             <option value="" disabled selected hidden>Jenis</option>
             <option value="PENGADAAN">Pengadaan</option>
             <option value="PEKERJAAN">Pekerjaan</option>
+            <option value="JASA">Jasa</option>
         </select>
-        <input type="text" name="components[${i}][bdg_type2]" placeholder="Unit" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
         <input type="number" name="components[${i}][bdg_value]" placeholder="Jumlah" min="0" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <input type="text" name="components[${i}][bdg_type2]" placeholder="Unit" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
         <button type="button" class="shrink-0 h-9 w-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition" onclick="this.closest('[data-boq-row]').remove()">✕</button>
     </div>`;
 }
@@ -334,6 +374,35 @@ document.getElementById('modal-boq')?.addEventListener('close', function() {
     document.getElementById('form-boq').reset();
     document.getElementById('boq-components').innerHTML = '';
     boqRowIndex = 0;
+});
+
+const KAK_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+
+function openKak(id, data) {
+    document.getElementById('kak-project-name').textContent = data.pjct_name + ' (' + id + ')';
+    document.getElementById('form-kak').action = KAK_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('modal-kak').showModal();
+}
+
+document.getElementById('modal-kak')?.addEventListener('close', function() {
+    document.getElementById('form-kak').reset();
+});
+
+// Row action dropdowns: only one open at a time, close when clicking outside
+document.querySelectorAll('details[data-row-menu]').forEach(function(menu) {
+    menu.addEventListener('toggle', function() {
+        if (menu.open) {
+            document.querySelectorAll('details[data-row-menu][open]').forEach(function(other) {
+                if (other !== menu) other.removeAttribute('open');
+            });
+        }
+    });
+});
+
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('details[data-row-menu][open]').forEach(function(menu) {
+        if (!menu.contains(e.target)) menu.removeAttribute('open');
+    });
 });
 @endif
 </script>

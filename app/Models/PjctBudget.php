@@ -44,6 +44,7 @@ class PjctBudget extends Model
         return match ($this->bdg_type) {
             'PENGADAAN' => 'Pengadaan',
             'PEKERJAAN' => 'Pekerjaan',
+            'JASA'      => 'Jasa',
             default     => $this->bdg_type ?? '-',
         };
     }
