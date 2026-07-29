@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class PjctDoc extends Model
 {
+    use LogsSystemActivity;
+
     protected $table      = 'pjct_doc';
     public    $incrementing = false;
     protected $keyType    = 'string';
+    public    $timestamps = false;
 
     protected static function booted(): void
     {
@@ -44,6 +48,7 @@ class PjctDoc extends Model
             'RAB'     => 'bg-teal-100 text-teal-700',
             'BAST'    => 'bg-green-100 text-green-700',
             'SOP'     => 'bg-amber-100 text-amber-700',
+            'BOQ'     => 'bg-rose-100 text-rose-700',
             default   => 'bg-slate-100 text-slate-500',
         };
     }

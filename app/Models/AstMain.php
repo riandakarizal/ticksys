@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class AstMain extends Model
 {
+    use LogsSystemActivity;
+
     protected $table      = 'ast_main';
     public    $timestamps = false;
 

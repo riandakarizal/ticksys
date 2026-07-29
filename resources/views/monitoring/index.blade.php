@@ -89,55 +89,57 @@ $rp = function($n) {
             <h3 class="text-sm font-bold text-slate-800">Project List</h3>
             <span class="text-xs text-slate-400">{{ $projects->total() }} project{{ $projects->total() !== 1 ? 's' : '' }}</span>
         </div>
-        @if($isAdmin)
-            <button type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold" onclick="document.getElementById('modal-project').showModal()">+ Add Project</button>
+        @if($canCreateProject)
+            <button type="button"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                    onclick="document.getElementById('modal-project-tc').showModal()">
+                +Project
+            </button>
         @endif
     </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-xs">
+    <div>
+        <table class="w-full table-fixed text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100 bg-slate-50/60">
                 <tr>
-                    <th class="px-4 py-2 font-medium w-8">#</th>
-                    <th class="py-2 pr-3 font-medium">Contract No.</th>
-                    <th class="py-2 pr-3 font-medium">Project Name</th>
-                    <th class="py-2 pr-3 font-medium">Type</th>
-                    <th class="py-2 pr-3 font-medium">Client</th>
-                    <th class="py-2 pr-3 font-medium">Area</th>
-                    <th class="py-2 pr-3 font-medium">Contract Value</th>
-                    <th class="py-2 pr-3 font-medium">Period</th>
-                    <th class="py-2 pr-3 font-medium">Start</th>
-                    <th class="py-2 pr-3 font-medium">End</th>
-                    <th class="py-2 pr-3 font-medium">Status</th>
-                    <th class="py-2 pr-3 font-medium">Assets</th>
-                    <th class="py-2 pr-3 font-medium">Doc</th>
-                    <th class="py-2 pr-3 font-medium">Notes</th>
-                    @if($isAdmin)<th class="py-2 pr-4"></th>@endif
+                    <th class="w-[7%] pl-4 py-1.5 pr-2 font-medium">Kontrak</th>
+                    <th class="w-[17%] py-1.5 pr-2 font-medium">Nama Project</th>
+                    <th class="w-[5%] py-1.5 pr-2 font-medium">Type</th>
+                    <th class="w-[9%] py-1.5 pr-2 font-medium">Client</th>
+                    <th class="w-[5%] py-1.5 pr-2 font-medium">Area</th>
+                    <th class="w-[7%] py-1.5 pr-2 font-medium">Nilai</th>
+                    <th class="w-[5%] py-1.5 pr-2 font-medium">Durasi</th>
+                    <th class="w-[9%] py-1.5 pr-2 font-medium">Periode</th>
+                    <th class="w-[6%] py-1.5 pr-2 font-medium">Status</th>
+                    <th class="w-[5%] py-1.5 pr-2 font-medium">Assets</th>
+                    <th class="w-[9%] py-1.5 pr-2 font-medium">Doc</th>
+                    <th class="w-[10%] py-1.5 pr-2 font-medium">Notes</th>
+                    @if($isAdmin)<th class="w-[6%] py-1.5 pr-4"></th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse($projects as $i => $p)
                     <tr class="{{ $p->trashed() ? 'opacity-50 bg-slate-50' : 'hover:bg-slate-50/50' }}">
-                        <td class="px-4 py-2 text-slate-400">{{ ($projects->currentPage()-1)*$projects->perPage()+$i+1 }}</td>
-                        <td class="py-2 pr-3 text-slate-500 max-w-[160px] truncate font-mono text-[10px]" title="{{ $p->pjct_contract }}">
+                        <td class="pl-4 py-1.5 pr-2 text-slate-500 break-words font-mono text-[10px]">
                             {{ $p->pjct_contract ?: '-' }}
                         </td>
-                        <td class="py-2 pr-3 font-medium max-w-[260px] leading-snug">
+                        <td class="py-1.5 pr-2 font-medium break-words">
                             {{ $p->pjct_name }}
                             @if($p->trashed())<span class="ml-1 inline-flex items-center rounded px-1 py-0.5 text-[9px] font-medium bg-slate-200 text-slate-500">Archived</span>@endif
                         </td>
-                        <td class="py-2 pr-3 whitespace-nowrap">
+                        <td class="py-1.5 pr-2">
                             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold {{ $p->typeBadgeClass() }}">{{ $p->pjct_type }}</span>
                         </td>
-                        <td class="py-2 pr-3 text-slate-500 max-w-[140px] truncate" title="{{ $p->pjct_client }}">{{ $p->pjct_client ?: '-' }}</td>
-                        <td class="py-2 pr-3 whitespace-nowrap text-slate-600 font-semibold">{{ $p->pjct_area ?: '-' }}</td>
-                        <td class="py-2 pr-3 font-semibold whitespace-nowrap">{{ $rp($p->pjct_value) }}</td>
-                        <td class="py-2 pr-3 text-slate-500 whitespace-nowrap">{{ $p->pjct_totalperiod ? $p->pjct_totalperiod . ' mo' : '-' }}</td>
-                        <td class="py-2 pr-3 whitespace-nowrap text-slate-500">{{ $p->pjct_costart ? $p->pjct_costart->format('d/m/Y') : '-' }}</td>
-                        <td class="py-2 pr-3 whitespace-nowrap text-slate-500">{{ $p->pjct_coend_m ? $p->pjct_coend_m->format('d/m/Y') : '-' }}</td>
-                        <td class="py-2 pr-3 whitespace-nowrap">
+                        <td class="py-1.5 pr-2 text-slate-500 break-words">{{ $p->pjct_client ?: '-' }}</td>
+                        <td class="py-1.5 pr-2 text-slate-600 font-semibold break-words">{{ $p->pjct_area ?: '-' }}</td>
+                        <td class="py-1.5 pr-2 font-semibold break-words">{{ $rp($p->pjct_value) }}</td>
+                        <td class="py-1.5 pr-2 text-slate-500 break-words">{{ $p->pjct_totalperiod ? $p->pjct_totalperiod . ' mo' : '-' }}</td>
+                        <td class="py-1.5 pr-2 text-slate-500 text-[10px] break-words">
+                            {{ $p->pjct_costart ? $p->pjct_costart->format('d/m/y') : '-' }} – {{ $p->pjct_coend_m ? $p->pjct_coend_m->format('d/m/y') : '-' }}
+                        </td>
+                        <td class="py-1.5 pr-2">
                             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold {{ $p->statusBadgeClass() }}">{{ $p->statusLabel() }}</span>
                         </td>
-                        <td class="py-2 pr-3 whitespace-nowrap text-center">
+                        <td class="py-1.5 pr-2 text-center">
                             @if($p->assets_count > 0)
                                 <a href="{{ route('project.assets', ['search' => $p->id]) }}"
                                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 transition">
@@ -147,127 +149,180 @@ $rp = function($n) {
                                 <span class="text-slate-300">—</span>
                             @endif
                         </td>
-                        <td class="py-2 pr-3 whitespace-nowrap">
+                        <td class="py-1.5 pr-2">
                             @php $docsByType = $p->docs->groupBy('doc_type')->map->first(); @endphp
                             @if($docsByType->isEmpty())
                                 <span class="text-slate-300">—</span>
                             @else
-                                @foreach(['KONTRAK','RKST','RAB','BAST','SOP'] as $dt)
+                                <div class="flex flex-wrap gap-1">
+                                @foreach(['KONTRAK','RKST','RAB','BAST','SOP','BOQ'] as $dt)
                                     @continue(!$docsByType->has($dt))
                                     <a href="{{ route('monitoring.docs.show', $docsByType[$dt]->id) }}" target="_blank" rel="noopener"
-                                       class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold mr-1 hover:opacity-75 transition {{ \App\Models\PjctDoc::badgeClassFor($dt) }}">{{ $dt }}</a>
+                                       class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold hover:opacity-75 transition {{ \App\Models\PjctDoc::badgeClassFor($dt) }}">{{ $dt }}</a>
                                 @endforeach
+                                </div>
                             @endif
                         </td>
-                        <td class="py-2 pr-3 text-slate-500 max-w-[160px] text-[10px]">{{ $p->pjct_misc ?: '' }}</td>
+                        <td class="py-1.5 pr-2 text-slate-500 text-[10px] break-words">{{ $p->pjct_misc ?: '' }}</td>
                         @if($isAdmin)
-                            <td class="py-2 pr-4 whitespace-nowrap text-right">
+                            <td class="py-1.5 pr-4 text-right">
                                 @if($p->trashed())
                                     <form method="POST" action="{{ route('monitoring.restore', ['type'=>'projects','id'=>$p->id]) }}" class="inline">
                                         @csrf
                                         <button type="submit" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Restore</button>
                                     </form>
-                                @else
-                                    <button type="button" onclick="openEdit({{ $p->id }}, {{ $p->toJson() }})" class="text-xs text-blue-600 hover:text-blue-800 font-medium mr-2">Edit</button>
-                                    <form method="POST" action="{{ route('monitoring.destroy', ['type'=>'projects','id'=>$p->id]) }}" class="inline" onsubmit="return confirm('Archive this project?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-xs text-slate-400 hover:text-amber-700 font-medium">Archive</button>
-                                    </form>
+                                @elseif($canCreateProject)
+                                    <details class="relative inline-block text-left" data-row-menu>
+                                        <summary class="cursor-pointer list-none inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                                            INPUT
+                                            <span class="text-[10px]">▾</span>
+                                        </summary>
+                                        <div class="absolute right-0 top-[calc(100%+0.25rem)] z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-200/80 text-left">
+                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openBoq('{{ $p->id }}', {{ $p->toJson() }})"
+                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-slate-50">BoQ</button>
+                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openKak('{{ $p->id }}', {{ $p->toJson() }})"
+                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50">KAK/RKST</button>
+                                        </div>
+                                    </details>
                                 @endif
                             </td>
                         @endif
                     </tr>
                 @empty
-                    <tr><td colspan="14" class="px-4 py-10 text-center text-slate-400">No projects found.</td></tr>
+                    <tr><td colspan="13" class="px-4 py-10 text-center text-slate-400">No projects found.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    @if($projects->hasPages())
-    <div class="px-4 py-3 border-t border-slate-100">
-        {{ $projects->links() }}
-    </div>
-    @endif
 </div>
+@if($projects->hasPages())
+<div class="sticky bottom-0 z-20 bg-white px-4 py-3 border border-t-0 border-slate-200 rounded-b-xl shadow-[0_-2px_6px_-2px_rgba(0,0,0,0.06)]">
+    {{ $projects->links() }}
+</div>
+@endif
 
-{{-- ══ Modal: Add / Edit Project (Admin only) ══ --}}
-@if($isAdmin)
-<dialog id="modal-project" class="max-w-2xl w-full">
+{{-- ══ Modal: Project Baru — Equipment & Technology Commercial (quick create, status fixed) ══ --}}
+@if($canCreateProject)
+<dialog id="modal-project-tc" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-            <h2 class="text-xl font-black" id="modal-title">New Project</h2>
+            <div>
+                <h2 class="text-xl font-black">Project Baru</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Equipment &amp; Technology Commercial &middot; Status awal: Upcoming</p>
+            </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-project" method="POST" action="{{ route('monitoring.store', ['type'=>'projects']) }}">
+        <form method="POST" action="{{ route('monitoring.store', ['type'=>'projects']) }}">
             @csrf
-            <span id="form-method"></span>
-            <div class="grid gap-3 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Project Name *</label>
-                    <input type="text" name="pjct_name" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_name">
+            <input type="hidden" name="pjct_status" value="UPC">
+            <div class="grid gap-3">
+                @if(auth()->user()->isSuperAdmin())
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Divisi *</label>
+                        <select name="pjct_div" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option value="TC">Technology Commercial (TC)</option>
+                            <option value="EQ">Equipment Commercial (EQ)</option>
+                        </select>
+                    </div>
+                @endif
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Project *</label>
+                    <input type="text" name="pjct_name" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Type *</label>
-                    <select name="pjct_type" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_type">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Project *</label>
+                    <select name="pjct_type" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                         <option value="RENT">Rental (RENT)</option>
                         <option value="SUPPLY">Supply (SUPPLY)</option>
                         <option value="JASA">Jasa (JASA)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Status *</label>
-                    <select name="pjct_status" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_status">
-                        <option value="UPC">Upcoming</option>
-                        <option value="OG">On Going</option>
-                        <option value="HVR">Hand Over</option>
-                        <option value="DLY">Delay</option>
-                        <option value="END">Ended</option>
-                    </select>
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Contract No.</label>
-                    <input type="text" name="pjct_contract" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_contract">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Area Pekerjaan</label>
+                    <input type="text" name="pjct_area" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Date</label>
-                    <input type="date" name="pjct_codate" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_codate">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Division</label>
-                    <input type="text" name="pjct_div" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_div">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Client</label>
-                    <input type="text" name="pjct_client" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_client">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Area</label>
-                    <input type="text" name="pjct_area" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_area">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Value (Rp)</label>
-                    <input type="number" name="pjct_value" min="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_value">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Period (months)</label>
-                    <input type="number" name="pjct_totalperiod" min="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_totalperiod">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-                    <input type="date" name="pjct_costart" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_costart">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-                    <input type="date" name="pjct_coend_m" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_coend_m">
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
-                    <textarea name="pjct_misc" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" id="f-pjct_misc"></textarea>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan</label>
+                    <textarea name="pjct_misc" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
                 </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
-                <button type="submit" class="btn-primary">Save</button>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Create Project
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+@endif
+
+{{-- ══ Modal: Upload KAK/RKST (Equipment & Technology Commercial) ══ --}}
+@if($canCreateProject)
+<dialog id="modal-kak" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Upload KAK/RKST</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="kak-project-name">&nbsp;</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+        <form id="form-kak" method="POST" enctype="multipart/form-data">
+            @csrf
+            <input type="hidden" name="doc_type" value="RKST">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Dokumen KAK/RKST *</label>
+                <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Upload
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+@endif
+
+{{-- ══ Modal: Input BoQ (Equipment & Technology Commercial) ══ --}}
+@if($canCreateProject)
+<dialog id="modal-boq" class="max-w-4xl w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Input BoQ</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="boq-project-name">&nbsp;</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+        <form id="form-boq" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-semibold text-slate-600">Komponen BoQ *</label>
+                    <button type="button" id="boq-add-row"
+                            class="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                        + Komponen
+                    </button>
+                </div>
+                <div id="boq-components" class="grid gap-2"></div>
+            </div>
+            <div class="mt-4">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Dokumen BoQ</label>
+                <input type="file" name="boq_file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Simpan BoQ
+                </button>
             </div>
         </form>
     </div>
@@ -276,34 +331,78 @@ $rp = function($n) {
 
 @push('scripts')
 <script>
-@if($isAdmin)
-const STORE_URL = '{{ route('monitoring.store', ['type'=>'projects']) }}';
+@if($canCreateProject)
+document.getElementById('modal-project-tc')?.addEventListener('close', function() {
+    this.querySelector('form').reset();
+});
 
-function openEdit(id, data) {
-    const form = document.getElementById('form-project');
-    document.getElementById('modal-title').textContent = 'Edit Project';
-    form.action = `/monitoring/projects/${id}`;
-    document.getElementById('form-method').innerHTML = '<input type="hidden" name="_method" value="PUT">';
+let boqRowIndex = 0;
+const BOQ_ROUTE_TEMPLATE = '{{ route('monitoring.boq.store', ['project' => '__ID__']) }}';
 
-    ['pjct_name','pjct_type','pjct_status','pjct_contract','pjct_div',
-     'pjct_client','pjct_area','pjct_value','pjct_totalperiod','pjct_misc'].forEach(f => {
-        const el = document.getElementById('f-' + f);
-        if (el) el.value = data[f] ?? '';
-    });
-    ['pjct_codate','pjct_costart','pjct_coend_m'].forEach(f => {
-        const el = document.getElementById('f-' + f);
-        if (el) el.value = data[f] ? data[f].substring(0, 10) : '';
-    });
-
-    document.getElementById('modal-project').showModal();
+function boqRowTemplate(i) {
+    return `<div class="flex flex-nowrap items-center gap-2" data-boq-row>
+        <input type="text" name="components[${i}][bdg_name]" placeholder="Komponen" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <select name="components[${i}][bdg_type]" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <option value="" disabled selected hidden>Jenis</option>
+            <option value="PENGADAAN">Pengadaan</option>
+            <option value="PEKERJAAN">Pekerjaan</option>
+            <option value="JASA">Jasa</option>
+        </select>
+        <input type="number" name="components[${i}][bdg_value]" placeholder="Jumlah" min="0" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <input type="text" name="components[${i}][bdg_type2]" placeholder="Unit" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <button type="button" class="shrink-0 h-9 w-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition" onclick="this.closest('[data-boq-row]').remove()">✕</button>
+    </div>`;
 }
 
-document.getElementById('modal-project')?.addEventListener('close', function() {
-    const form = document.getElementById('form-project');
-    form.reset();
-    form.action = STORE_URL;
-    document.getElementById('form-method').innerHTML = '';
-    document.getElementById('modal-title').textContent = 'New Project';
+function boqAddRow() {
+    document.getElementById('boq-components').insertAdjacentHTML('beforeend', boqRowTemplate(boqRowIndex));
+    boqRowIndex++;
+}
+
+document.getElementById('boq-add-row')?.addEventListener('click', boqAddRow);
+
+function openBoq(id, data) {
+    document.getElementById('boq-project-name').textContent = data.pjct_name + ' (' + id + ')';
+    document.getElementById('form-boq').action = BOQ_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('boq-components').innerHTML = '';
+    boqRowIndex = 0;
+    boqAddRow();
+    document.getElementById('modal-boq').showModal();
+}
+
+document.getElementById('modal-boq')?.addEventListener('close', function() {
+    document.getElementById('form-boq').reset();
+    document.getElementById('boq-components').innerHTML = '';
+    boqRowIndex = 0;
+});
+
+const KAK_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+
+function openKak(id, data) {
+    document.getElementById('kak-project-name').textContent = data.pjct_name + ' (' + id + ')';
+    document.getElementById('form-kak').action = KAK_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('modal-kak').showModal();
+}
+
+document.getElementById('modal-kak')?.addEventListener('close', function() {
+    document.getElementById('form-kak').reset();
+});
+
+// Row action dropdowns: only one open at a time, close when clicking outside
+document.querySelectorAll('details[data-row-menu]').forEach(function(menu) {
+    menu.addEventListener('toggle', function() {
+        if (menu.open) {
+            document.querySelectorAll('details[data-row-menu][open]').forEach(function(other) {
+                if (other !== menu) other.removeAttribute('open');
+            });
+        }
+    });
+});
+
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('details[data-row-menu][open]').forEach(function(menu) {
+        if (!menu.contains(e.target)) menu.removeAttribute('open');
+    });
 });
 @endif
 </script>

@@ -12,6 +12,7 @@ RUN npm ci
 COPY resources ./resources
 COPY vite.config.js ./
 COPY public ./public
+COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
 
 # ── Stage 3: runtime ──────────────────────────────────────────────────
