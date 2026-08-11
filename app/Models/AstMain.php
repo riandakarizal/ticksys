@@ -4,19 +4,24 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AstMain extends Model
 {
     use LogsSystemActivity;
 
-    protected $table      = 'ast_main';
-    public    $timestamps = false;
+    protected $table        = 'ast_main';
+    public    $timestamps   = false;
+    public    $incrementing = false;
+    protected $keyType      = 'string';
 
     protected $fillable = [
         'id', 'ast_type', 'ast_brand', 'ast_brandmodel', 'ast_prodyear',
         'ast_serial', 'ast_vendid', 'ast_username', 'ast_userreg',
         'ast_userloc', 'ast_userlocdet', 'ast_cond', 'ast_delvdate',
         'ast_purcdate', 'ast_stat', 'ast_pjctid', 'ast_docid', 'ast_misc',
+        'ast_last_ticket_id',
     ];
 
     protected $casts = [
@@ -24,9 +29,35 @@ class AstMain extends Model
         'ast_purcdate' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $model): void {
+            if (empty($model->id)) {
+                $max = static::max('id'); // e.g. 'AST03583'
+                $num = $max ? ((int) substr($max, 3)) + 1 : 1;
+                $model->id = 'AST' . str_pad((string) $num, 5, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     public function project()
     {
         return $this->belongsTo(PjctMain::class, 'ast_pjctid', 'id');
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'ast_id', 'id');
+    }
+
+    public function lastTicket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'ast_last_ticket_id');
+    }
+
+    public function hasOpenTicket(): bool
+    {
+        return $this->ast_last_ticket_id !== null;
     }
 
     public function condBadgeClass(): string

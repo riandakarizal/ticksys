@@ -38,6 +38,11 @@ return new class extends Migration
             $table->string('ast_id', 20)->nullable()->index();
             $table->string('asset_cond_before', 225)->nullable();
 
+            // Project PRISM tempat tiket ini dibuat — sumber kebenaran untuk "siapa clientnya"
+            // (pjct_main.pjct_client), menggantikan requester berupa akun user asli.
+            $table->string('pjct_id', 10)->nullable()->index();
+            $table->string('requester_name', 255)->nullable();
+
             $table->string('ticket_number')->unique();
             $table->string('subject');
             $table->longText('description');

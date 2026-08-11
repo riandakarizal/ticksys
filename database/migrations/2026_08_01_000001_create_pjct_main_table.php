@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // pjct_main sudah ada di database prism asli (dibuat manual, di luar
+        // migration history) — no-op di sana, tapi tetap dibuat fresh di CI/dev/test.
+        if (Schema::hasTable('pjct_main')) {
+            return;
+        }
+
         Schema::create('pjct_main', function (Blueprint $table) {
             $table->string('id', 10)->primary(); // e.g. PJ0001
             $table->string('pjct_contract', 255)->nullable();

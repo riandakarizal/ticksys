@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // PRISM single-tenant: berapa hari ticket resolved dibiarkan sebelum auto-close.
+    'auto_close_days' => (int) env('HELPDESK_AUTO_CLOSE_DAYS', 5),
+
     'mail' => [
         'audience' => env('HELPDESK_MAIL_AUDIENCE', 'client_only'),
         'delivery' => env('HELPDESK_MAIL_DELIVERY', 'sync'),

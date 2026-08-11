@@ -11,6 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // ast_main sudah ada di database prism asli — no-op di sana, tapi tetap
+        // dibuat fresh di CI/dev/test. Kolom baru (ast_last_ticket_id) untuk
+        // instance yang sudah punya ast_main ditambahkan di migration terpisah.
+        if (Schema::hasTable('ast_main')) {
+            return;
+        }
+
         Schema::create('ast_main', function (Blueprint $table) {
             $table->string('id', 20)->primary(); // e.g. AST-000001
             $table->string('ast_type', 225);
@@ -34,7 +41,8 @@ return new class extends Migration
             // Ticket ticketing yang sedang melaporkan kendala pada aset ini (lihat
             // TicketManager::syncLinkedAssetCondition) — dipakai untuk mengembalikan
             // ast_cond otomatis begitu tidak ada lagi tiket terbuka untuk aset ini.
-            $table->foreignId('ast_last_ticket_id')->nullable()->constrained('tickets')->nullOnDelete();
+            // Kolom biasa tanpa FK constraint, konsisten dengan ast_pjctid/ast_docid di atas.
+            $table->unsignedBigInteger('ast_last_ticket_id')->nullable()->index();
         });
     }
 

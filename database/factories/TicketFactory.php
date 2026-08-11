@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Category;
 use App\Models\Team;
-use App\Models\Company;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -19,7 +18,6 @@ class TicketFactory extends Factory
     public function definition(): array
     {
         return [
-            'company_id' => Company::factory(),
             'team_id' => Team::factory(),
             'requester_id' => User::factory()->client(),
             'created_by' => User::factory()->client(),
@@ -48,7 +46,7 @@ class TicketFactory extends Factory
 
     public function forTeam(Team $team): static
     {
-        return $this->state(['team_id' => $team->id, 'company_id' => $team->company_id]);
+        return $this->state(['team_id' => $team->id]);
     }
 
     public function forRequester(User $user): static
@@ -56,7 +54,6 @@ class TicketFactory extends Factory
         return $this->state([
             'requester_id' => $user->id,
             'created_by' => $user->id,
-            'company_id' => $user->company_id,
         ]);
     }
 }

@@ -14,6 +14,11 @@ return new class extends Migration
         // Belum ada model/controller yang memakai tabel ini — kosong di prism. Kemungkinan
         // cikal-bakal fitur "Report > Issues" (FE-04, docs/PRISM-SYSTEM-DOCUMENT.md) yang
         // masih stub. Dibuat di sini agar skema tetap reproducible dari migration.
+        // Sudah ada di database prism asli — no-op di sana.
+        if (Schema::hasTable('pjct_issue')) {
+            return;
+        }
+
         Schema::create('pjct_issue', function (Blueprint $table) {
             $table->string('id', 20)->primary();
             $table->string('iss_pjctid', 20)->index();

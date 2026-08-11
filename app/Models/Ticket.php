@@ -18,12 +18,14 @@ class Ticket extends Model
     public const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
     protected $fillable = [
-        'company_id',
         'requester_id',
         'created_by',
         'assigned_to',
         'team_id',
-        'device_id',
+        'ast_id',
+        'asset_cond_before',
+        'pjct_id',
+        'requester_name',
         'category_id',
         'subcategory_id',
         'sla_policy_id',
@@ -93,11 +95,6 @@ class Ticket extends Model
         });
     }
 
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
-    }
-
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
@@ -118,9 +115,21 @@ class Ticket extends Model
         return $this->belongsTo(Team::class);
     }
 
-    public function device(): BelongsTo
+    public function asset(): BelongsTo
     {
-        return $this->belongsTo(Device::class);
+        return $this->belongsTo(AstMain::class, 'ast_id', 'id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(PjctMain::class, 'pjct_id', 'id');
+    }
+
+    // Requester bisa berupa akun user asli (self-service) atau nama client PRISM
+    // yang diambil otomatis dari project (staff membuatkan tiket atas nama client).
+    public function requesterLabel(): string
+    {
+        return $this->requester?->user_name ?? $this->requester_name ?? '-';
     }
 
     public function category(): BelongsTo
@@ -268,5 +277,14 @@ class Ticket extends Model
         }
 
         return $this->resolution_due_at->diffForHumans(now(), CarbonInterface::DIFF_ABSOLUTE, false, 1);
+    }
+
+    // Tiket masih bisa berubah dari "on track" ke "breached" seiring waktu berjalan —
+    // dipakai UI untuk tahu badge mana yang perlu di-countdown live di browser.
+    public function isSlaCountdownLive(): bool
+    {
+        return $this->resolution_due_at instanceof Carbon
+            && ! in_array($this->status, ['resolved', 'closed'], true)
+            && ! $this->isResolutionBreached();
     }
 }

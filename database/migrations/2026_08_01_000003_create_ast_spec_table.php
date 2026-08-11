@@ -14,6 +14,11 @@ return new class extends Migration
         // Spesifikasi teknis per brand+model, digabung ke ast_main lewat join
         // (ast_main.ast_brand, ast_main.ast_brandmodel) — lihat FE-01 di
         // docs/PRISM-SYSTEM-DOCUMENT.md. Belum ada model/controller yang memakainya.
+        // Sudah ada di database prism asli — no-op di sana.
+        if (Schema::hasTable('ast_spec')) {
+            return;
+        }
+
         Schema::create('ast_spec', function (Blueprint $table) {
             $table->string('id', 20)->primary();
             $table->string('spc_brand', 225);

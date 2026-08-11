@@ -59,13 +59,14 @@ class TicketPolicy
 
     private function visible(User $user, Ticket $ticket): bool
     {
-        if ($user->isSuperAdmin() || $user->isVip()) {
+        // Tiket tidak lagi terikat ke Team (lihat TicketManager::createTicket) — jadi
+        // visibilitas staff tidak lagi disaring lewat keanggotaan team_user.
+        if ($user->isSuperAdmin() || $user->isVip() || $user->isAdmin()) {
             return true;
         }
 
-        if ($user->isAdmin() || $user->isSiteAdmin()) {
-            return $ticket->team_id !== null
-                && $user->teams()->where('teams.id', $ticket->team_id)->exists();
+        if ($user->isSiteAdmin()) {
+            return $ticket->assigned_to === $user->id;
         }
 
         return $ticket->requester_id === $user->id && $user->isUser();

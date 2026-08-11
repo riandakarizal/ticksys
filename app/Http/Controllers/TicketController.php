@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Ticket\TicketStoreRequest;
 use App\Http\Requests\Ticket\TicketUpdateRequest;
 use App\Models\AppNotification;
+use App\Models\AstMain;
 use App\Models\Category;
+use App\Models\PjctMain;
 use App\Models\SlaPolicy;
-use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\User;
@@ -18,7 +19,6 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -29,11 +29,9 @@ class TicketController extends Controller
     public function index(Request $request, Helpdesk $helpdesk): View
     {
         $user = Auth::user();
-        $projects = $helpdesk->visibleProjects($user)->orderBy('name')->get();
-        $projectIds = $projects->pluck('id');
 
         $query = $helpdesk->visibleTickets($user)
-            ->with(['requester', 'assignee', 'team', 'device', 'category', 'subcategory']);
+            ->with(['requester', 'assignee', 'team', 'asset', 'project', 'category', 'subcategory']);
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($builder) use ($search): void {
@@ -50,16 +48,18 @@ class TicketController extends Controller
             }
         }
 
-        if ($projectId = $request->integer('project_id')) {
-            $query->where('team_id', $projectId);
+        if ($pjctId = $request->string('pjct_id')->toString()) {
+            $query->where('pjct_id', $pjctId);
         }
 
         if ($categoryId = $request->integer('category_id')) {
             $query->where('category_id', $categoryId);
         }
 
-        if ($clientId = $request->integer('requester_id')) {
-            $query->where('requester_id', $clientId);
+        // Client di sini adalah nama klien project PRISM (pjct_main.pjct_client,
+        // sama seperti kolom "Client" di Project → Main).
+        if ($client = $request->string('client')->toString()) {
+            $query->whereHas('project', fn (Builder $q) => $q->where('pjct_client', $client));
         }
 
         if ($from = $request->input('date_from')) {
@@ -70,41 +70,34 @@ class TicketController extends Controller
             $query->whereDate('created_at', '<=', $to);
         }
 
-        $members = $this->projectMembers($projects);
+        $pjctProjects = $this->pjctProjectOptions($user);
 
         return view('tickets.index', [
-            'tickets'    => $query->latest()->paginate(25)->withQueryString(),
-            'categories' => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->orderBy('name')->get(),
-            'clients'    => $members->where('user_role', 'user')->sortBy('user_name')->values(),
-            'projects'   => $projects,
-            'statuses'   => Ticket::STATUSES,
-            'priorities' => Ticket::PRIORITIES,
+            'tickets'       => $query->latest()->paginate(25)->withQueryString(),
+            'categories'    => $this->categoryQuery()->whereNull('parent_id')->orderBy('name')->get(),
+            // Nama klien dari Project → Main (pjct_main.pjct_client), bukan user aplikasi.
+            'clients'       => $pjctProjects->pluck('pjct_client')->filter()->unique()->sort()->values(),
+            'pjctProjects'  => $pjctProjects,
+            'statuses'      => Ticket::STATUSES,
+            'priorities'    => Ticket::PRIORITIES,
         ]);
     }
 
     public function create(Helpdesk $helpdesk): View
     {
         $user = Auth::user();
-        $projects = $helpdesk->visibleProjects($user)
-            ->with([
-                'members' => fn ($query) => $query->orderBy('user_name'),
-                'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
-            ])
-            ->orderBy('name')
-            ->get();
-
-        $projectIds = $projects->pluck('id');
-        $members = $this->projectMembers($projects);
-        $customFields = $helpdesk->defaultCustomFields($user)
-            ->reject(fn ($field) => in_array($field->key, ['affected_device', 'business_impact'], true))
-            ->values();
+        $customFields = $helpdesk->defaultCustomFields($user);
 
         return view('tickets.create', [
-            'categories'  => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            'projects'    => $projects,
-            'devices'     => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
-            'agents'      => $members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->sortBy('user_name')->values(),
-            'clients'     => $members->where('user_role', 'user')->sortBy('user_name')->values(),
+            'categories'  => $this->categoryQuery()->whereNull('parent_id')->with('children')->orderBy('name')->get(),
+            // Project PRISM — memilihnya menentukan client (pjct_client) secara otomatis.
+            'pjctProjects' => $this->pjctProjectOptions($user),
+            // Aset PRISM (ast_main) yang bisa dikaitkan ke tiket, lintas project —
+            // ponytail: select penuh, ganti ke endpoint pencarian async kalau ast_main tumbuh besar.
+            'assets'      => $this->assetOptions(),
+            // Semua user dengan role staff — bukan cuma yang kebetulan terdaftar sebagai
+            // member Team, karena keanggotaan Team tidak dipakai secara nyata.
+            'agents'      => User::query()->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->orderBy('user_name')->get(),
             'customFields' => $customFields,
             'priorities'  => Ticket::PRIORITIES,
             'slaPolicies' => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
@@ -114,11 +107,7 @@ class TicketController extends Controller
     public function store(TicketStoreRequest $request, Helpdesk $helpdesk, TicketManager $ticketManager): RedirectResponse|JsonResponse
     {
         $ticket = $ticketManager->createTicket(auth()->user(), $request, $helpdesk);
-        $project = $helpdesk->visibleProjects(auth()->user())
-            ->with(['members:id,user_name,user_email,user_role'])
-            ->find($ticket->team_id);
-
-        $supervisors = $project?->members->whereIn('user_role', ['admin', 'superadmin']) ?? collect();
+        $supervisors = User::query()->whereIn('user_role', ['admin', 'superadmin'])->get();
 
         $helpdesk->notifyUsers(
             $helpdesk->participants($ticket)->merge($supervisors),
@@ -162,22 +151,13 @@ class TicketController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        $projects = $helpdesk->visibleProjects($user)
-            ->with([
-                'members' => fn ($query) => $query->orderBy('user_name'),
-                'devices' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
-            ])
-            ->orderBy('name')
-            ->get();
-        $projectIds = $projects->pluck('id');
-        $members = $this->projectMembers($projects);
-
         $ticket->load([
             'requester',
             'creator',
             'assignee',
             'team',
-            'device',
+            'asset',
+            'project',
             'category',
             'subcategory',
             'slaPolicy',
@@ -190,11 +170,10 @@ class TicketController extends Controller
 
         return view('tickets.show', [
             'ticket'       => $ticket,
-            'agents'       => $members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->sortBy('user_name')->values(),
-            'projects'     => $projects,
-            'devices'      => $projects->flatMap(fn (Team $project) => $project->devices)->unique('id')->values(),
-            'categories'   => $this->categoryQuery($user, $projectIds)->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            'clients'      => $members->where('user_role', 'user')->sortBy('user_name')->values(),
+            'agents'       => User::query()->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->orderBy('user_name')->get(),
+            'pjctProjects' => $this->pjctProjectOptions($user),
+            'assets'       => $this->assetOptions(),
+            'categories'   => $this->categoryQuery()->whereNull('parent_id')->with('children')->orderBy('name')->get(),
             'statuses'     => Ticket::STATUSES,
             'priorities'   => Ticket::PRIORITIES,
             'mergeTargets' => $helpdesk->visibleTickets($user)
@@ -251,22 +230,29 @@ class TicketController extends Controller
         return redirect()->route('tickets.show', $newTicket)->with('success', 'New ticket created from split successfully.');
     }
 
-    private function categoryQuery(User $user, Collection $projectIds): Builder
+    private function categoryQuery(): Builder
     {
-        $query = Category::query();
-
-        if ($projectIds->isNotEmpty()) {
-            $query->whereHas('projects', fn (Builder $q) => $q->whereIn('teams.id', $projectIds));
-        }
-
-        return $query;
+        // Kategori tiket bersifat global — pemetaan category_team tidak pernah dipakai
+        // secara nyata (0 baris di database), jadi tidak ada gunanya membatasi per-project.
+        return Category::query();
     }
 
-    private function projectMembers(EloquentCollection $projects): Collection
+    private function pjctProjectOptions(User $user): EloquentCollection
     {
-        return $projects
-            ->flatMap(fn (Team $project) => $project->members)
-            ->unique('id')
-            ->values();
+        $allowedDivs = $user->allowedDivCodes();
+
+        return PjctMain::query()
+            ->when($allowedDivs !== null, fn (Builder $q) => $q->whereIn('pjct_div', $allowedDivs))
+            ->orderBy('pjct_name')
+            ->get(['id', 'pjct_name', 'pjct_client']);
+    }
+
+    private function assetOptions(): EloquentCollection
+    {
+        return AstMain::query()
+            ->with('project:id,pjct_name')
+            ->orderBy('ast_pjctid')
+            ->orderBy('id')
+            ->get(['id', 'ast_type', 'ast_brand', 'ast_brandmodel', 'ast_userloc', 'ast_pjctid']);
     }
 }

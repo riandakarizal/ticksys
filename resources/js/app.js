@@ -114,63 +114,21 @@ const initAjaxForms = () => {
     });
 };
 
-const filterSelectOptions = (select, allowedIds) => {
-    if (!select) {
-        return;
-    }
-
-    const currentValue = select.value;
-
-    Array.from(select.options).forEach((option) => {
-        if (!option.value) {
-            option.hidden = false;
-            return;
-        }
-
-        option.hidden = !allowedIds.includes(option.value);
-    });
-
-    const selected = Array.from(select.options).some((option) => option.value === currentValue && !option.hidden);
-    if (!selected) {
-        select.value = '';
-    }
-};
-
 const initTicketForm = () => {
     const projectSelect = document.querySelector('[data-ticket-project]');
+    const clientLabel = document.querySelector('[data-ticket-client-label]');
     const categorySelect = document.querySelector('[data-ticket-category]');
     const subcategorySelect = document.querySelector('[data-ticket-subcategory]');
-    const requesterSelect = document.querySelector('[data-ticket-requester]');
-    const assigneeSelect = document.querySelector('[data-ticket-assignee]');
-    const deviceSelect = document.querySelector('[data-ticket-device]');
-    const projectHint = document.querySelector('[data-project-hint]');
     const teamHint = document.querySelector('[data-team-hint]');
     const assigneeHint = document.querySelector('[data-assignee-hint]');
 
-    const syncProjectMembers = () => {
-        if (!projectSelect) {
+    const syncClientLabel = () => {
+        if (!projectSelect || !clientLabel) {
             return;
         }
 
         const selectedOption = projectSelect.selectedOptions[0];
-        const clientIds = (selectedOption?.dataset.clients || '').split(',').filter(Boolean);
-        const agentIds = (selectedOption?.dataset.agents || '').split(',').filter(Boolean);
-        const deviceIds = (selectedOption?.dataset.devices || '').split(',').filter(Boolean);
-
-        filterSelectOptions(requesterSelect, clientIds);
-        filterSelectOptions(assigneeSelect, agentIds);
-        filterSelectOptions(deviceSelect, deviceIds);
-
-        // P7: enable/disable device select based on whether a project is selected
-        if (deviceSelect) {
-            deviceSelect.disabled = !selectedOption?.value;
-        }
-
-        if (projectHint) {
-            projectHint.textContent = selectedOption?.value
-                ? `Project active: ${selectedOption.textContent.trim()}`
-                : 'Pilih project untuk melihat requester dan assignee yang valid.';
-        }
+        clientLabel.textContent = selectedOption?.dataset.client || '-';
     };
 
     const syncSubcategories = () => {
@@ -195,18 +153,16 @@ const initTicketForm = () => {
             subcategorySelect.value = '';
         }
 
-        const selectedOption = categorySelect.selectedOptions[0];
         if (teamHint) {
             teamHint.textContent = 'Category berlaku untuk semua project.';
         }
         if (assigneeHint) {
-            assigneeHint.textContent = 'Assignment mengikuti member project yang dipilih.';
+            assigneeHint.textContent = 'Assignment tidak dibatasi project — pilih siapa saja yang relevan.';
         }
     };
 
-    projectSelect?.addEventListener('change', syncProjectMembers);
+    projectSelect?.addEventListener('change', syncClientLabel);
     categorySelect?.addEventListener('change', syncSubcategories);
-    syncProjectMembers();
     syncSubcategories();
 };
 
@@ -426,6 +382,45 @@ const initDataTables = () => {
     });
 };
 
+const formatSlaRemaining = (ms) => {
+    const totalMinutes = Math.floor(Math.abs(ms) / 60000);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const days = Math.floor(totalHours / 24);
+
+    if (days > 0) return `${days} day${days === 1 ? '' : 's'}`;
+    if (totalHours > 0) return `${totalHours} hour${totalHours === 1 ? '' : 's'}`;
+    if (totalMinutes > 0) return `${totalMinutes} minute${totalMinutes === 1 ? '' : 's'}`;
+    return 'less than a minute';
+};
+
+const initSlaCountdowns = () => {
+    const badges = document.querySelectorAll('[data-sla-due]');
+    if (!badges.length) {
+        return;
+    }
+
+    const tick = () => {
+        const now = Date.now();
+
+        badges.forEach((badge) => {
+            const due = new Date(badge.dataset.slaDue).getTime();
+
+            if (due <= now) {
+                badge.textContent = 'Breached';
+                badge.classList.remove('bg-emerald-100', 'text-emerald-700');
+                badge.classList.add('bg-rose-100', 'text-rose-700');
+                delete badge.dataset.slaDue;
+                return;
+            }
+
+            badge.textContent = formatSlaRemaining(due - now);
+        });
+    };
+
+    tick();
+    setInterval(tick, 30000);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initPageToasts();
     initAjaxForms();
@@ -435,5 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initDataTables();
     initMobileMenu();
     initUserDropdown();
+    initSlaCountdowns();
 });
 

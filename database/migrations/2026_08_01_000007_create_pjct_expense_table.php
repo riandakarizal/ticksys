@@ -14,6 +14,11 @@ return new class extends Migration
         // Belum ada model/controller yang memakai tabel ini — masih kosong di prism
         // ("Pengeluaran project (belum diisi)", lihat docs/PRISM-DATABASE.md). Dibuat
         // di sini agar skema tetap reproducible dari migration.
+        // Sudah ada di database prism asli — no-op di sana.
+        if (Schema::hasTable('pjct_expense')) {
+            return;
+        }
+
         Schema::create('pjct_expense', function (Blueprint $table) {
             $table->string('id', 20)->primary();
             $table->string('exp_bdgid', 225)->index();

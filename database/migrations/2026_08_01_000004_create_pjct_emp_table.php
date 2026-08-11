@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Sudah ada di database prism asli — no-op di sana.
+        if (Schema::hasTable('pjct_emp')) {
+            return;
+        }
+
         Schema::create('pjct_emp', function (Blueprint $table) {
             $table->string('id', 20)->primary();
             $table->string('emp_id', 20)->nullable();
