@@ -3,13 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CustomField extends Model
 {
     protected $fillable = [
-        'company_id',
         'name',
         'key',
         'type',
@@ -25,11 +23,6 @@ class CustomField extends Model
             'is_required' => 'boolean',
             'is_active' => 'boolean',
         ];
-    }
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
     }
 
     public function values(): HasMany

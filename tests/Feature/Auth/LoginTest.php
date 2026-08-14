@@ -23,7 +23,7 @@ test('login berhasil dengan kredensial yang benar', function () {
     $user = User::factory()->create(['password' => bcrypt('secret123')]);
 
     $this->post('/login', [
-        'email' => $user->email,
+        'email' => $user->user_email,
         'password' => 'secret123',
     ])->assertRedirect('/dashboard');
 
@@ -34,7 +34,7 @@ test('login gagal dengan password salah', function () {
     $user = User::factory()->create(['password' => bcrypt('correct')]);
 
     $this->post('/login', [
-        'email' => $user->email,
+        'email' => $user->user_email,
         'password' => 'wrong',
     ])->assertSessionHasErrors('email');
 
@@ -55,13 +55,13 @@ test('login throttle setelah 5 percobaan gagal', function () {
 
     foreach (range(1, 5) as $_) {
         $this->post('/login', [
-            'email' => $user->email,
+            'email' => $user->user_email,
             'password' => 'wrong',
         ]);
     }
 
     $this->post('/login', [
-        'email' => $user->email,
+        'email' => $user->user_email,
         'password' => 'wrong',
     ])->assertStatus(429);
 });

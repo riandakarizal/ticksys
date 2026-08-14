@@ -13,14 +13,12 @@ return new class extends Migration
     {
         Schema::create('teams', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('lead_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('lead_user_id', 20)->nullable();
+            $table->foreign('lead_user_id')->references('id')->on('users')->nullOnDelete();
             $table->string('name');
-            $table->string('code');
+            $table->string('code')->unique();
             $table->text('description')->nullable();
             $table->timestamps();
-
-            $table->unique(['tenant_id', 'code']);
         });
     }
 

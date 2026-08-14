@@ -13,17 +13,15 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->foreignId('team_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('auto_assign_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('auto_assign_user_id', 20)->nullable();
+            $table->foreign('auto_assign_user_id')->references('id')->on('users')->nullOnDelete();
             $table->string('name');
-            $table->string('slug');
+            $table->string('slug')->unique();
             $table->string('color')->default('#0f766e');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-
-            $table->unique(['tenant_id', 'slug']);
         });
     }
 

@@ -49,7 +49,7 @@
             </div>
 
             <div class="flex h-full flex-col gap-6 xl:border-l xl:border-slate-200 xl:pl-6">
-                @if($customFields->count() || $devices->count())
+                @if($customFields->count())
                     <div>
                         <h3 class="text-lg font-black text-slate-900">Additional Details</h3>
                         <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
@@ -75,27 +75,31 @@
                 @endif
 
                 @php
-                    $hasAdvancedValues = filled(old('sla_policy_id')) || filled(old('category_id')) || filled(old('subcategory_id')) || filled(old('assigned_to')) || filled(old('requester_id')) || filled(old('tags'));
+                    $hasAdvancedValues = filled(old('sla_policy_id')) || filled(old('category_id')) || filled(old('subcategory_id')) || filled(old('assigned_to')) || filled(old('tags'));
+                    $selectedPjct = $pjctProjects->firstWhere('id', old('pjct_id'));
                 @endphp
                 <div class="grid gap-4">
                     <div>
                         <label class="label">Project <span class="text-rose-500">*</span></label>
-                        <select class="field" name="team_id" data-ticket-project required>
-                            <option value="" disabled hidden @selected(blank(old('team_id')))>Select project</option>
-                            @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'user')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected((string) old('team_id') === (string) $project->id)>{{ $project->name }}</option>
+                        <select class="field" name="pjct_id" data-ticket-project required>
+                            <option value="" disabled hidden @selected(blank(old('pjct_id')))>Select project</option>
+                            @foreach($pjctProjects as $project)
+                                <option value="{{ $project->id }}" data-client="{{ $project->pjct_client }}" @selected((string) old('pjct_id') === (string) $project->id)>{{ $project->pjct_name }}</option>
                             @endforeach
                         </select>
+                        @if(!auth()->user()->isUser())
+                            <p class="mt-2 text-xs text-slate-500">Client: <span class="font-semibold text-slate-700" data-ticket-client-label>{{ $selectedPjct->pjct_client ?? '-' }}</span></p>
+                        @endif
                     </div>
                     <div>
-                        <label class="label">Affected Device <span class="text-rose-500">*</span></label>
-                        <select class="field" name="device_id" data-ticket-device {{ blank(old('team_id')) ? 'disabled' : '' }} required>
-                            <option value="" disabled hidden @selected(blank(old('device_id')))>Select a project first to see available devices</option>
-                            @foreach($devices as $device)
-                                <option value="{{ $device->id }}" data-project="{{ $device->team_id }}" @selected((string) old('device_id') === (string) $device->id)>{{ $device->name }}{{ $device->serial_number ? ' | '.$device->serial_number : '' }}</option>
+                        <label class="label">Aset Terkait (opsional)</label>
+                        <select class="field" name="ast_id">
+                            <option value="" @selected(blank(old('ast_id')))>Tidak terkait aset tertentu</option>
+                            @foreach($assets as $asset)
+                                <option value="{{ $asset->id }}" @selected((string) old('ast_id') === (string) $asset->id)>{{ $asset->id }} — {{ $asset->ast_brand }} {{ $asset->ast_brandmodel }} ({{ $asset->project?->pjct_name ?? $asset->ast_userloc }})</option>
                             @endforeach
                         </select>
-                        <p class="mt-2 text-xs text-slate-500">Device list updates automatically based on the selected project.</p>
+                        <p class="mt-2 text-xs text-slate-500">Isi jika tiket ini melaporkan kendala pada aset PRISM tertentu. Kondisi aset akan otomatis diperbarui saat tiket dibuka/ditutup.</p>
                     </div>
                     <div>
                         <label class="label">Priority <span class="text-rose-500">*</span></label>
@@ -153,20 +157,6 @@
                                     @endforeach
                                 </select>
                             </div>
-                            @if(!auth()->user()->isUser())
-                                <div>
-                                    <label class="label">Requester <span class="text-rose-500">*</span></label>
-                                    <select class="field" name="requester_id" data-ticket-requester required>
-                                        <option value="" disabled hidden @selected(blank(old('requester_id')))>Select client</option>
-                                        @foreach($clients as $client)
-                                            <option value="{{ $client->id }}" @selected((string) old('requester_id') === (string) $client->id)>{{ $client->user_name }} - {{ $client->user_email }}</option>
-                                        @endforeach
-                                    </select>
-                                    @if($clients->isEmpty())
-                                        <p class="mt-2 text-xs text-rose-500">No clients are assigned to your project yet.</p>
-                                    @endif
-                                </div>
-                            @endif
                             <div>
                                 <label class="label">Tags</label>
                                 <input class="field" name="tags" value="{{ old('tags') }}" placeholder="e.g. network, urgent, payroll">
