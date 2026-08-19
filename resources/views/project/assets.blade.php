@@ -37,6 +37,27 @@
 </div>
 
 
+{{-- ── Bulk Import (superadmin only) ───────────────────────────────── --}}
+@if(auth()->user()->isSuperAdmin())
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div>
+        <p class="text-sm font-bold text-slate-800">Input Data Asset</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Upload Excel untuk menambah aset secara massal. Serial yang sudah terdaftar di project yang sama akan dilewati.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="{{ route('project.assets.import.template') }}"
+           class="btn-soft rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬇</span> Download Template
+        </a>
+        <button type="button"
+                onclick="document.getElementById('modal-asset-import').showModal()"
+                class="btn-primary rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬆</span> Import Excel
+        </button>
+    </div>
+</div>
+@endif
+
 {{-- ── Filter & Table ──────────────────────────────────────────────── --}}
 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
 
@@ -161,5 +182,84 @@
     @endif
 
 </div>
+
+{{-- ══ Modal: Import Asset dari Excel ══ --}}
+@if(auth()->user()->isSuperAdmin())
+<dialog id="modal-asset-import" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Import Asset</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Format .xlsx / .xls &middot; maksimal 10 MB</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+
+        <form method="POST" action="{{ route('project.assets.import.preview') }}" enctype="multipart/form-data" id="asset-import-form">
+            @csrf
+
+            <div id="asset-drop-area"
+                 class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center transition cursor-pointer hover:border-teal-400 hover:bg-teal-50/30"
+                 onclick="document.getElementById('asset-file-input').click()">
+                <input type="file" name="file" id="asset-file-input" accept=".xlsx,.xls" required class="hidden">
+                <p class="text-3xl mb-2">📄</p>
+                <p class="text-sm font-semibold text-slate-700" id="asset-file-name">Klik atau drag file ke sini</p>
+                <p class="text-[11px] text-slate-400 mt-1">Isi data mulai baris ke-2 pada sheet <span class="font-mono">Assets</span></p>
+            </div>
+
+            <p class="text-[11px] text-slate-400 mt-3">
+                Belum punya template?
+                <a href="{{ route('project.assets.import.template') }}" class="text-teal-600 font-semibold hover:underline">Download di sini</a>
+                — sheet <span class="font-mono">Referensi</span> berisi daftar Project ID yang valid.
+            </p>
+
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Batal</button>
+                <button type="submit" class="btn-primary" id="asset-import-submit">Lanjut ke Preview</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    const input = document.getElementById('asset-file-input');
+    const drop  = document.getElementById('asset-drop-area');
+    const label = document.getElementById('asset-file-name');
+    if (!input || !drop) return;
+
+    input.addEventListener('change', function () {
+        label.textContent = this.files[0] ? this.files[0].name : 'Klik atau drag file ke sini';
+    });
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.add('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.remove('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    document.getElementById('asset-import-form').addEventListener('submit', function () {
+        const btn = document.getElementById('asset-import-submit');
+        btn.disabled = true;
+        btn.textContent = 'Memproses…';
+    });
+})();
+</script>
+@endif
 
 @endsection

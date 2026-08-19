@@ -111,7 +111,7 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | varchar(20) PK | Format: `AST-XXXXX` |
+| `id` | varchar(20) PK | Baru: `AST` + YY + MM + urut 4 digit per bulan (`AST26080001`). Baris legacy masih `AST00001` |
 | `ast_type` | varchar(225) | Jenis aset (Laptop, GPS Tracker, dll) |
 | `ast_brand` | varchar(225) | Merk |
 | `ast_brandmodel` | varchar(225) | Model/seri produk |
@@ -119,9 +119,9 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 | `ast_serial` | varchar(225) | Serial number |
 | `ast_vendid` | varchar(20) | ID vendor |
 | `ast_username` | varchar(225) | Nama pengguna aset |
-| `ast_userreg` | varchar(225) | Registrasi pengguna |
-| `ast_userloc` | varchar(225) | Lokasi pengguna |
-| `ast_userlocdet` | varchar(225) | Detail lokasi |
+| `ast_userreg` | varchar(225) | Region / wilayah (contoh: `JAKARTA`, `BANDUNG`, `CGK`) |
+| `ast_userloc` | varchar(225) | Lokasi spesifik dalam region (contoh: `BDO Airport`, `Gedung Sarinah`) |
+| `ast_userlocdet` | varchar(225) | Detail lokasi (contoh: `Lt. 10`, `HO`) |
 | `ast_cond` | varchar(225) | `Excellence` / `Good` / `Fair` / `Bad` |
 | `ast_delvdate` | date | Tanggal pengiriman |
 | `ast_purcdate` | date | Tanggal pembelian |

@@ -2,10 +2,11 @@
 
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
-use App\Http\Controllers\ManpowerController;
+use App\Http\Controllers\AssetImportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
+use App\Http\Controllers\ManpowerController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
@@ -37,6 +38,14 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     // Project sub-pages: open to every role (M-03 Asset, M-04 Manpower — all ✓)
     Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
     Route::get('/project/manpower', [ManpowerController::class, 'index'])->name('project.manpower');
+
+    // Bulk insert aset dari Excel — superadmin only
+    Route::middleware('role:superadmin')->prefix('/project/assets/import')->name('project.assets.import.')->group(function (): void {
+        Route::get('/template', [AssetImportController::class, 'downloadTemplate'])->name('template');
+        Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
+        Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');
+        Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
+    });
 
     // Report Issues (M-07 — all ✓)
     Route::get('/report/issues', fn () => view('report.issues'))->name('report.issues');
@@ -74,7 +83,7 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
             Route::get('/import/template', [EqtImportController::class, 'downloadTemplate'])->name('import.template');
             Route::get('/import/template/{type}', [EqtImportController::class, 'downloadTemplateByType'])
                 ->name('import.template.type')
-                ->whereIn('type', ['project_eq','project_tech','handover','vehicle','maintenance']);
+                ->whereIn('type', ['project_eq', 'project_tech', 'handover', 'vehicle', 'maintenance']);
             Route::get('/export', [EqtImportController::class, 'export'])->name('export');
 
             Route::post('/projects/{project}/boq', [PjctBudgetController::class, 'store'])->name('boq.store');
@@ -97,4 +106,3 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         });
     });
 });
-
