@@ -82,6 +82,35 @@ $rp = function($n) {
     <div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-sm text-green-700">{{ session('success') }}</div>
 @endif
 
+@if($errors->any())
+    <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
+        @foreach($errors->all() as $error)
+            <p>{{ $error }}</p>
+        @endforeach
+    </div>
+@endif
+
+{{-- ── Bulk Import Project (superadmin only) ─────────────────── --}}
+@if(auth()->user()->isSuperAdmin())
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div>
+        <p class="text-sm font-bold text-slate-800">Input Data Project</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Upload Excel untuk menambah project secara massal. Nomor kontrak yang sudah terdaftar akan dilewati.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="{{ route('monitoring.projects.import.template') }}"
+           class="btn-soft rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬇</span> Download Template
+        </a>
+        <button type="button"
+                onclick="document.getElementById('modal-project-import').showModal()"
+                class="btn-primary rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬆</span> Import Excel
+        </button>
+    </div>
+</div>
+@endif
+
 {{-- ── Projects Table ────────────────────────────────────────── --}}
 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
@@ -199,6 +228,85 @@ $rp = function($n) {
 <div class="sticky bottom-0 z-20 bg-white px-4 py-3 border border-t-0 border-slate-200 rounded-b-xl shadow-[0_-2px_6px_-2px_rgba(0,0,0,0.06)]">
     {{ $projects->links() }}
 </div>
+@endif
+
+{{-- ══ Modal: Import Project dari Excel ══ --}}
+@if(auth()->user()->isSuperAdmin())
+<dialog id="modal-project-import" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Import Project</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Format .xlsx / .xls &middot; maksimal 10 MB</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+
+        <form method="POST" action="{{ route('monitoring.projects.import.preview') }}" enctype="multipart/form-data" id="project-import-form">
+            @csrf
+
+            <div id="project-drop-area"
+                 class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center transition cursor-pointer hover:border-teal-400 hover:bg-teal-50/30"
+                 onclick="document.getElementById('project-file-input').click()">
+                <input type="file" name="file" id="project-file-input" accept=".xlsx,.xls" required class="hidden">
+                <p class="text-3xl mb-2">📄</p>
+                <p class="text-sm font-semibold text-slate-700" id="project-file-name">Klik atau drag file ke sini</p>
+                <p class="text-[11px] text-slate-400 mt-1">Isi data mulai baris ke-2 pada sheet <span class="font-mono">Projects</span></p>
+            </div>
+
+            <p class="text-[11px] text-slate-400 mt-3">
+                Belum punya template?
+                <a href="{{ route('monitoring.projects.import.template') }}" class="text-teal-600 font-semibold hover:underline">Download di sini</a>
+                — sheet <span class="font-mono">Referensi</span> berisi kode divisi, tipe, status, dan daftar project yang sudah ada.
+            </p>
+
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Batal</button>
+                <button type="submit" class="btn-primary" id="project-import-submit">Lanjut ke Preview</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    const input = document.getElementById('project-file-input');
+    const drop  = document.getElementById('project-drop-area');
+    const label = document.getElementById('project-file-name');
+    if (!input || !drop) return;
+
+    input.addEventListener('change', function () {
+        label.textContent = this.files[0] ? this.files[0].name : 'Klik atau drag file ke sini';
+    });
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.add('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.remove('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    document.getElementById('project-import-form').addEventListener('submit', function () {
+        const btn = document.getElementById('project-import-submit');
+        btn.disabled = true;
+        btn.textContent = 'Memproses…';
+    });
+})();
+</script>
 @endif
 
 {{-- ══ Modal: Project Baru — Equipment & Technology Commercial (quick create, status fixed) ══ --}}

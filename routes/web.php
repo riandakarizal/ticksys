@@ -11,6 +11,7 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
+use App\Http\Controllers\ProjectImportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -66,6 +67,16 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     });
 
     Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
+        // Bulk insert project dari Excel — superadmin only.
+        // Harus terdaftar sebelum `/{type}/{id}` di bawah, yang kalau tidak akan menelan
+        // `/monitoring/projects/import/...` sebagai {type}/{id}.
+        Route::middleware('role:superadmin')->prefix('/projects/import')->name('projects.import.')->group(function (): void {
+            Route::get('/template', [ProjectImportController::class, 'downloadTemplate'])->name('template');
+            Route::post('/preview', [ProjectImportController::class, 'preview'])->name('preview');
+            Route::post('/confirm', [ProjectImportController::class, 'confirm'])->name('confirm');
+            Route::post('/cancel', [ProjectImportController::class, 'cancel'])->name('cancel');
+        });
+
         // T-17 Edit proyek: Site Admin can also edit
         Route::middleware('role:superadmin,admin,siteadmin')->group(function (): void {
             Route::put('/{type}/{id}', [MonitoringController::class, 'update'])->name('update');
