@@ -45,10 +45,16 @@ after significant schema/data changes, and it does **not** include `docfile/` (s
 There is no roles/permissions package. `users.user_role` is a plain string column checked two ways:
 - Route-level: `EnsureRole` middleware (`app/Http/Middleware/EnsureRole.php`), applied as
   `->middleware('role:superadmin,admin,siteadmin,vip')` — comma-separated role list per route group in
-  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip` (see
+  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin` (see
   `App\Models\User::isSuperAdmin()` etc.). Note `docs/PRISM-DATABASE.md` and
   `docs/PRISM-REDESIGN.md` still reference an older role set (`supervisor`/`agent`/`client`) — trust the
   code (`User` model, `EnsureRole` usages) over those docs.
+  `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
+  dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
+  user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
+  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Menambah role baru bertipe sempit
+  berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
+  menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
   array of `pjct_div` codes the user may see, built from `UNIT_DIV_MAP` (their unit → div codes) plus
   `subordinateDivCodes()` (self-referential `users.user_parid` hierarchy — a parent sees everything their

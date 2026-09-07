@@ -98,15 +98,19 @@
                     </svg>
                 </button>
                 <div data-nav-sub class="{{ $projectActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
+                    @unless(auth()->user()->isFin())
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
+                    @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>
+                    @unless(auth()->user()->isFin())
                     <a href="{{ route('project.manpower') }}" class="nav-subitem {{ request()->routeIs('project.manpower') ? 'active' : '' }}">Manpower</a>
+                    @endunless
                 </div>
             </div>
 
             {{-- VENDOR group (excludes User tier) --}}
             @php $vendorActive = request()->routeIs('vendor.*'); @endphp
-            @if(!auth()->user()->isUser())
+            @if(!auth()->user()->isUser() && !auth()->user()->isFin())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $vendorActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -137,21 +141,27 @@
                     </svg>
                 </button>
                 <div data-nav-sub class="{{ $reportActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
+                    @unless(auth()->user()->isFin())
                     <a href="{{ route('report.issues') }}" class="nav-subitem {{ request()->routeIs('report.issues') ? 'active' : '' }}">Issues</a>
+                    @endunless
                     @if(!auth()->user()->isUser())
+                    @unless(auth()->user()->isFin())
                     <a href="{{ route('report.expenses') }}" class="nav-subitem {{ request()->routeIs('report.expenses') ? 'active' : '' }}">Expenses</a>
+                    @endunless
                     <a href="{{ route('report.data') }}" class="nav-subitem {{ request()->routeIs('report.data') ? 'active' : '' }}">Data</a>
                     @endif
                 </div>
             </div>
 
-            {{-- TICKETS --}}
+            {{-- TICKETS (Finance tidak menyentuh helpdesk) --}}
+            @unless(auth()->user()->isFin())
             <a href="{{ route('tickets.index') }}" class="nav-item {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
                 </svg>
                 <span class="sidebar-label">Tickets</span>
             </a>
+            @endunless
 
             {{-- ADMIN (Super Admin, VIP only — plain Admin has no accessible admin page) --}}
             @if(auth()->user()->isSuperAdmin() || auth()->user()->isVip())

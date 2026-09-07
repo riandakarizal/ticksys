@@ -27,19 +27,26 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
-    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
-    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-    Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
-    Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
-    Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
-    Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
-    Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
+    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali)
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+        Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+        Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+        Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
+        Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
+        Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
+        Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
+    });
 
-    // Project sub-pages: open to every role (M-03 Asset, M-04 Manpower — all ✓)
+    // M-03 Asset — termasuk `fin`, ini salah satu dari tiga halaman yang boleh dibuka Finance
     Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
-    Route::get('/project/manpower', [ManpowerController::class, 'index'])->name('project.manpower');
+
+    // M-04 Manpower — semua role kecuali `fin`
+    Route::get('/project/manpower', [ManpowerController::class, 'index'])
+        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->name('project.manpower');
 
     // Bulk insert aset dari Excel — superadmin only
     Route::middleware('role:superadmin')->prefix('/project/assets/import')->name('project.assets.import.')->group(function (): void {
@@ -49,27 +56,32 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
     });
 
-    // Report Issues (M-07 — all ✓)
-    Route::get('/report/issues', fn () => view('report.issues'))->name('report.issues');
+    // Report Issues (M-07) — semua role kecuali `fin`
+    Route::get('/report/issues', fn () => view('report.issues'))
+        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->name('report.issues');
 
-    // Project monitoring view (M-02 Project Main — all ✓)
-    Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
-        Route::get('/', [MonitoringController::class, 'index'])->name('index');
-        Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
-    });
+    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin`
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->prefix('/monitoring')->name('monitoring.')->group(function (): void {
+            Route::get('/', [MonitoringController::class, 'index'])->name('index');
+            Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
+        });
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {
         // M-05/M-06 Vendor, M-08 Report Expenses — User (client-tier) excluded
         Route::get('/vendor', fn () => view('vendor.main'))->name('vendor.main');
         Route::get('/vendor/contracts', fn () => view('vendor.contracts'))->name('vendor.contracts');
         Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
-
-        // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel
-        Route::get('/report/data', [AssetReportController::class, 'index'])->name('report.data');
-        Route::get('/report/data/export', [AssetReportController::class, 'export'])->name('report.data.export');
-
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
+    });
+
+    // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel.
+    // Grup terpisah karena `fin` boleh masuk sini, tapi tidak ke Vendor/Expenses di atas.
+    Route::middleware('role:superadmin,admin,siteadmin,vip,fin')->group(function (): void {
+        Route::get('/report/data', [AssetReportController::class, 'index'])->name('report.data');
+        Route::get('/report/data/export', [AssetReportController::class, 'export'])->name('report.data.export');
     });
 
     Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {

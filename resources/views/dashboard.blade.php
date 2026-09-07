@@ -191,7 +191,8 @@
             </div>
         </div>
 
-        {{-- Ticket quick-stats --}}
+        {{-- Ticket quick-stats — disembunyikan untuk Finance, yang tidak punya akses helpdesk --}}
+        @unless($user->isFin())
         <div class="panel">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Tickets</p>
@@ -211,6 +212,7 @@
                 @endforeach
             </div>
         </div>
+        @endunless
 
     </div>
 </div>

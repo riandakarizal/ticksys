@@ -126,6 +126,7 @@ class User extends Model implements AuthenticatableContract
             'siteadmin'  => 'Site Admin',
             'user'       => 'User',
             'vip'        => 'VIP',
+            'fin'        => 'Finance',
             default      => $this->user_role ?? '-',
         };
     }
@@ -135,6 +136,9 @@ class User extends Model implements AuthenticatableContract
     public function isSiteAdmin(): bool  { return $this->user_role === 'siteadmin'; }
     public function isUser(): bool       { return $this->user_role === 'user'; }
     public function isVip(): bool        { return $this->user_role === 'vip'; }
+    // Finance — akses daftar-putih: Dashboard, Project → Asset, Report → Data.
+    // Route lain ditutup di routes/web.php, menunya disembunyikan di layouts/app.blade.php.
+    public function isFin(): bool        { return $this->user_role === 'fin'; }
     public function isActive(): bool     { return $this->user_status === 'active'; }
 
     public function canManageAllTickets(): bool
