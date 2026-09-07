@@ -9,7 +9,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     restart: unless-stopped
 
   app:
@@ -27,6 +28,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # `/up` route bawaan Laravel (bootstrap/app.php). start_period memberi jeda
+    # buat entrypoint: nunggu DB, migrate, lalu config/route cache.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
     restart: unless-stopped
 
   db:
