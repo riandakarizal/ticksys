@@ -483,6 +483,7 @@ Sidebar (kiri, collapsible)
 | Vendor — Contract | `/vendor/contracts` | 🔲 Stub |
 | Report — Issues | `/report/issues` | 🔲 Stub |
 | Report — Expenses | `/report/expenses` | 🔲 Stub |
+| Report — Data | `/report/data` | ✅ Fungsional |
 
 ---
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetImportController;
+use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
@@ -62,6 +63,11 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::get('/vendor', fn () => view('vendor.main'))->name('vendor.main');
         Route::get('/vendor/contracts', fn () => view('vendor.contracts'))->name('vendor.contracts');
         Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
+
+        // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel
+        Route::get('/report/data', [AssetReportController::class, 'index'])->name('report.data');
+        Route::get('/report/data/export', [AssetReportController::class, 'export'])->name('report.data.export');
+
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
     });

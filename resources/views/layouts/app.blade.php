@@ -140,6 +140,7 @@
                     <a href="{{ route('report.issues') }}" class="nav-subitem {{ request()->routeIs('report.issues') ? 'active' : '' }}">Issues</a>
                     @if(!auth()->user()->isUser())
                     <a href="{{ route('report.expenses') }}" class="nav-subitem {{ request()->routeIs('report.expenses') ? 'active' : '' }}">Expenses</a>
+                    <a href="{{ route('report.data') }}" class="nav-subitem {{ request()->routeIs('report.data') ? 'active' : '' }}">Data</a>
                     @endif
                 </div>
             </div>

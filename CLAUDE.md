@@ -91,6 +91,16 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
   hook would normally make. Distinct from the equipment import below, which has its own route names
   (`monitoring.import.*` vs `monitoring.projects.import.*`).
+- **Report → Data** (`AssetReportController`, `Support/AssetReportExportService.php`): tarikan mentah
+  seluruh kolom `ast_main` (bukan subset operasional seperti `AssetController`) dengan filter gabungan —
+  search lintas kolom, Type/Brand/Status/Kondisi/Region/Lokasi/Tahun/Project, dan rentang
+  `ast_delvdate`/`ast_purcdate` — plus sorting per kolom (whitelist `SORTABLE`, input di luar itu jatuh ke
+  `id`). Tombol export memakai filter & sort yang sedang aktif dan menghasilkan `.xlsx` dua sheet:
+  `Data Asset` (kop laporan berisi daftar filter + freeze pane + autofilter) dan `Ringkasan` (rekap per
+  status/kondisi/type/region). Baris dibaca lewat `cursor()`, jadi semua query agregat harus selesai
+  **sebelum** iterasi dimulai — koneksi MySQL-nya unbuffered saat kursor terbuka. Export penuh ~3.500 baris
+  memakan ~78 MB memori; kalau `ast_main` tumbuh jauh lebih besar, writer-nya perlu diganti ke mode
+  streaming.
 - **Equipment import/export** (`EqtImportController`, `Support/EqtImportService.php`): xlsx-driven bulk
   import/export for equipment projects, handovers, maintenance, vehicles — template-based via
   PhpSpreadsheet, admin-only routes under `/monitoring/import` and `/monitoring/export`.
