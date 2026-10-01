@@ -117,3 +117,18 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 Full column-by-column schema reference (including the division-scoping unit→div table) is in
 `docs/PRISM-DATABASE.md`; treat its role names as stale per above but the table/column documentation as
 accurate.
+
+## Keeping `docs/PRISM-CLAUDE-DESKTOP.md` in sync
+
+`docs/PRISM-CLAUDE-DESKTOP.md` is the project context for the Claude Desktop (Cowork) project
+("Project Resources Integration & Status Management"), which reads it directly from this folder. It is
+intentionally **not tracked in git** — never `git add` it — but it must stay current.
+
+**Update the doc in the same task for every code change or new commit**, and for notable data/ops changes
+(bulk imports, new user accounts, DB recovery), before reporting done. At minimum add a row to the
+"Riwayat perubahan" table and bump "Terakhir di-update"; when the change touches roles / RBAC / route
+middleware, `UNIT_DIV_MAP` / division scoping, PK formats, features, the domain table, the route map, tech
+stack, commands, deploy steps, or working rules (this file included), update those sections too. Keep its
+existing structure and language (Indonesian, technical terms in English).
+
+At the end of such a task, tell the user the doc was updated (no manual sync needed — Cowork reads the folder).
