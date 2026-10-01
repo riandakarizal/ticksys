@@ -202,9 +202,12 @@ $rp = function($n) {
                                     </form>
                                 @elseif($canCreateProject)
                                     <details class="relative inline-block text-left" data-row-menu>
-                                        <summary class="cursor-pointer list-none inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                                            INPUT
-                                            <span class="text-[10px]">▾</span>
+                                        <summary title="Input BoQ / KAK" aria-label="Input BoQ / KAK"
+                                                 class="cursor-pointer list-none inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-600 text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md active:scale-95 [&::-webkit-details-marker]:hidden">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                                <path d="M14 3v5h5M12 11v6M9 14h6"/>
+                                            </svg>
                                         </summary>
                                         <div class="absolute right-0 top-[calc(100%+0.25rem)] z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-200/80 text-left">
                                             <button type="button" onclick="this.closest('details').removeAttribute('open'); openBoq('{{ $p->id }}', {{ $p->toJson() }})"
