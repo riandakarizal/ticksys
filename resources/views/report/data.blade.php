@@ -1,4 +1,4 @@
-@extends('layouts.app', ['title' => 'Report: Data', 'heading' => 'Report — Data Asset'])
+@extends('layouts.app', ['title' => 'Report: Assets', 'heading' => 'Report — Data Asset'])
 
 @php
     /** Filter lanjutan dibuka otomatis kalau salah satunya sedang dipakai. */

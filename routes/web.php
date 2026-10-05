@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
 use App\Http\Controllers\ProjectImportController;
+use App\Http\Controllers\ProjectReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -75,6 +76,11 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
+
+        // Report Projects — tarikan seluruh kolom pjct_main + export Excel. Tanpa `fin`:
+        // Finance sengaja tidak diberi akses ke daftar project (lihat Monitoring).
+        Route::get('/report/projects', [ProjectReportController::class, 'index'])->name('report.projects');
+        Route::get('/report/projects/export', [ProjectReportController::class, 'export'])->name('report.projects.export');
     });
 
     // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel.

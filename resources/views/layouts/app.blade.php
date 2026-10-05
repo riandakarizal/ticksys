@@ -147,8 +147,9 @@
                     @if(!auth()->user()->isUser())
                     @unless(auth()->user()->isFin())
                     <a href="{{ route('report.expenses') }}" class="nav-subitem {{ request()->routeIs('report.expenses') ? 'active' : '' }}">Expenses</a>
+                    <a href="{{ route('report.projects') }}" class="nav-subitem {{ request()->routeIs('report.projects*') ? 'active' : '' }}">Projects</a>
                     @endunless
-                    <a href="{{ route('report.data') }}" class="nav-subitem {{ request()->routeIs('report.data') ? 'active' : '' }}">Data</a>
+                    <a href="{{ route('report.data') }}" class="nav-subitem {{ request()->routeIs('report.data*') ? 'active' : '' }}">Assets</a>
                     @endif
                 </div>
             </div>

@@ -106,7 +106,14 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   status/kondisi/type/region). Baris dibaca lewat `cursor()`, jadi semua query agregat harus selesai
   **sebelum** iterasi dimulai — koneksi MySQL-nya unbuffered saat kursor terbuka. Export penuh ~3.500 baris
   memakan ~78 MB memori; kalau `ast_main` tumbuh jauh lebih besar, writer-nya perlu diganti ke mode
-  streaming.
+  streaming. Di sidebar menu ini berlabel **"Assets"** (route tetap `report.data`).
+- **Report → Projects** (`ProjectReportController`, `Support/ProjectReportExportService.php`, route
+  `report.projects` / `report.projects.export`): kembaran Report → Assets untuk `pjct_main`, dengan pola
+  yang sama (filter + sort whitelist + export `.xlsx` `Data Project` & `Ringkasan`, agregat dihitung sebelum
+  `cursor()`). Bedanya: data dibatasi `allowedDivCodes()` seperti Monitoring, ada filter **Kelengkapan**
+  (tanpa nilai / tanpa tanggal mulai-selesai / tanpa nomor kontrak) dan sel kosong ditandai kuning di layar
+  maupun Excel, serta filter arsip (soft delete). Role: superadmin/admin/siteadmin/vip — **tanpa `fin`**
+  (Finance tidak boleh melihat daftar project) dan tanpa `user`.
 - **Equipment import/export** (`EqtImportController`, `Support/EqtImportService.php`): xlsx-driven bulk
   import/export for equipment projects, handovers, maintenance, vehicles — template-based via
   PhpSpreadsheet, admin-only routes under `/monitoring/import` and `/monitoring/export`.
