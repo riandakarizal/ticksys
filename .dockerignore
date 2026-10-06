@@ -16,6 +16,7 @@ storage/framework/views/*
 storage/logs/*
 storage/pail
 storage/app/import
+.claude
 .phpunit.cache
 .vscode
 .idea
