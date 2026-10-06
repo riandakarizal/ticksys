@@ -2,14 +2,19 @@
 
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
-use App\Http\Controllers\ManpowerController;
+use App\Http\Controllers\AssetImportController;
+use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
+use App\Http\Controllers\ManpowerController;
+use App\Http\Controllers\ManpowerImportController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
+use App\Http\Controllers\ProjectImportController;
+use App\Http\Controllers\ProjectReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -24,28 +29,55 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
-    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
-    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-    Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
-    Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
-    Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
-    Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
-    Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
-
-    // Project sub-pages: open to every role (M-03 Asset, M-04 Manpower — all ✓)
-    Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
-    Route::get('/project/manpower', [ManpowerController::class, 'index'])->name('project.manpower');
-
-    // Report Issues (M-07 — all ✓)
-    Route::get('/report/issues', fn () => view('report.issues'))->name('report.issues');
-
-    // Project monitoring view (M-02 Project Main — all ✓)
-    Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
-        Route::get('/', [MonitoringController::class, 'index'])->name('index');
-        Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
+    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali)
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+        Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+        Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+        Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
+        Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
+        Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
+        Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
+
+    // M-03 Asset — termasuk `fin`, ini salah satu dari tiga halaman yang boleh dibuka Finance
+    Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
+
+    // M-04 Manpower — semua role kecuali `fin`
+    Route::get('/project/manpower', [ManpowerController::class, 'index'])
+        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->name('project.manpower');
+
+    // Bulk insert aset dari Excel — superadmin + admin divisi E&T O&M (User::canImportAssets(),
+    // dicek lagi di controller); non-superadmin dibatasi ke project divisinya.
+    Route::middleware('role:superadmin,admin')->prefix('/project/assets/import')->name('project.assets.import.')->group(function (): void {
+        Route::get('/template', [AssetImportController::class, 'downloadTemplate'])->name('template');
+        Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
+        Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');
+        Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
+    });
+
+    // Bulk insert manpower dari Excel — superadmin only
+    Route::middleware('role:superadmin')->prefix('/project/manpower/import')->name('project.manpower.import.')->group(function (): void {
+        Route::get('/template', [ManpowerImportController::class, 'downloadTemplate'])->name('template');
+        Route::post('/preview', [ManpowerImportController::class, 'preview'])->name('preview');
+        Route::post('/confirm', [ManpowerImportController::class, 'confirm'])->name('confirm');
+        Route::post('/cancel', [ManpowerImportController::class, 'cancel'])->name('cancel');
+    });
+
+    // Report Issues (M-07) — semua role kecuali `fin`
+    Route::get('/report/issues', fn () => view('report.issues'))
+        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->name('report.issues');
+
+    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin`
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->prefix('/monitoring')->name('monitoring.')->group(function (): void {
+            Route::get('/', [MonitoringController::class, 'index'])->name('index');
+            Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
+        });
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {
         // M-05/M-06 Vendor, M-08 Report Expenses — User (client-tier) excluded
@@ -54,9 +86,31 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::get('/report/expenses', fn () => view('report.expenses'))->name('report.expenses');
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'export'])->name('reports.export');
+
+        // Report Projects — tarikan seluruh kolom pjct_main + export Excel. Tanpa `fin`:
+        // Finance sengaja tidak diberi akses ke daftar project (lihat Monitoring).
+        Route::get('/report/projects', [ProjectReportController::class, 'index'])->name('report.projects');
+        Route::get('/report/projects/export', [ProjectReportController::class, 'export'])->name('report.projects.export');
+    });
+
+    // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel.
+    // Grup terpisah karena `fin` boleh masuk sini, tapi tidak ke Vendor/Expenses di atas.
+    Route::middleware('role:superadmin,admin,siteadmin,vip,fin')->group(function (): void {
+        Route::get('/report/data', [AssetReportController::class, 'index'])->name('report.data');
+        Route::get('/report/data/export', [AssetReportController::class, 'export'])->name('report.data.export');
     });
 
     Route::prefix('/monitoring')->name('monitoring.')->group(function (): void {
+        // Bulk insert project dari Excel — superadmin only.
+        // Harus terdaftar sebelum `/{type}/{id}` di bawah, yang kalau tidak akan menelan
+        // `/monitoring/projects/import/...` sebagai {type}/{id}.
+        Route::middleware('role:superadmin')->prefix('/projects/import')->name('projects.import.')->group(function (): void {
+            Route::get('/template', [ProjectImportController::class, 'downloadTemplate'])->name('template');
+            Route::post('/preview', [ProjectImportController::class, 'preview'])->name('preview');
+            Route::post('/confirm', [ProjectImportController::class, 'confirm'])->name('confirm');
+            Route::post('/cancel', [ProjectImportController::class, 'cancel'])->name('cancel');
+        });
+
         // T-17 Edit proyek: Site Admin can also edit
         Route::middleware('role:superadmin,admin,siteadmin')->group(function (): void {
             Route::put('/{type}/{id}', [MonitoringController::class, 'update'])->name('update');
@@ -74,10 +128,12 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
             Route::get('/import/template', [EqtImportController::class, 'downloadTemplate'])->name('import.template');
             Route::get('/import/template/{type}', [EqtImportController::class, 'downloadTemplateByType'])
                 ->name('import.template.type')
-                ->whereIn('type', ['project_eq','project_tech','handover','vehicle','maintenance']);
+                ->whereIn('type', ['project_eq', 'project_tech', 'handover', 'vehicle', 'maintenance']);
             Route::get('/export', [EqtImportController::class, 'export'])->name('export');
 
+            Route::patch('/projects/{project}/details', [MonitoringController::class, 'updateDetails'])->name('details.update');
             Route::post('/projects/{project}/boq', [PjctBudgetController::class, 'store'])->name('boq.store');
+            Route::post('/projects/{project}/docs/upload', [PjctDocController::class, 'upload'])->name('docs.upload');
             Route::post('/projects/{project}/docs', [PjctDocController::class, 'store'])->name('docs.store');
         });
     });
@@ -97,4 +153,3 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         });
     });
 });
-

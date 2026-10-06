@@ -82,6 +82,35 @@ $rp = function($n) {
     <div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-sm text-green-700">{{ session('success') }}</div>
 @endif
 
+@if($errors->any())
+    <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
+        @foreach($errors->all() as $error)
+            <p>{{ $error }}</p>
+        @endforeach
+    </div>
+@endif
+
+{{-- ── Bulk Import Project (superadmin only) ─────────────────── --}}
+@if(auth()->user()->isSuperAdmin())
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div>
+        <p class="text-sm font-bold text-slate-800">Input Data Project</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Upload Excel untuk menambah project secara massal. Nomor kontrak yang sudah terdaftar akan dilewati.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="{{ route('monitoring.projects.import.template') }}"
+           class="btn-soft rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬇</span> Download Template
+        </a>
+        <button type="button"
+                onclick="document.getElementById('modal-project-import').showModal()"
+                class="btn-primary rounded-xl px-3 py-2 text-xs gap-1.5">
+            <span>⬆</span> Import Excel
+        </button>
+    </div>
+</div>
+@endif
+
 {{-- ── Projects Table ────────────────────────────────────────── --}}
 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
@@ -112,8 +141,8 @@ $rp = function($n) {
                     <th class="w-[6%] py-1.5 pr-2 font-medium">Status</th>
                     <th class="w-[5%] py-1.5 pr-2 font-medium">Assets</th>
                     <th class="w-[9%] py-1.5 pr-2 font-medium">Doc</th>
-                    <th class="w-[10%] py-1.5 pr-2 font-medium">Notes</th>
-                    @if($isAdmin)<th class="w-[6%] py-1.5 pr-4"></th>@endif
+                    <th class="w-[8%] py-1.5 pr-2 font-medium">Notes</th>
+                    @if($isAdmin)<th class="w-[8%] py-1.5 pr-4"></th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -155,7 +184,7 @@ $rp = function($n) {
                                 <span class="text-slate-300">—</span>
                             @else
                                 <div class="flex flex-wrap gap-1">
-                                @foreach(['KONTRAK','RKST','RAB','BAST','SOP','BOQ'] as $dt)
+                                @foreach([...array_keys(\App\Models\PjctDoc::TYPES), 'SOP'] as $dt)
                                     @continue(!$docsByType->has($dt))
                                     <a href="{{ route('monitoring.docs.show', $docsByType[$dt]->id) }}" target="_blank" rel="noopener"
                                        class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold hover:opacity-75 transition {{ \App\Models\PjctDoc::badgeClassFor($dt) }}">{{ $dt }}</a>
@@ -172,18 +201,31 @@ $rp = function($n) {
                                         <button type="submit" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Restore</button>
                                     </form>
                                 @elseif($canCreateProject)
-                                    <details class="relative inline-block text-left" data-row-menu>
-                                        <summary class="cursor-pointer list-none inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                                            INPUT
-                                            <span class="text-[10px]">▾</span>
-                                        </summary>
-                                        <div class="absolute right-0 top-[calc(100%+0.25rem)] z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-200/80 text-left">
-                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openBoq('{{ $p->id }}', {{ $p->toJson() }})"
-                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-slate-50">BoQ</button>
-                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openKak('{{ $p->id }}', {{ $p->toJson() }})"
-                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50">KAK/RKST</button>
-                                        </div>
-                                    </details>
+                                    <div class="inline-flex items-center gap-1">
+                                    <button type="button" title="Edit project" aria-label="Edit project {{ $p->id }}"
+                                            onclick="openEdit('{{ $p->id }}', @js([
+                                                'pjct_contract' => $p->pjct_contract,
+                                                'pjct_name' => $p->pjct_name,
+                                                'pjct_value' => $p->pjct_value ?: null,
+                                                'pjct_client' => $p->pjct_client,
+                                                'pjct_area' => $p->pjct_area,
+                                                'pjct_codate' => $p->pjct_codate?->format('Y-m-d'),
+                                            ]))"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm transition-all duration-200 ease-out hover:bg-amber-600 hover:shadow-md active:scale-95">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 20h9"/>
+                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" title="Upload dokumen" aria-label="Upload dokumen {{ $p->id }}"
+                                            onclick="openDocUpload('{{ $p->id }}', @js($p->pjct_name))"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-600 text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md active:scale-95">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                            <path d="M14 3v5h5M12 11v6M9 14h6"/>
+                                        </svg>
+                                    </button>
+                                    </div>
                                 @endif
                             </td>
                         @endif
@@ -199,6 +241,85 @@ $rp = function($n) {
 <div class="sticky bottom-0 z-20 bg-white px-4 py-3 border border-t-0 border-slate-200 rounded-b-xl shadow-[0_-2px_6px_-2px_rgba(0,0,0,0.06)]">
     {{ $projects->links() }}
 </div>
+@endif
+
+{{-- ══ Modal: Import Project dari Excel ══ --}}
+@if(auth()->user()->isSuperAdmin())
+<dialog id="modal-project-import" class="max-w-lg w-full">
+    <div class="panel m-0 max-h-[90vh] overflow-y-auto">
+        <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-black">Import Project</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Format .xlsx / .xls &middot; maksimal 10 MB</p>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
+        </div>
+
+        <form method="POST" action="{{ route('monitoring.projects.import.preview') }}" enctype="multipart/form-data" id="project-import-form">
+            @csrf
+
+            <div id="project-drop-area"
+                 class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center transition cursor-pointer hover:border-teal-400 hover:bg-teal-50/30"
+                 onclick="document.getElementById('project-file-input').click()">
+                <input type="file" name="file" id="project-file-input" accept=".xlsx,.xls" required class="hidden">
+                <p class="text-3xl mb-2">📄</p>
+                <p class="text-sm font-semibold text-slate-700" id="project-file-name">Klik atau drag file ke sini</p>
+                <p class="text-[11px] text-slate-400 mt-1">Isi data mulai baris ke-2 pada sheet <span class="font-mono">Projects</span></p>
+            </div>
+
+            <p class="text-[11px] text-slate-400 mt-3">
+                Belum punya template?
+                <a href="{{ route('monitoring.projects.import.template') }}" class="text-teal-600 font-semibold hover:underline">Download di sini</a>
+                — sheet <span class="font-mono">Referensi</span> berisi kode divisi, tipe, status, dan daftar project yang sudah ada.
+            </p>
+
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Batal</button>
+                <button type="submit" class="btn-primary" id="project-import-submit">Lanjut ke Preview</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    const input = document.getElementById('project-file-input');
+    const drop  = document.getElementById('project-drop-area');
+    const label = document.getElementById('project-file-name');
+    if (!input || !drop) return;
+
+    input.addEventListener('change', function () {
+        label.textContent = this.files[0] ? this.files[0].name : 'Klik atau drag file ke sini';
+    });
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.add('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+            e.preventDefault();
+            drop.classList.remove('border-teal-400', 'bg-teal-50/30');
+        });
+    });
+
+    drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    document.getElementById('project-import-form').addEventListener('submit', function () {
+        const btn = document.getElementById('project-import-submit');
+        btn.disabled = true;
+        btn.textContent = 'Memproses…';
+    });
+})();
+</script>
 @endif
 
 {{-- ══ Modal: Project Baru — Equipment & Technology Commercial (quick create, status fixed) ══ --}}
@@ -258,30 +379,56 @@ $rp = function($n) {
 </dialog>
 @endif
 
-{{-- ══ Modal: Upload KAK/RKST (Equipment & Technology Commercial) ══ --}}
+{{-- ══ Modal: Edit Project (Equipment & Technology Commercial) ══ --}}
 @if($canCreateProject)
-<dialog id="modal-kak" class="max-w-lg w-full">
+<dialog id="modal-edit-project" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-                <h2 class="text-xl font-black">Upload KAK/RKST</h2>
-                <p class="text-xs text-slate-400 mt-0.5" id="kak-project-name">&nbsp;</p>
+                <h2 class="text-xl font-black">Edit Project</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="edit-project-id">&nbsp;</p>
             </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-kak" method="POST" enctype="multipart/form-data">
+        <form id="form-edit-project" method="POST">
             @csrf
-            <input type="hidden" name="doc_type" value="RKST">
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Dokumen KAK/RKST *</label>
-                <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            @method('PATCH')
+            <div class="grid gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Kontrak</label>
+                    <input type="text" name="pjct_contract" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Kontrak *</label>
+                    <textarea name="pjct_name" rows="2" required maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nilai Kontrak (Rp)</label>
+                        <input type="number" name="pjct_value" min="0" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1" id="edit-value-preview">&nbsp;</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Kontrak</label>
+                        <input type="date" name="pjct_codate" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Klien</label>
+                        <input type="text" name="pjct_client" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Area Kontrak</label>
+                        <input type="text" name="pjct_area" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
                 <button type="submit"
-                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                    Upload
+                        class="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-amber-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Simpan
                 </button>
             </div>
         </form>
@@ -289,39 +436,78 @@ $rp = function($n) {
 </dialog>
 @endif
 
-{{-- ══ Modal: Input BoQ (Equipment & Technology Commercial) ══ --}}
+{{-- ══ Modal: Upload Dokumen Project (Equipment & Technology Commercial) ══
+     Dua langkah seperti Google Drive: file diunggah dulu (progress bar) → isi nama & jenis → Simpan. --}}
 @if($canCreateProject)
-<dialog id="modal-boq" class="max-w-4xl w-full">
+<dialog id="modal-doc-upload" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-                <h2 class="text-xl font-black">Input BoQ</h2>
-                <p class="text-xs text-slate-400 mt-0.5" id="boq-project-name">&nbsp;</p>
+                <h2 class="text-xl font-black">Upload Dokumen</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="doc-project-name">&nbsp;</p>
             </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-boq" method="POST" enctype="multipart/form-data">
-            @csrf
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-semibold text-slate-600">Komponen BoQ *</label>
-                    <button type="button" id="boq-add-row"
-                            class="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                        + Komponen
-                    </button>
+
+        {{-- Langkah 1: pilih / seret file → langsung terunggah --}}
+        <input type="file" id="doc-file-input" accept="application/pdf,.pdf" class="hidden">
+        <div id="doc-dropzone" role="button" tabindex="0"
+             class="flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-6 text-center cursor-pointer transition hover:border-green-400 hover:bg-green-50/40">
+            <svg class="h-8 w-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+            </svg>
+            <p class="text-sm font-semibold text-slate-700">Klik atau seret file ke sini</p>
+            <p class="text-[11px] text-slate-400">Hanya PDF &middot; maks. 5 MB</p>
+        </div>
+
+        <div id="doc-file-card" class="hidden rounded-2xl border border-slate-200 px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 shrink-0 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-[10px] font-black">PDF</div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-slate-800 truncate" id="doc-file-name">&nbsp;</p>
+                    <p class="text-[11px] text-slate-400" id="doc-file-status">&nbsp;</p>
                 </div>
-                <div id="boq-components" class="grid gap-2"></div>
+                <button type="button" id="doc-file-remove" title="Ganti file"
+                        class="shrink-0 h-8 w-8 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition">✕</button>
             </div>
-            <div class="mt-4">
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Dokumen BoQ</label>
-                <input type="file" name="boq_file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <div class="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div id="doc-progress-bar" class="h-full rounded-full bg-green-600 transition-[width] duration-150" style="width: 0%"></div>
+            </div>
+        </div>
+        <div id="doc-file-error" role="alert" class="hidden mt-3">
+            <div class="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700">
+                <svg class="h-4 w-4 shrink-0 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                </svg>
+                <span id="doc-file-error-text"></span>
+            </div>
+        </div>
+
+        {{-- Langkah 2: detail dokumen → Simpan --}}
+        <form id="form-doc-upload" method="POST" class="mt-4">
+            @csrf
+            <input type="hidden" name="upload_token" id="doc-upload-token">
+            <div class="grid gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Dokumen *</label>
+                    <input type="text" name="doc_name" id="doc-name" required maxlength="255" placeholder="mis. Kontrak Induk 2026"
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Dokumen *</label>
+                    <select name="doc_type" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="" disabled selected hidden>Pilih jenis dokumen</option>
+                        @foreach(\App\Models\PjctDoc::TYPES as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
-                <button type="submit"
-                        class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                    Simpan BoQ
+                <button type="submit" id="doc-submit" disabled
+                        class="inline-flex items-center justify-center rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600 disabled:hover:shadow-sm">
+                    Simpan
                 </button>
             </div>
         </form>
@@ -336,74 +522,170 @@ document.getElementById('modal-project-tc')?.addEventListener('close', function(
     this.querySelector('form').reset();
 });
 
-let boqRowIndex = 0;
-const BOQ_ROUTE_TEMPLATE = '{{ route('monitoring.boq.store', ['project' => '__ID__']) }}';
+const EDIT_ROUTE_TEMPLATE = '{{ route('monitoring.details.update', ['project' => '__ID__']) }}';
 
-function boqRowTemplate(i) {
-    return `<div class="flex flex-nowrap items-center gap-2" data-boq-row>
-        <input type="text" name="components[${i}][bdg_name]" placeholder="Komponen" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <select name="components[${i}][bdg_type]" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-            <option value="" disabled selected hidden>Jenis</option>
-            <option value="PENGADAAN">Pengadaan</option>
-            <option value="PEKERJAAN">Pekerjaan</option>
-            <option value="JASA">Jasa</option>
-        </select>
-        <input type="number" name="components[${i}][bdg_value]" placeholder="Jumlah" min="0" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <input type="text" name="components[${i}][bdg_type2]" placeholder="Unit" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <button type="button" class="shrink-0 h-9 w-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition" onclick="this.closest('[data-boq-row]').remove()">✕</button>
-    </div>`;
+function editValuePreview() {
+    const input = document.querySelector('#form-edit-project [name="pjct_value"]');
+    const v = parseInt(input.value, 10);
+    document.getElementById('edit-value-preview').textContent = Number.isFinite(v) ? 'Rp ' + v.toLocaleString('id-ID') : ' ';
 }
 
-function boqAddRow() {
-    document.getElementById('boq-components').insertAdjacentHTML('beforeend', boqRowTemplate(boqRowIndex));
-    boqRowIndex++;
+// Form diisi data project yang sedang tampil, supaya user hanya mengubah yang perlu.
+function openEdit(id, data) {
+    const form = document.getElementById('form-edit-project');
+    form.action = EDIT_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('edit-project-id').textContent = id;
+    ['pjct_contract', 'pjct_name', 'pjct_value', 'pjct_client', 'pjct_area', 'pjct_codate'].forEach(function (field) {
+        form.elements[field].value = data[field] ?? '';
+    });
+    editValuePreview();
+    document.getElementById('modal-edit-project').showModal();
 }
 
-document.getElementById('boq-add-row')?.addEventListener('click', boqAddRow);
+document.querySelector('#form-edit-project [name="pjct_value"]')?.addEventListener('input', editValuePreview);
 
-function openBoq(id, data) {
-    document.getElementById('boq-project-name').textContent = data.pjct_name + ' (' + id + ')';
-    document.getElementById('form-boq').action = BOQ_ROUTE_TEMPLATE.replace('__ID__', id);
-    document.getElementById('boq-components').innerHTML = '';
-    boqRowIndex = 0;
-    boqAddRow();
-    document.getElementById('modal-boq').showModal();
+// ── Upload dokumen: file diunggah dulu (XHR + progress), lalu form disimpan dengan token ──
+const DOC_UPLOAD_ROUTE_TEMPLATE = '{{ route('monitoring.docs.upload', ['project' => '__ID__']) }}';
+const DOC_STORE_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+const DOC_MAX_BYTES = {{ \App\Http\Controllers\PjctDocController::MAX_KB }} * 1024;
+const docEl = (id) => document.getElementById(id);
+let docProjectId = null;
+let docXhr = null;
+
+function docFormatSize(bytes) {
+    return bytes >= 1048576 ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
-document.getElementById('modal-boq')?.addEventListener('close', function() {
-    document.getElementById('form-boq').reset();
-    document.getElementById('boq-components').innerHTML = '';
-    boqRowIndex = 0;
-});
-
-const KAK_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
-
-function openKak(id, data) {
-    document.getElementById('kak-project-name').textContent = data.pjct_name + ' (' + id + ')';
-    document.getElementById('form-kak').action = KAK_ROUTE_TEMPLATE.replace('__ID__', id);
-    document.getElementById('modal-kak').showModal();
+function docShowError(message) {
+    docEl('doc-file-error-text').textContent = message;
+    docEl('doc-file-error').classList.toggle('hidden', !message);
 }
 
-document.getElementById('modal-kak')?.addEventListener('close', function() {
-    document.getElementById('form-kak').reset();
-});
+// Sama bunyinya dengan PjctDocController::describeProblem() di server.
+function docKindOf(ext) {
+    const kinds = {
+        'file Word': ['doc', 'docx', 'rtf', 'odt'],
+        'file Excel': ['xls', 'xlsx', 'csv', 'ods'],
+        'file PowerPoint': ['ppt', 'pptx', 'odp'],
+        'file gambar': ['jpg', 'jpeg', 'png', 'gif', 'heic', 'webp', 'bmp', 'tif', 'tiff'],
+        'file arsip (zip/rar)': ['zip', 'rar', '7z'],
+    };
+    for (const [kind, exts] of Object.entries(kinds)) if (exts.includes(ext)) return kind;
+    return ext ? 'file .' + ext : 'file tanpa ekstensi';
+}
 
-// Row action dropdowns: only one open at a time, close when clicking outside
-document.querySelectorAll('details[data-row-menu]').forEach(function(menu) {
-    menu.addEventListener('toggle', function() {
-        if (menu.open) {
-            document.querySelectorAll('details[data-row-menu][open]').forEach(function(other) {
-                if (other !== menu) other.removeAttribute('open');
-            });
+function docDescribeProblem(file) {
+    const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+    const tooBig = file.size > DOC_MAX_BYTES;
+    const size = docFormatSize(file.size);
+    if (ext !== 'pdf') {
+        return tooBig
+            ? '"' + file.name + '" adalah ' + docKindOf(ext) + ', bukan PDF, dan ukurannya ' + size + ' (maks. 5 MB).'
+            : '"' + file.name + '" adalah ' + docKindOf(ext) + ', bukan PDF. Simpan/ekspor dulu sebagai PDF, lalu unggah ulang.';
+    }
+    if (tooBig) return '"' + file.name + '" berukuran ' + size + ', melebihi batas 5 MB. Kompres PDF-nya atau pecah jadi beberapa file.';
+    return null;
+}
+
+function docResetFile() {
+    if (docXhr) { docXhr.abort(); docXhr = null; }
+    docEl('doc-file-input').value = '';
+    docEl('doc-upload-token').value = '';
+    docEl('doc-submit').disabled = true;
+    docEl('doc-file-card').classList.add('hidden');
+    docEl('doc-dropzone').classList.remove('hidden');
+    docEl('doc-progress-bar').style.width = '0%';
+    docEl('doc-progress-bar').classList.remove('bg-red-500');
+    docShowError('');
+}
+
+function docUpload(file) {
+    docShowError('');
+    if (!file) return;
+    const problem = docDescribeProblem(file);
+    if (problem) { docEl('doc-file-input').value = ''; docShowError(problem); return; }
+
+    docEl('doc-dropzone').classList.add('hidden');
+    docEl('doc-file-card').classList.remove('hidden');
+    docEl('doc-file-name').textContent = file.name;
+    docEl('doc-file-status').textContent = 'Mengunggah… 0%';
+    docEl('doc-progress-bar').style.width = '0%';
+    docEl('doc-submit').disabled = true;
+
+    const nameInput = docEl('doc-name');
+    if (!nameInput.value.trim()) nameInput.value = file.name.replace(/\.pdf$/i, '');
+
+    const body = new FormData();
+    body.append('doc_file', file);
+
+    const xhr = new XMLHttpRequest();
+    docXhr = xhr;
+    xhr.open('POST', DOC_UPLOAD_ROUTE_TEMPLATE.replace('__ID__', docProjectId));
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('#form-doc-upload input[name="_token"]').value);
+    xhr.upload.addEventListener('progress', function (e) {
+        if (!e.lengthComputable) return;
+        const pct = Math.round(e.loaded / e.total * 100);
+        docEl('doc-progress-bar').style.width = pct + '%';
+        docEl('doc-file-status').textContent = 'Mengunggah… ' + pct + '%';
+    });
+    xhr.addEventListener('load', function () {
+        docXhr = null;
+        let res = {};
+        try { res = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status === 200 && res.token) {
+            docEl('doc-upload-token').value = res.token;
+            docEl('doc-progress-bar').style.width = '100%';
+            docEl('doc-file-status').textContent = docFormatSize(res.size) + ' · Terunggah ✓';
+            docEl('doc-submit').disabled = false;
+        } else {
+            const msg = (res.errors && Object.values(res.errors)[0][0]) || res.message || ('Upload gagal (HTTP ' + xhr.status + ').');
+            docEl('doc-progress-bar').classList.add('bg-red-500');
+            docEl('doc-file-status').textContent = 'Gagal';
+            docShowError(msg);
         }
     });
-});
-
-document.addEventListener('click', function(e) {
-    document.querySelectorAll('details[data-row-menu][open]').forEach(function(menu) {
-        if (!menu.contains(e.target)) menu.removeAttribute('open');
+    xhr.addEventListener('error', function () {
+        docXhr = null;
+        docEl('doc-progress-bar').classList.add('bg-red-500');
+        docEl('doc-file-status').textContent = 'Gagal';
+        docShowError('Koneksi terputus saat mengunggah. Coba lagi.');
     });
-});
+    xhr.send(body);
+}
+
+function openDocUpload(id, name) {
+    docProjectId = id;
+    docEl('doc-project-name').textContent = name + ' (' + id + ')';
+    docEl('form-doc-upload').action = DOC_STORE_ROUTE_TEMPLATE.replace('__ID__', id);
+    docEl('modal-doc-upload').showModal();
+}
+
+if (docEl('modal-doc-upload')) {
+    const dropzone = docEl('doc-dropzone');
+    dropzone.addEventListener('click', () => docEl('doc-file-input').click());
+    dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); docEl('doc-file-input').click(); } });
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-green-400', 'bg-green-50/40'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-green-400', 'bg-green-50/40'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-green-400', 'bg-green-50/40');
+        docUpload(e.dataTransfer.files[0]);
+    });
+    docEl('doc-file-input').addEventListener('change', (e) => docUpload(e.target.files[0]));
+    docEl('doc-file-remove').addEventListener('click', docResetFile);
+    docEl('form-doc-upload').addEventListener('submit', function (e) {
+        if (!docEl('doc-upload-token').value) { e.preventDefault(); docShowError('Unggah file PDF dulu sebelum menyimpan.'); return; }
+        docEl('doc-submit').disabled = true;
+        docEl('doc-submit').textContent = 'Menyimpan…';
+    });
+    docEl('modal-doc-upload').addEventListener('close', function () {
+        docResetFile();
+        docEl('form-doc-upload').reset();
+        docEl('doc-submit').textContent = 'Simpan';
+    });
+}
+
 @endif
 </script>
 @endpush

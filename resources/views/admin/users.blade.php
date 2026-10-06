@@ -93,6 +93,7 @@
                 <option value="admin">Admin</option>
                 <option value="superadmin">Super Admin</option>
                 <option value="vip">VIP</option>
+                <option value="fin">Finance</option>
             </select>
             <select class="field" name="user_level" required>
                 <option value="" disabled hidden selected>Select Level</option>
@@ -109,6 +110,7 @@
                 <option value="-">— Tidak ada (Direktorat) —</option>
                 <option value="Equipment & Technology Commercial">Equipment & Technology Commercial</option>
                 <option value="Equipment & Technology Operation & Maintenance">Equipment & Technology Operation & Maintenance</option>
+                <option value="Finance">Finance</option>
             </select>
             <select class="field" name="user_unit" required>
                 <option value="" disabled hidden selected>Select Unit</option>
@@ -117,6 +119,7 @@
                 <option value="Equipment Commercial">Equipment Commercial</option>
                 <option value="Technology Operation & Maintenance">Technology Operation & Maintenance</option>
                 <option value="Equipment Operation & Maintenance">Equipment Operation & Maintenance</option>
+                <option value="Asset">Asset</option>
             </select>
             <select class="field" name="user_parid">
                 <option value="">— Tidak ada (Top Level) —</option>
@@ -158,6 +161,7 @@
                     <option value="admin"      @selected($user->user_role === 'admin')>Admin</option>
                     <option value="superadmin" @selected($user->user_role === 'superadmin')>Super Admin</option>
                     <option value="vip"        @selected($user->user_role === 'vip')>VIP</option>
+                    <option value="fin"        @selected($user->user_role === 'fin')>Finance</option>
                 </select>
                 <select class="field" name="user_level" required>
                     <option value="L1" @selected($user->user_level === 'L1')>L1 — Direktur</option>
@@ -172,6 +176,7 @@
                     <option value="-" @selected($user->user_div === '-')>— Tidak ada (Direktorat) —</option>
                     <option value="Equipment & Technology Commercial" @selected($user->user_div === 'Equipment & Technology Commercial')>Equipment & Technology Commercial</option>
                     <option value="Equipment & Technology Operation & Maintenance" @selected($user->user_div === 'Equipment & Technology Operation & Maintenance')>Equipment & Technology Operation & Maintenance</option>
+                    <option value="Finance" @selected($user->user_div === 'Finance')>Finance</option>
                 </select>
                 <select class="field" name="user_unit" required>
                     <option value="-" @selected($user->user_unit === '-')>— Tidak ada —</option>
@@ -179,6 +184,7 @@
                     <option value="Equipment Commercial" @selected($user->user_unit === 'Equipment Commercial')>Equipment Commercial</option>
                     <option value="Technology Operation & Maintenance" @selected($user->user_unit === 'Technology Operation & Maintenance')>Technology Operation & Maintenance</option>
                     <option value="Equipment Operation & Maintenance" @selected($user->user_unit === 'Equipment Operation & Maintenance')>Equipment Operation & Maintenance</option>
+                    <option value="Asset" @selected($user->user_unit === 'Asset')>Asset</option>
                 </select>
                 <select class="field" name="user_parid">
                     <option value="" @selected($user->user_parid === '')>— Tidak ada (Top Level) —</option>

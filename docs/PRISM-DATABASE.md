@@ -72,7 +72,7 @@ Akun login PRISM. PK manual format `USR-NNN`. Auth Laravel override via virtual 
 ---
 
 ### `pjct_main`
-Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `creating` event.
+Master data project. PK format `PJ0001`, `PJ0002`, … (running number), auto-generate via Eloquent `creating` event; bulk insert memesan blok ID lewat `PjctMain::nextIds()`.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -82,6 +82,8 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_div` | varchar(225) | Kode divisi: `TC`, `TCREG1`, `TCREG2`, `EQ`, `EQC`, `EQREG1`, `EQREG2`, `EQREG3` |
 | `pjct_name` | varchar(255) | Nama project |
 | `pjct_type` | varchar(255) | `RENT` / `SUPPLY` / `JASA` |
+| `pjct_cotype` | varchar(50) NULL | Jenis dokumen kontrak: `Contract` / `Contract Addendum`. Sengaja VARCHAR (bukan ENUM) supaya tipe bisa bertambah; daftar yang berlaku di `PjctMain::COTYPES` |
+| `pjct_parcon` | varchar(10) NULL, index | Untuk addendum: ID project kontrak induk (→ `pjct_main.id`). Tanpa FK agar `TRUNCATE` tetap bisa; relasi `parentContract()` / `addenda()` di model |
 | `pjct_client` | varchar(255) | Nama klien |
 | `pjct_area` | varchar(255) | Lokasi / area project |
 | `pjct_value` | bigint(20) | Nilai kontrak (Rupiah) |
@@ -89,8 +91,12 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_costart` | date | Tanggal mulai kontrak |
 | `pjct_totalperiod` | int(11) | Durasi kontrak (bulan) |
 | `pjct_coend_m` | date | Tanggal akhir kontrak |
-| `pjct_status` | varchar(255) | `OG` / `HVR` / `DLY` / `END` |
+| `pjct_accdate` | date NULL | Tanggal accrual project |
+| `pjct_accby` | varchar(225) NULL | Unit/divisi yang meng-accrue project |
+| `pjct_status` | varchar(255) | `UPC` / `OG` / `HVR` / `DLY` / `END` |
 | `pjct_misc` | text | Catatan tambahan |
+| `created_at` | timestamp | ⚠ Didefinisikan `ON UPDATE current_timestamp()` (skema legacy), jadi ikut berubah setiap baris di-update — tidak bisa dipakai sebagai tanggal pembuatan |
+| `updated_at` | timestamp NULL | |
 | `deleted_at` | timestamp | Soft delete |
 
 **Division scoping (`User::allowedDivCodes()`, dipakai oleh `MonitoringController` dan `PjctDocController`):**
@@ -111,7 +117,7 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | varchar(20) PK | Format: `AST-XXXXX` |
+| `id` | varchar(20) PK | Baru: `AST` + YY + MM + urut 4 digit per bulan (`AST26080001`). Baris legacy masih `AST00001` |
 | `ast_type` | varchar(225) | Jenis aset (Laptop, GPS Tracker, dll) |
 | `ast_brand` | varchar(225) | Merk |
 | `ast_brandmodel` | varchar(225) | Model/seri produk |
@@ -119,9 +125,9 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 | `ast_serial` | varchar(225) | Serial number |
 | `ast_vendid` | varchar(20) | ID vendor |
 | `ast_username` | varchar(225) | Nama pengguna aset |
-| `ast_userreg` | varchar(225) | Registrasi pengguna |
-| `ast_userloc` | varchar(225) | Lokasi pengguna |
-| `ast_userlocdet` | varchar(225) | Detail lokasi |
+| `ast_userreg` | varchar(225) | Region / wilayah (contoh: `JAKARTA`, `BANDUNG`, `CGK`) |
+| `ast_userloc` | varchar(225) | Lokasi spesifik dalam region (contoh: `BDO Airport`, `Gedung Sarinah`) |
+| `ast_userlocdet` | varchar(225) | Detail lokasi (contoh: `Lt. 10`, `HO`) |
 | `ast_cond` | varchar(225) | `Excellence` / `Good` / `Fair` / `Bad` |
 | `ast_delvdate` | date | Tanggal pengiriman |
 | `ast_purcdate` | date | Tanggal pembelian |
@@ -145,11 +151,13 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 ---
 
 ### `pjct_emp`
-Data manpower / karyawan yang terlibat dalam project. 45 baris.
+Data manpower / karyawan yang terlibat dalam project. Diisi lewat **Import Excel** di halaman Manpower
+(superadmin, `ManpowerImportController` + `Support/ManpowerImportService.php`, pola sama dengan import aset).
+Kunci duplikat: (`emp_pjctid` + `emp_id`) — satu orang boleh tercatat di beberapa project.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | varchar(20) PK | Format: `EM00001` |
+| `id` | varchar(20) PK | Format: `EM00001`, dibuat otomatis (`PjctEmp::nextIds()` / hook `creating`) |
 | `emp_id` | varchar(20) | NIK karyawan |
 | `emp_name` | varchar(225) | Nama lengkap |
 | `emp_level` | varchar(20) | Level jabatan (L7, L7.1, dll) |
@@ -157,28 +165,34 @@ Data manpower / karyawan yang terlibat dalam project. 45 baris.
 | `emp_unit` | varchar(20) | Unit kerja |
 | `emp_div` | varchar(20) | Site / lokasi penugasan |
 | `emp_area` | varchar(225) | Region / area |
-| `emp_pjctid` | varchar(20) | Nomor kontrak pekerjaan |
+| `emp_pjctid` | varchar(20) | **Project ID** (`PJxxxx`, → `pjct_main.id`). Data lama sebelum Okt 2026 berisi nomor kontrak |
 | `emp_coid` | varchar(225) | Nomor PKWT |
+| `emp_costart` | date NULL | Mulai PKWT |
+| `emp_coend` | date NULL | Selesai PKWT |
 | `emp_contact` | varchar(225) NULL | Nomor HP |
 | `emp_misc` | text NULL | Catatan |
 
 ---
 
 ### `pjct_doc`
-Dokumen legal/administratif per project (Kontrak, RKST, RAB, BAST, SOP). 65 baris, diisi dari file fisik di
-folder `docfile/PJxxxx/` (level teratas project saja, bukan subfolder). File yang nama-nya tidak mengandung
-salah satu dari 5 keyword doc_type sengaja tidak diinsert.
+Dokumen legal/administratif per project. Diisi lewat form **Upload Dokumen** di halaman Monitoring, dua
+langkah seperti Google Drive: (1) `PjctDocController@upload` menerima file — **wajib PDF, maks. 5 MB** —
+menyimpannya sementara di `storage/app/private/doc-uploads/<token>.pdf` dan mengembalikan token (terikat ke
+sesi user + project; sisa yang tidak disimpan dihapus setelah 24 jam); (2) `PjctDocController@store` memakai
+token itu: file dipindah ke `docfile/PJxxxx/` (folder dibuat kalau belum ada; nama file yang sudah dipakai
+diberi akhiran ` (2)`, ` (3)`, … agar tidak menimpa), lalu satu baris `pjct_doc` dibuat dan tercatat di
+`system_logs` (aksi `create`). Data lama (sebelum 5 Okt 2026) berasal dari scan file fisik.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | varchar(20) PK | Format: `DOC00001`, auto-generate via Eloquent `creating` event |
 | `doc_number` | varchar(225) | Nomor dokumen (diekstrak dari prefix nama file sebelum " - ", atau nama file itu sendiri kalau tidak ada pemisah) |
 | `doc_pjctid` | varchar(20) | FK → `pjct_main.id` |
-| `doc_type` | varchar(225) | `KONTRAK` / `RKST` / `RAB` / `BAST` / `SOP` |
+| `doc_type` | varchar(225) | `KONTRAK` / `RAB` / `PNL` / `RKST` (RKST/KAK) / `BOQ` / `BAK` / `BAST` / `BASTO` / `BAPP` — daftar di `PjctDoc::TYPES`. `SOP` = jenis lama, masih tampil tapi tidak bisa diunggah lagi |
 | `doc_filetype` | varchar(225) | Ekstensi file (`pdf`, `xlsx`, dll) |
 | `doc_filename` | text | Nama file asli |
 | `doc_filepath` | text | Path relatif ke disk `docfile` (mis. `PJ0001/nama-file.pdf`) |
-| `doc_desc` | text | Deskripsi (bagian nama file setelah " - ", atau nama file itu sendiri) |
+| `doc_desc` | text | **Nama dokumen** yang diisi user di form upload (data lama: bagian nama file setelah " - ") |
 
 Diakses via route `monitoring.docs.show` (`PjctDocController@show`) — stream file langsung dari disk `docfile`
 (`config/filesystems.php`) dengan `Content-Disposition: inline` supaya PDF terbuka di tab browser baru

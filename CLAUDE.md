@@ -45,10 +45,16 @@ after significant schema/data changes, and it does **not** include `docfile/` (s
 There is no roles/permissions package. `users.user_role` is a plain string column checked two ways:
 - Route-level: `EnsureRole` middleware (`app/Http/Middleware/EnsureRole.php`), applied as
   `->middleware('role:superadmin,admin,siteadmin,vip')` — comma-separated role list per route group in
-  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip` (see
+  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin` (see
   `App\Models\User::isSuperAdmin()` etc.). Note `docs/PRISM-DATABASE.md` and
   `docs/PRISM-REDESIGN.md` still reference an older role set (`supervisor`/`agent`/`client`) — trust the
   code (`User` model, `EnsureRole` usages) over those docs.
+  `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
+  dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
+  user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
+  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Menambah role baru bertipe sempit
+  berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
+  menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
   array of `pjct_div` codes the user may see, built from `UNIT_DIV_MAP` (their unit → div codes) plus
   `subordinateDivCodes()` (self-referential `users.user_parid` hierarchy — a parent sees everything their
@@ -80,6 +86,39 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `pjct_type` = `RENT`/`SUPPLY`/`JASA`).
 - **Assets** (`AssetController`, `AstMain`): equipment inventory, FK'd to `pjct_main` via `ast_pjctid`.
 - **Manpower** (`ManpowerController`, `PjctEmp`): staff assigned per project.
+- **Bulk import, preview-then-confirm** (`AssetImportController` + `Support/AssetImportService.php` for
+  `ast_main`; `ProjectImportController` + `Support/ProjectImportService.php` for `pjct_main`;
+  `ManpowerImportController` + `Support/ManpowerImportService.php` for `pjct_emp`, keyed on project + NIK):
+  three flows built on the same shape (project & manpower: superadmin only; asset: `User::canImportAssets()`
+  = superadmin + admins of division "Equipment & Technology Operation & Maintenance", with non-superadmins
+  limited to projects in their `allowedDivCodes()` — both the template's Referensi sheet and `classify()`) —
+  `parse()` → `classify()` (tags every row `new` / `skip`
+  / `error`) → preview screen → `execute()`. The upload is parked on the `local` disk between the two
+  requests (session holds only the path) and re-parsed on confirm, so duplicates are re-checked against
+  live data. All are insert-only — a duplicate is skipped, never updated — and all mass-insert, which
+  bypasses Eloquent events: that is why the PKs are reserved in a block up front
+  (`AstMain::nextIds()` / `PjctMain::nextIds()` / `PjctEmp::nextIds()`), why the `SystemLog` row is written
+  by hand, and why
+  `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
+  hook would normally make. Distinct from the equipment import below, which has its own route names
+  (`monitoring.import.*` vs `monitoring.projects.import.*`).
+- **Report → Data** (`AssetReportController`, `Support/AssetReportExportService.php`): tarikan mentah
+  seluruh kolom `ast_main` (bukan subset operasional seperti `AssetController`) dengan filter gabungan —
+  search lintas kolom, Type/Brand/Status/Kondisi/Region/Lokasi/Tahun/Project, dan rentang
+  `ast_delvdate`/`ast_purcdate` — plus sorting per kolom (whitelist `SORTABLE`, input di luar itu jatuh ke
+  `id`). Tombol export memakai filter & sort yang sedang aktif dan menghasilkan `.xlsx` dua sheet:
+  `Data Asset` (kop laporan berisi daftar filter + freeze pane + autofilter) dan `Ringkasan` (rekap per
+  status/kondisi/type/region). Baris dibaca lewat `cursor()`, jadi semua query agregat harus selesai
+  **sebelum** iterasi dimulai — koneksi MySQL-nya unbuffered saat kursor terbuka. Export penuh ~3.500 baris
+  memakan ~78 MB memori; kalau `ast_main` tumbuh jauh lebih besar, writer-nya perlu diganti ke mode
+  streaming. Di sidebar menu ini berlabel **"Assets"** (route tetap `report.data`).
+- **Report → Projects** (`ProjectReportController`, `Support/ProjectReportExportService.php`, route
+  `report.projects` / `report.projects.export`): kembaran Report → Assets untuk `pjct_main`, dengan pola
+  yang sama (filter + sort whitelist + export `.xlsx` `Data Project` & `Ringkasan`, agregat dihitung sebelum
+  `cursor()`). Bedanya: data dibatasi `allowedDivCodes()` seperti Monitoring, ada filter **Kelengkapan**
+  (tanpa nilai / tanpa tanggal mulai-selesai / tanpa nomor kontrak) dan sel kosong ditandai kuning di layar
+  maupun Excel, serta filter arsip (soft delete). Role: superadmin/admin/siteadmin/vip — **tanpa `fin`**
+  (Finance tidak boleh melihat daftar project) dan tanpa `user`.
 - **Equipment import/export** (`EqtImportController`, `Support/EqtImportService.php`): xlsx-driven bulk
   import/export for equipment projects, handovers, maintenance, vehicles — template-based via
   PhpSpreadsheet, admin-only routes under `/monitoring/import` and `/monitoring/export`.
@@ -90,3 +129,18 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 Full column-by-column schema reference (including the division-scoping unit→div table) is in
 `docs/PRISM-DATABASE.md`; treat its role names as stale per above but the table/column documentation as
 accurate.
+
+## Keeping `docs/PRISM-CLAUDE-DESKTOP.md` in sync
+
+`docs/PRISM-CLAUDE-DESKTOP.md` is the project context for the Claude Desktop (Cowork) project
+("Project Resources Integration & Status Management"), which reads it directly from this folder. It is
+intentionally **not tracked in git** — never `git add` it — but it must stay current.
+
+**Update the doc in the same task for every code change or new commit**, and for notable data/ops changes
+(bulk imports, new user accounts, DB recovery), before reporting done. At minimum add a row to the
+"Riwayat perubahan" table and bump "Terakhir di-update"; when the change touches roles / RBAC / route
+middleware, `UNIT_DIV_MAP` / division scoping, PK formats, features, the domain table, the route map, tech
+stack, commands, deploy steps, or working rules (this file included), update those sections too. Keep its
+existing structure and language (Indonesian, technical terms in English).
+
+At the end of such a task, tell the user the doc was updated (no manual sync needed — Cowork reads the folder).

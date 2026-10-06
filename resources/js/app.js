@@ -193,6 +193,14 @@ const initDialogs = () => {
         }
 
         dialog.addEventListener('click', (event) => {
+            // Hanya klik di backdrop yang menutup modal — targetnya elemen <dialog> itu sendiri.
+            // Klik dari elemen di dalam modal diabaikan; termasuk `input.click()` buatan skrip
+            // (mis. membuka pemilih file), yang tidak punya koordinat (0,0) sehingga kalau tidak
+            // dicek akan terbaca sebagai klik di luar dan menutup modal saat file sedang dipilih.
+            if (event.target !== dialog) {
+                return;
+            }
+
             const rect = dialog.getBoundingClientRect();
             const inside = rect.top <= event.clientY
                 && event.clientY <= rect.top + rect.height
