@@ -12,7 +12,6 @@ class Category extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'company_id',
         'parent_id',
         'auto_assign_user_id',
         'name',
@@ -26,11 +25,6 @@ class Category extends Model
         return [
             'is_active' => 'boolean',
         ];
-    }
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
     }
 
     public function parent(): BelongsTo

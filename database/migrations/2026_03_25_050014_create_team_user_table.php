@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('team_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('team_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('user_id', 20);
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
 
             $table->unique(['team_id', 'user_id']);

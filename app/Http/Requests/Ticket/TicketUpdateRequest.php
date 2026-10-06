@@ -15,17 +15,14 @@ class TicketUpdateRequest extends FormRequest
 
     public function rules(): array
     {
-        $companyId = auth()->user()->company_id;
-
         return [
             'status' => ['required', Rule::in(Ticket::STATUSES)],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
-            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['agent', 'supervisor', 'admin']))],
-            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereNull('parent_id'))],
-            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'requester_id' => ['required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->where('role', 'client'))],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('user_role', ['siteadmin', 'admin', 'superadmin']))],
+            'pjct_id' => ['required', 'string', Rule::exists('pjct_main', 'id')],
+            'ast_id' => ['nullable', 'string', Rule::exists('ast_main', 'id')],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->whereNull('parent_id'))],
+            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')],
         ];
     }
 }

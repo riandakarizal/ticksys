@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\AstMain;
 use App\Models\Category;
-use App\Models\Device;
+use App\Models\PjctMain;
 use App\Models\SlaPolicy;
 use App\Models\Team;
-use App\Models\Company;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
@@ -17,54 +17,51 @@ class E2EDemoSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── Company ───────────────────────────────────────────────────────────
-        // Gunakan company yang sudah ada agar admin bisa lihat semua data
-        $company = Company::first() ?? Company::create([
-            'name'            => 'IAS',
-            'code'            => 'IAS-ID',
-            'contact_email'   => 'hello@ias.test',
-            'auto_close_days' => 3,
-        ]);
-
         // ── Users ─────────────────────────────────────────────────────────────
-        // Admin: pakai yang sudah ada di company ini
-        $admin = User::where('company_id', $company->id)->where('role', 'admin')->first();
+        $admin = User::where('user_role', 'superadmin')->first();
 
         $teknisi = User::firstOrCreate(
-            ['email' => 'aldo@ias.test'],
+            ['user_email' => 'aldo@ias.test'],
             [
-                'company_id' => $company->id,
-                'name'      => 'Aldo Teknisi',
-                'role'      => 'agent',
-                'job_title' => 'IT Support Technician',
-                'password'  => 'password',
+                'user_empid'  => 'EMP-E2E-1',
+                'user_name'   => 'Aldo Teknisi',
+                'user_pass'   => 'password',
+                'user_level'  => 'L6',
+                'user_role'   => 'siteadmin',
+                'user_unit'   => 'Technology Operation & Maintenance',
+                'user_div'    => 'Equipment & Technology Operation & Maintenance',
+                'user_parid'  => $admin?->id ?? '-',
+                'user_status' => 'active',
             ]
         );
 
         $client = User::firstOrCreate(
-            ['email' => 'budi@ias.test'],
+            ['user_email' => 'budi@ias.test'],
             [
-                'company_id' => $company->id,
-                'name'      => 'Budi Client',
-                'role'      => 'client',
-                'job_title' => 'Staff Operasional',
-                'password'  => 'password',
+                'user_empid'  => 'EMP-E2E-2',
+                'user_name'   => 'Budi Client',
+                'user_pass'   => 'password',
+                'user_level'  => 'L7',
+                'user_role'   => 'user',
+                'user_unit'   => 'Technology Operation & Maintenance',
+                'user_div'    => 'Equipment & Technology Operation & Maintenance',
+                'user_parid'  => $teknisi->id,
+                'user_status' => 'active',
             ]
         );
 
         // ── SLA Policy ────────────────────────────────────────────────────────
-        $sla = SlaPolicy::where('company_id', $company->id)->where('is_default', true)->first()
+        $sla = SlaPolicy::where('is_default', true)->first()
             ?? SlaPolicy::create([
-                'company_id'          => $company->id,
                 'name'               => 'Standard',
                 'response_minutes'   => 60,
                 'resolution_minutes' => 480,
                 'is_default'         => true,
             ]);
 
-        // ── Project ───────────────────────────────────────────────────────────
+        // ── Project (grup helpdesk internal) ─────────────────────────────────
         $project = Team::firstOrCreate(
-            ['company_id' => $company->id, 'code' => 'SEAT-IAS'],
+            ['code' => 'SEAT-IAS'],
             [
                 'lead_user_id' => $admin?->id,
                 'name'         => 'Seat Management IAS',
@@ -77,7 +74,7 @@ class E2EDemoSeeder extends Seeder
 
         // ── Categories ────────────────────────────────────────────────────────
         $hardware = Category::firstOrCreate(
-            ['company_id' => $company->id, 'slug' => 'hardware-ias'],
+            ['slug' => 'hardware-ias'],
             [
                 'team_id' => $project->id,
                 'name'    => 'Hardware',
@@ -86,7 +83,7 @@ class E2EDemoSeeder extends Seeder
         );
 
         $laptopCat = Category::firstOrCreate(
-            ['company_id' => $company->id, 'slug' => 'laptop-ias'],
+            ['slug' => 'laptop-ias'],
             [
                 'parent_id' => $hardware->id,
                 'team_id'   => $project->id,
@@ -95,7 +92,17 @@ class E2EDemoSeeder extends Seeder
             ]
         );
 
-        // ── Devices (3 Laptop) ────────────────────────────────────────────────
+        // ── Project PRISM contoh untuk menaungi aset demo ───────────────────────
+        $pjctProject = PjctMain::firstOrCreate(
+            ['pjct_name' => 'Seat Management IAS (Demo)'],
+            [
+                'pjct_type'   => 'RENT',
+                'pjct_status' => 'OG',
+                'pjct_div'    => 'TC',
+            ]
+        );
+
+        // ── Aset PRISM (3 Laptop) + tiket kendala ───────────────────────────────
         $subjects = [
             'Laptop IAS-001 tidak bisa booting setelah update Windows',
             'Laptop IAS-002 layar flickering dan keyboard tidak responsif',
@@ -103,30 +110,30 @@ class E2EDemoSeeder extends Seeder
         ];
 
         foreach (range(1, 3) as $i) {
-            $device = Device::firstOrCreate(
-                ['company_id' => $company->id, 'asset_code' => "IAS-LP-00{$i}"],
+            $asset = AstMain::firstOrCreate(
+                ['ast_serial' => "SN-IAS-LP-00{$i}"],
                 [
-                    'team_id'       => $project->id,
-                    'name'          => "Laptop IAS-00{$i}",
-                    'device_type'   => 'Laptop',
-                    'serial_number' => "SN-IAS-LP-00{$i}",
-                    'location'      => 'Kantor IAS - Lantai ' . ($i + 1),
-                    'is_active'     => true,
+                    'ast_type'    => 'Laptop',
+                    'ast_brand'   => 'Dell',
+                    'ast_brandmodel' => "Latitude IAS-00{$i}",
+                    'ast_cond'    => 'Good',
+                    'ast_stat'    => 'Aktif',
+                    'ast_userloc' => 'Kantor IAS - Lantai ' . ($i + 1),
+                    'ast_pjctid'  => $pjctProject->id,
                 ]
             );
 
-            // Buat tiket hanya jika device belum punya tiket
-            if (Ticket::where('device_id', $device->id)->exists()) {
+            // Buat tiket hanya jika aset ini belum punya tiket
+            if (Ticket::where('ast_id', $asset->id)->exists()) {
                 continue;
             }
 
             $ticket = Ticket::create([
-                'company_id'          => $company->id,
                 'requester_id'       => $client->id,
                 'created_by'         => $client->id,
                 'assigned_to'        => $teknisi->id,
                 'team_id'            => $project->id,
-                'device_id'          => $device->id,
+                'ast_id'             => $asset->id,
                 'category_id'        => $hardware->id,
                 'subcategory_id'     => $laptopCat->id,
                 'sla_policy_id'      => $sla->id,
@@ -162,7 +169,6 @@ class E2EDemoSeeder extends Seeder
 
             DB::table('activity_logs')->insert([
                 [
-                    'company_id'  => $company->id,
                     'ticket_id'   => $ticket->id,
                     'user_id'     => $client->id,
                     'action'      => 'ticket_created',
@@ -172,57 +178,6 @@ class E2EDemoSeeder extends Seeder
                     'updated_at'  => now()->subHours(48),
                 ],
                 [
-                    'company_id'  => $company->id,
-                    'ticket_id'   => $ticket->id,
-                    'user_id'     => $client->id,
-                    'action'      => 'ticket_status_changed',
-                    'description' => 'Status awal ticket: Open',
-                    'properties'  => json_encode(['from' => null, 'to' => 'open']),
-                    'created_at'  => now()->subHours(48),
-                    'updated_at'  => now()->subHours(48),
-                ],
-                [
-                    'company_id'  => $company->id,
-                    'ticket_id'   => $ticket->id,
-                    'user_id'     => $teknisi->id,
-                    'action'      => 'reply_added',
-                    'description' => 'Reply added',
-                    'properties'  => json_encode([]),
-                    'created_at'  => now()->subHours(47),
-                    'updated_at'  => now()->subHours(47),
-                ],
-                [
-                    'company_id'  => $company->id,
-                    'ticket_id'   => $ticket->id,
-                    'user_id'     => $teknisi->id,
-                    'action'      => 'ticket_status_changed',
-                    'description' => 'Status ticket berubah dari Open ke In Progress',
-                    'properties'  => json_encode(['from' => 'open', 'to' => 'in_progress']),
-                    'created_at'  => now()->subHours(47),
-                    'updated_at'  => now()->subHours(47),
-                ],
-                [
-                    'company_id'  => $company->id,
-                    'ticket_id'   => $ticket->id,
-                    'user_id'     => $client->id,
-                    'action'      => 'reply_added',
-                    'description' => 'Reply added',
-                    'properties'  => json_encode([]),
-                    'created_at'  => now()->subHours(4),
-                    'updated_at'  => now()->subHours(4),
-                ],
-                [
-                    'company_id'  => $company->id,
-                    'ticket_id'   => $ticket->id,
-                    'user_id'     => $teknisi->id,
-                    'action'      => 'reply_added',
-                    'description' => 'Reply added',
-                    'properties'  => json_encode([]),
-                    'created_at'  => now()->subHours(3),
-                    'updated_at'  => now()->subHours(3),
-                ],
-                [
-                    'company_id'  => $company->id,
                     'ticket_id'   => $ticket->id,
                     'user_id'     => $teknisi->id,
                     'action'      => 'ticket_status_changed',
@@ -236,11 +191,11 @@ class E2EDemoSeeder extends Seeder
 
         // ── Output credentials ────────────────────────────────────────────────
         $this->command->newLine();
-        $this->command->info("E2E Demo Seeder selesai — Company: {$company->name}");
+        $this->command->info('E2E Demo Seeder selesai.');
         $this->command->table(
             ['Role', 'Email', 'Password'],
             [
-                ['Admin',   $admin?->email ?? '(pakai akun admin yang sudah ada)', '-'],
+                ['Admin',   $admin?->user_email ?? '(pakai akun admin yang sudah ada)', '-'],
                 ['Teknisi', 'aldo@ias.test', 'password'],
                 ['Client',  'budi@ias.test', 'password'],
             ]

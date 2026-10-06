@@ -22,15 +22,17 @@ class RunHelpdeskAutomation extends Command
         $warned    = 0;
         $closed    = 0;
 
+        $autoCloseDays = (int) config('helpdesk.auto_close_days');
+
         // === Warning: kirim notifikasi 1 hari sebelum auto-close ===
         Ticket::query()
             ->where('status', 'resolved')
-            ->with(['company', 'requester'])
+            ->with(['requester'])
             ->whereNotNull('resolved_at')
             ->whereNull('auto_close_warned_at')
             ->get()
-            ->each(function (Ticket $ticket) use (&$warned, $helpdesk): void {
-                $days = $ticket->company->auto_close_days;
+            ->each(function (Ticket $ticket) use (&$warned, $helpdesk, $autoCloseDays): void {
+                $days = $autoCloseDays;
                 if ($days < 2) {
                     return; // jeda terlalu pendek, tidak ada waktu untuk warning
                 }
@@ -53,7 +55,6 @@ class RunHelpdeskAutomation extends Command
             });
 
         Ticket::query()
-            ->with(['company'])
             ->whereIn('status', ['open', 'in_progress', 'pending'])
             ->where(function ($query): void {
                 $query->where(function ($inner): void {
@@ -68,8 +69,7 @@ class RunHelpdeskAutomation extends Command
                 }
 
                 $supervisors = User::query()
-                    ->where('company_id', $ticket->company_id)
-                    ->whereIn('role', ['supervisor', 'admin'])
+                    ->whereIn('user_role', ['admin', 'superadmin'])
                     ->get();
 
                 $metadata['escalated_at'] = now()->toDateTimeString();
@@ -82,11 +82,11 @@ class RunHelpdeskAutomation extends Command
 
         Ticket::query()
             ->where('status', 'resolved')
-            ->with(['company', 'requester', 'assignee', 'team'])
+            ->with(['requester', 'assignee', 'team'])
             ->whereNotNull('resolved_at')
             ->get()
-            ->each(function (Ticket $ticket) use (&$closed, $helpdesk): void {
-                if ($ticket->resolved_at->addDays($ticket->company->auto_close_days)->isFuture()) {
+            ->each(function (Ticket $ticket) use (&$closed, $helpdesk, $autoCloseDays): void {
+                if ($ticket->resolved_at->addDays($autoCloseDays)->isFuture()) {
                     return;
                 }
 

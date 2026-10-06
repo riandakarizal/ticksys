@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('sla_policies', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->unsignedInteger('response_minutes')->default(60);
             $table->unsignedInteger('resolution_minutes')->default(240);

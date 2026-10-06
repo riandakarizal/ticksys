@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('eqt_change_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('user_id', 20)->nullable();
+            $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             $table->string('record_type', 50); // project, handover, vehicle, maintenance
             $table->unsignedBigInteger('record_id');
             $table->string('record_label', 300)->nullable();

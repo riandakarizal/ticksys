@@ -12,9 +12,10 @@ class PjctMain extends Model
 {
     use SoftDeletes, LogsSystemActivity;
 
-    protected $table      = 'pjct_main';
+    protected $table        = 'pjct_main';
     public    $incrementing = false;
-    protected $keyType    = 'string';
+    public    $timestamps   = false;
+    protected $keyType      = 'string';
 
     /** PK prefix — `PJ` + 4-digit running number, e.g. `PJ0111`. */
     public const ID_PREFIX = 'PJ';

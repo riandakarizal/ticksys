@@ -29,14 +29,14 @@ test('admin bisa akses /reports', function () {
     $this->actingAs(makeUser('admin'))->get('/reports')->assertOk();
 });
 
-// ── /monitoring ───────────────────────────────────────────
+// ── /monitoring — semua role login boleh akses (M-02, all ✓) ─────────────
 
-test('client tidak bisa akses /monitoring', function () {
-    $this->actingAs(makeUser('client'))->get('/monitoring')->assertForbidden();
+test('client bisa akses /monitoring', function () {
+    $this->actingAs(makeUser('client'))->get('/monitoring')->assertOk();
 });
 
-test('agent tidak bisa akses /monitoring', function () {
-    $this->actingAs(makeUser('agent'))->get('/monitoring')->assertForbidden();
+test('agent bisa akses /monitoring', function () {
+    $this->actingAs(makeUser('agent'))->get('/monitoring')->assertOk();
 });
 
 test('supervisor bisa akses /monitoring', function () {
@@ -71,12 +71,20 @@ test('supervisor tidak bisa POST ke /admin/users', function () {
         ->assertForbidden();
 });
 
-// ── /monitoring/import — hanya admin ─────────────────────
+// ── /monitoring/import — role:superadmin,admin ───────────
 
-test('supervisor tidak bisa akses /monitoring/import', function () {
-    $this->actingAs(makeUser('supervisor'))->get('/monitoring/import')->assertForbidden();
+test('supervisor bisa akses /monitoring/import', function () {
+    $this->actingAs(makeUser('supervisor'))->get('/monitoring/import')->assertOk();
 });
 
 test('admin bisa akses /monitoring/import', function () {
     $this->actingAs(makeUser('admin'))->get('/monitoring/import')->assertOk();
+});
+
+test('agent tidak bisa akses /monitoring/import', function () {
+    $this->actingAs(makeUser('agent'))->get('/monitoring/import')->assertForbidden();
+});
+
+test('client tidak bisa akses /monitoring/import', function () {
+    $this->actingAs(makeUser('client'))->get('/monitoring/import')->assertForbidden();
 });

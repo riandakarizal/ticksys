@@ -5,7 +5,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-// ── /monitoring — supervisor + admin ─────────────────────
+// ── /monitoring — semua role login boleh akses (M-02, all ✓) ─────────────
 
 test('supervisor bisa akses /monitoring', function () {
     $this->actingAs(User::factory()->supervisor()->create())
@@ -19,19 +19,19 @@ test('admin bisa akses /monitoring', function () {
         ->assertOk();
 });
 
-test('agent tidak bisa akses /monitoring', function () {
+test('agent bisa akses /monitoring', function () {
     $this->actingAs(User::factory()->agent()->create())
         ->get('/monitoring')
-        ->assertForbidden();
+        ->assertOk();
 });
 
-test('client tidak bisa akses /monitoring', function () {
+test('client bisa akses /monitoring', function () {
     $this->actingAs(User::factory()->client()->create())
         ->get('/monitoring')
-        ->assertForbidden();
+        ->assertOk();
 });
 
-// ── /monitoring/import — admin only ──────────────────────
+// ── /monitoring/import — role:superadmin,admin ───────────
 
 test('admin bisa akses /monitoring/import', function () {
     $this->actingAs(User::factory()->admin()->create())
@@ -39,13 +39,25 @@ test('admin bisa akses /monitoring/import', function () {
         ->assertOk();
 });
 
-test('supervisor tidak bisa akses /monitoring/import', function () {
+test('supervisor bisa akses /monitoring/import', function () {
     $this->actingAs(User::factory()->supervisor()->create())
+        ->get('/monitoring/import')
+        ->assertOk();
+});
+
+test('agent tidak bisa akses /monitoring/import', function () {
+    $this->actingAs(User::factory()->agent()->create())
         ->get('/monitoring/import')
         ->assertForbidden();
 });
 
-// ── template download — admin only ───────────────────────
+test('client tidak bisa akses /monitoring/import', function () {
+    $this->actingAs(User::factory()->client()->create())
+        ->get('/monitoring/import')
+        ->assertForbidden();
+});
+
+// ── template download — role:superadmin,admin ────────────
 
 test('admin bisa download template /monitoring/import/template', function () {
     $this->actingAs(User::factory()->admin()->create())
@@ -61,13 +73,19 @@ test('admin bisa download template per-type', function (string $type) {
         ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 })->with(['project_eq', 'project_tech', 'handover', 'vehicle', 'maintenance']);
 
-test('supervisor tidak bisa download template', function () {
+test('supervisor bisa download template', function () {
     $this->actingAs(User::factory()->supervisor()->create())
+        ->get('/monitoring/import/template')
+        ->assertOk();
+});
+
+test('agent tidak bisa download template', function () {
+    $this->actingAs(User::factory()->agent()->create())
         ->get('/monitoring/import/template')
         ->assertForbidden();
 });
 
-// ── /monitoring/export — admin only ──────────────────────
+// ── /monitoring/export — role:superadmin,admin ───────────
 
 test('admin bisa GET /monitoring/export', function () {
     $this->actingAs(User::factory()->admin()->create())
@@ -75,8 +93,14 @@ test('admin bisa GET /monitoring/export', function () {
         ->assertOk();
 });
 
-test('supervisor tidak bisa GET /monitoring/export', function () {
+test('supervisor bisa GET /monitoring/export', function () {
     $this->actingAs(User::factory()->supervisor()->create())
+        ->get('/monitoring/export')
+        ->assertOk();
+});
+
+test('agent tidak bisa GET /monitoring/export', function () {
+    $this->actingAs(User::factory()->agent()->create())
         ->get('/monitoring/export')
         ->assertForbidden();
 });

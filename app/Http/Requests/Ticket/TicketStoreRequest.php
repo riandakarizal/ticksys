@@ -15,19 +15,20 @@ class TicketStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $companyId = auth()->user()->company_id;
-
         return [
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
-            'device_id' => ['required', Rule::exists('devices', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'team_id' => ['required', Rule::exists('teams', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereNull('parent_id'))],
-            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
-            'requester_id' => [auth()->user()->isUser() ? 'nullable' : 'required', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->where('role', 'user'))],
-            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->where('company_id', $companyId)->whereIn('role', ['siteadmin', 'admin', 'superadmin']))],
-            'sla_policy_id' => ['nullable', Rule::exists('sla_policies', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
+            // Project PRISM — menentukan client (pjct_client) secara otomatis, lihat
+            // TicketManager::createTicket().
+            'pjct_id' => ['required', 'string', Rule::exists('pjct_main', 'id')],
+            // Aset PRISM yang bermasalah — opsional, karena mayoritas project tidak
+            // memiliki aset tercatat di ast_main (lihat docs/PRISM-DATABASE.md).
+            'ast_id' => ['nullable', 'string', Rule::exists('ast_main', 'id')],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->whereNull('parent_id'))],
+            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('user_role', ['siteadmin', 'admin', 'superadmin']))],
+            'sla_policy_id' => ['nullable', Rule::exists('sla_policies', 'id')],
             'tags' => ['nullable', 'string'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,txt,log,doc,docx,xls,xlsx,csv'],

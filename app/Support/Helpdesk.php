@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Mail\TicketEventMail;
 use App\Models\ActivityLog;
 use App\Models\AppNotification;
+use App\Models\AstMain;
 use App\Models\CustomField;
 use App\Models\SlaPolicy;
 use App\Models\Team;
@@ -23,32 +24,25 @@ class Helpdesk
 {
     public function visibleTickets(User $user): Builder
     {
-        if ($user->canManageAllTickets() || $user->isVip()) {
+        // Tiket tidak lagi terikat ke Team (lihat TicketManager::createTicket) — jadi
+        // visibilitas staff tidak lagi disaring lewat keanggotaan team_user.
+        if ($user->canManageAllTickets() || $user->isVip() || $user->isAdmin()) {
             return Ticket::query();
         }
 
-        $projectIds = $user->teams()->pluck('teams.id');
-        $query      = Ticket::query()->whereIn('tickets.team_id', $projectIds);
-
-        if ($user->isAdmin()) {
-            return $query;
-        }
-
         if ($user->isSiteAdmin()) {
-            return $query->where('tickets.assigned_to', $user->id);
+            return Ticket::query()->where('tickets.assigned_to', $user->id);
         }
 
-        return $query->where('tickets.requester_id', $user->id);
+        return Ticket::query()->where('tickets.requester_id', $user->id);
     }
 
     public function visibleProjects(User $user): Builder
     {
-        if ($user->canManageAllTickets() || $user->isVip()) {
-            return Team::query();
-        }
-
-        return Team::query()
-            ->whereHas('members', fn (Builder $builder) => $builder->where('users.id', $user->id));
+        // Hanya ada segelintir support team di organisasi ini, dan keanggotaan
+        // team_user tidak pernah diisi secara nyata — jadi semua user (kecuali VIP,
+        // yang memang tidak membuat tiket) bisa pilih team manapun saat membuat tiket.
+        return Team::query();
     }
 
     public function parseTags(?string $tags): array
@@ -63,31 +57,6 @@ class Helpdesk
             ->unique()
             ->values()
             ->all();
-    }
-
-    public function autoAssignUserForProject(Team $project, ?int $preferredUserId = null): ?int
-    {
-        // Assignment falls back in priority order so ticket intake can stay simple:
-        // explicit assignee -> first site admin -> admin -> super admin.
-        $members = $project->members;
-
-        if ($preferredUserId && $members->contains('id', $preferredUserId)) {
-            return $preferredUserId;
-        }
-
-        $siteAdmin = $members->firstWhere('user_role', 'siteadmin');
-        if ($siteAdmin) {
-            return $siteAdmin->id;
-        }
-
-        $admin = $members->firstWhere('user_role', 'admin');
-        if ($admin) {
-            return $admin->id;
-        }
-
-        $superAdmin = $members->firstWhere('user_role', 'superadmin');
-
-        return $superAdmin?->id;
     }
 
     public function applySlaDeadlines(Ticket $ticket, ?SlaPolicy $policy = null): void
@@ -116,7 +85,7 @@ class Helpdesk
         }
     }
 
-    public function storeAttachments(Ticket $ticket, array $files, ?int $userId = null, ?int $messageId = null): void
+    public function storeAttachments(Ticket $ticket, array $files, ?string $userId = null, ?int $messageId = null): void
     {
         foreach ($files as $file) {
             if (! $file instanceof UploadedFile) {
@@ -137,12 +106,66 @@ class Helpdesk
     public function recordActivity(?Ticket $ticket, ?User $user, string $action, string $description, array $properties = []): void
     {
         ActivityLog::create([
-            'company_id' => $ticket?->company_id,
             'ticket_id'  => $ticket?->id,
             'user_id'    => $user?->id,
             'action'     => $action,
             'description'=> $description,
             'properties' => $properties,
+        ]);
+    }
+
+    /**
+     * Refleksikan status tiket ke kondisi aset PRISM (ast_main) yang dilaporkannya.
+     * Selama tiket masih terbuka, aset ditandai 'Bad'. Begitu tidak ada lagi tiket
+     * terbuka untuk aset yang sama, kondisinya dikembalikan ke sebelum dilaporkan.
+     */
+    public function syncLinkedAssetCondition(Ticket $ticket, ?string $previousAstId = null): void
+    {
+        if ($previousAstId && $previousAstId !== $ticket->ast_id) {
+            $this->releaseAssetIfNoOpenTickets($previousAstId);
+        }
+
+        if (! $ticket->ast_id) {
+            return;
+        }
+
+        if (in_array($ticket->status, ['resolved', 'closed'], true)) {
+            $this->releaseAssetIfNoOpenTickets($ticket->ast_id);
+
+            return;
+        }
+
+        $asset = AstMain::find($ticket->ast_id);
+
+        if (! $asset || $asset->ast_last_ticket_id === $ticket->id) {
+            return;
+        }
+
+        $ticket->update(['asset_cond_before' => $ticket->asset_cond_before ?? $asset->ast_cond]);
+        $asset->update(['ast_cond' => 'Bad', 'ast_last_ticket_id' => $ticket->id]);
+    }
+
+    private function releaseAssetIfNoOpenTickets(string $astId): void
+    {
+        $stillOpen = Ticket::where('ast_id', $astId)
+            ->whereNotIn('status', ['resolved', 'closed'])
+            ->exists();
+
+        if ($stillOpen) {
+            return;
+        }
+
+        $asset = AstMain::find($astId);
+
+        if (! $asset || ! $asset->ast_last_ticket_id) {
+            return;
+        }
+
+        $lastTicket = Ticket::find($asset->ast_last_ticket_id);
+
+        $asset->update([
+            'ast_cond' => $lastTicket?->asset_cond_before ?? 'Good',
+            'ast_last_ticket_id' => null,
         ]);
     }
 

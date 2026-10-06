@@ -13,16 +13,13 @@ return new class extends Migration
     {
         Schema::create('custom_fields', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->string('key');
+            $table->string('key')->unique();
             $table->string('type')->default('text');
             $table->json('options')->nullable();
             $table->boolean('is_required')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-
-            $table->unique(['tenant_id', 'key']);
         });
     }
 

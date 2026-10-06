@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\SlaPolicy;
-use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,7 +15,6 @@ class SlaPolicyFactory extends Factory
     public function definition(): array
     {
         return [
-            'company_id' => Company::factory(),
             'name' => fake()->words(2, true),
             'response_minutes' => 60,
             'resolution_minutes' => 240,

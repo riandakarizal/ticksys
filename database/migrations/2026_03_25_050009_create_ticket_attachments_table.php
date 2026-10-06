@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('ticket_id')->constrained()->cascadeOnDelete();
             $table->foreignId('ticket_message_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('user_id', 20)->nullable();
+            $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             $table->string('original_name');
             $table->string('path');
             $table->string('mime_type');

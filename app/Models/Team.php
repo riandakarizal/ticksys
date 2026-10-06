@@ -13,17 +13,11 @@ class Team extends Model
 {
     use HasFactory, LogsSystemActivity;
     protected $fillable = [
-        'company_id',
         'lead_user_id',
         'name',
         'code',
         'description',
     ];
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
-    }
 
     public function lead(): BelongsTo
     {
@@ -43,11 +37,6 @@ class Team extends Model
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
-    }
-
-    public function devices(): HasMany
-    {
-        return $this->hasMany(Device::class)->orderBy('name');
     }
 }
 

@@ -189,10 +189,10 @@
         <div class="panel">
             <h3 class="text-xl font-black">Ticket Details</h3>
             <dl class="mt-4 space-y-3 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Requester</dt><dd>{{ $ticket->requester?->user_name }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Client</dt><dd>{{ $ticket->requesterLabel() }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Assigned To</dt><dd>{{ $ticket->assignee?->user_name ?? 'Unassigned' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Project</dt><dd>{{ $ticket->team?->name ?? '-' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Affected Device</dt><dd>{{ $ticket->device?->name ?? '-' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Project</dt><dd>{{ $ticket->project?->pjct_name ?? '-' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Aset Terkait</dt><dd>@if($ticket->asset) {{ $ticket->asset->ast_brand }} {{ $ticket->asset->ast_brandmodel }} <span class="badge {{ $ticket->asset->condBadgeClass() }}">{{ $ticket->asset->ast_cond }}</span> @else - @endif</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Category</dt><dd>{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? '-' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Response Due</dt><dd class="{{ $ticket->responseDueClass() }}">{{ $ticket->response_due_at?->format('d M Y H:i') ?? '-' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Resolution Due</dt><dd class="{{ $ticket->resolutionDueClass() }}">{{ $ticket->resolution_due_at?->format('d M Y H:i') ?? '-' }}</dd></div>
@@ -253,17 +253,20 @@
                             @endforeach
                         </select>
                         <label class="label">Project <span class="text-rose-500">*</span></label>
-                        <select class="field" name="team_id" data-ticket-project required>
-                            <option value="" disabled hidden @selected(blank($ticket->team_id))>Select project</option>
-                            @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-clients="{{ $project->members->where('user_role', 'user')->pluck('id')->implode(',') }}" data-agents="{{ $project->members->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->pluck('id')->implode(',') }}" data-devices="{{ $project->devices->pluck('id')->implode(',') }}" @selected($ticket->team_id === $project->id)>{{ $project->name }}</option>
+                        <select class="field" name="pjct_id" data-ticket-project required>
+                            <option value="" disabled hidden @selected(blank($ticket->pjct_id))>Select project</option>
+                            @foreach($pjctProjects as $project)
+                                <option value="{{ $project->id }}" data-client="{{ $project->pjct_client }}" @selected($ticket->pjct_id === $project->id)>{{ $project->pjct_name }}</option>
                             @endforeach
                         </select>
-                        <label class="label">Affected Device <span class="text-rose-500">*</span></label>
-                        <select class="field" name="device_id" data-ticket-device required>
-                            <option value="" disabled hidden @selected(blank($ticket->device_id))>Select device</option>
-                            @foreach($devices as $device)
-                                <option value="{{ $device->id }}" data-project="{{ $device->team_id }}" @selected($ticket->device_id === $device->id)>{{ $device->name }}{{ $device->serial_number ? ' | '.$device->serial_number : '' }}</option>
+                        @if(! $ticket->requester_id)
+                            <p class="text-xs text-slate-500">Client: <span class="font-semibold text-slate-700" data-ticket-client-label>{{ $ticket->project?->pjct_client ?? '-' }}</span></p>
+                        @endif
+                        <label class="label">Aset Terkait (opsional)</label>
+                        <select class="field" name="ast_id">
+                            <option value="" @selected(blank($ticket->ast_id))>Tidak terkait aset tertentu</option>
+                            @foreach($assets as $asset)
+                                <option value="{{ $asset->id }}" @selected($ticket->ast_id === $asset->id)>{{ $asset->id }} — {{ $asset->ast_brand }} {{ $asset->ast_brandmodel }} ({{ $asset->project?->pjct_name ?? $asset->ast_userloc }})</option>
                             @endforeach
                         </select>
                         <label class="label">Category</label>
@@ -280,12 +283,6 @@
                                 @foreach($category->children as $child)
                                     <option value="{{ $child->id }}" @selected($ticket->subcategory_id === $child->id)>{{ $category->name }} / {{ $child->name }}</option>
                                 @endforeach
-                            @endforeach
-                        </select>
-                        <label class="label">Requester <span class="text-rose-500">*</span></label>
-                        <select class="field" name="requester_id" data-ticket-requester required>
-                            @foreach($clients as $client)
-                                <option value="{{ $client->id }}" @selected($ticket->requester_id === $client->id)>{{ $client->user_name }}</option>
                             @endforeach
                         </select>
                         <button class="btn-primary" type="button" data-open-dialog="close-confirm-dialog" id="save-workflow-btn" data-default-submit>Save Changes</button>

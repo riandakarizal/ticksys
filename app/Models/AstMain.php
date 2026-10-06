@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AstMain extends Model
 {
@@ -85,6 +87,7 @@ class AstMain extends Model
         'ast_serial', 'ast_vendid', 'ast_username', 'ast_userreg',
         'ast_userloc', 'ast_userlocdet', 'ast_cond', 'ast_delvdate',
         'ast_purcdate', 'ast_stat', 'ast_pjctid', 'ast_docid', 'ast_misc',
+        'ast_last_ticket_id',
     ];
 
     protected $casts = [
@@ -95,6 +98,21 @@ class AstMain extends Model
     public function project()
     {
         return $this->belongsTo(PjctMain::class, 'ast_pjctid', 'id');
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'ast_id', 'id');
+    }
+
+    public function lastTicket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'ast_last_ticket_id');
+    }
+
+    public function hasOpenTicket(): bool
+    {
+        return $this->ast_last_ticket_id !== null;
     }
 
     public function condBadgeClass(): string

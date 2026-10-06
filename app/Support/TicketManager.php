@@ -5,10 +5,10 @@ namespace App\Support;
 use App\Http\Requests\Ticket\TicketStoreRequest;
 use App\Http\Requests\Ticket\TicketUpdateRequest;
 use App\Models\Category;
+use App\Models\PjctMain;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,32 +19,25 @@ class TicketManager
 {
     public function createTicket(User $user, TicketStoreRequest $request, Helpdesk $helpdesk): Ticket
     {
-        $projects = $helpdesk->visibleProjects($user)
-            ->with(['members:id,name,email,role', 'devices:id,company_id,team_id,name,is_active'])
-            ->get();
+        $customFields = $helpdesk->defaultCustomFields($user)->values();
+        $this->validateTicketRelationships($request, $customFields);
 
-        $customFields = $helpdesk->defaultCustomFields($user)
-            ->reject(fn ($field) => in_array($field->key, ['affected_device', 'business_impact'], true))
-            ->values();
+        $project = PjctMain::findOrFail($request->validated('pjct_id'));
 
-        $affectedDeviceField = $helpdesk->defaultCustomFields($user)->firstWhere('key', 'affected_device');
-        $this->validateTicketRelationships($request, $user, $customFields, $projects);
-
-        $project = $projects->firstWhere('id', (int) $request->validated('team_id'));
-        $assignedUserId = $helpdesk->autoAssignUserForProject($project, $request->validated('assigned_to'));
-
-        return DB::transaction(function () use ($request, $user, $customFields, $affectedDeviceField, $helpdesk, $project, $assignedUserId) {
+        return DB::transaction(function () use ($request, $user, $customFields, $helpdesk, $project) {
             $slaId = $request->validated('sla_policy_id') ?? SlaPolicy::query()
                 ->where('is_default', true)
                 ->value('id');
 
             $ticket = Ticket::create([
-                'company_id'     => 1,
-                'requester_id'  => $user->isUser() ? $user->id : $request->validated('requester_id'),
+                // Self-service: requester adalah akun sendiri. Dibuatkan staff atas nama
+                // client: tidak ada akun asli, nama client diambil dari project PRISM.
+                'requester_id'   => $user->isUser() ? $user->id : null,
+                'requester_name' => $user->isUser() ? null : $project->pjct_client,
                 'created_by'    => $user->id,
-                'assigned_to'   => $assignedUserId,
-                'team_id'       => $project->id,
-                'device_id'     => $request->validated('device_id'),
+                'assigned_to'   => $request->validated('assigned_to'),
+                'pjct_id'       => $project->id,
+                'ast_id'        => $request->validated('ast_id'),
                 'category_id'   => $request->validated('category_id'),
                 'subcategory_id' => $request->validated('subcategory_id'),
                 'sla_policy_id' => $slaId,
@@ -56,7 +49,6 @@ class TicketManager
             ]);
 
             $helpdesk->syncCustomFields($ticket, $customFields, $request->input('custom_fields', []));
-            $this->syncAffectedDeviceField($helpdesk, $ticket, $affectedDeviceField);
             $ticket->loadMissing('slaPolicy');
             $helpdesk->applySlaDeadlines($ticket, $ticket->slaPolicy);
             $ticket->save();
@@ -64,12 +56,13 @@ class TicketManager
             $helpdesk->recordActivity($ticket, $user, 'ticket_created', 'Ticket dibuat', [
                 'status'      => 'open',
                 'priority'    => $ticket->priority,
-                'project_id'  => $ticket->team_id,
+                'project_id'  => $ticket->pjct_id,
                 'assigned_to' => $ticket->assigned_to,
             ]);
             $this->recordStatusHistory($helpdesk, $ticket, $user, null, 'open');
+            $helpdesk->syncLinkedAssetCondition($ticket);
 
-            return $ticket->load(['requester', 'assignee', 'team', 'device']);
+            return $ticket->load(['requester', 'assignee', 'project', 'asset']);
         });
     }
 
@@ -80,15 +73,17 @@ class TicketManager
         }
 
         $user = auth()->user();
-        $projects = $helpdesk->visibleProjects($user)
-            ->with(['members:id,name,email,role', 'devices:id,company_id,team_id,name,is_active'])
-            ->get();
+        $this->validateTicketRelationships($request, collect());
 
-        $this->validateTicketRelationships($request, $user, collect(), $projects);
-
-        $before = $ticket->only(['status', 'priority', 'assigned_to', 'team_id', 'device_id', 'category_id', 'subcategory_id', 'requester_id']);
+        $before = $ticket->only(['status', 'priority', 'assigned_to', 'pjct_id', 'ast_id', 'category_id', 'subcategory_id']);
 
         $ticket->fill($request->validated());
+
+        // Tiket dibuatkan staff atas nama client (bukan self-service): kalau project-nya
+        // diganti, ikut sinkronkan nama client yang ditampilkan.
+        if (! $ticket->requester_id && $before['pjct_id'] !== $ticket->pjct_id) {
+            $ticket->requester_name = PjctMain::find($ticket->pjct_id)?->pjct_client;
+        }
 
         if (($before['status'] ?? null) !== $ticket->status && $ticket->status === 'in_progress') {
             // Only mark the first response time; do NOT recalculate SLA deadlines —
@@ -124,6 +119,11 @@ class TicketManager
         }
 
         $this->notifyTicketWorkflowChanges($helpdesk, $ticket, $before, $user);
+
+        if (($before['ast_id'] ?? null) !== $ticket->ast_id) {
+            $helpdesk->syncLinkedAssetCondition($ticket, $before['ast_id'] ?? null);
+        }
+        $helpdesk->syncLinkedAssetCondition($ticket);
 
         return $ticket;
     }
@@ -163,12 +163,12 @@ class TicketManager
 
         return DB::transaction(function () use ($ticket, $data, $helpdesk): Ticket {
             $newTicket = Ticket::create([
-                'company_id'           => $ticket->company_id,
                 'requester_id'        => $ticket->requester_id,
+                'requester_name'      => $ticket->requester_name,
                 'created_by'          => Auth::id(),
                 'assigned_to'         => $ticket->assigned_to,
-                'team_id'             => $ticket->team_id,
-                'device_id'           => $ticket->device_id,
+                'pjct_id'             => $ticket->pjct_id,
+                'ast_id'              => $ticket->ast_id,
                 'category_id'         => $ticket->category_id,
                 'subcategory_id'      => $ticket->subcategory_id,
                 'sla_policy_id'       => $ticket->sla_policy_id,
@@ -188,53 +188,19 @@ class TicketManager
                 'parent_ticket_id' => $ticket->id,
             ]);
             $this->recordStatusHistory($helpdesk, $newTicket, Auth::user(), null, 'open');
+            $helpdesk->syncLinkedAssetCondition($newTicket);
 
             return $newTicket;
         });
     }
 
-    private function validateTicketRelationships($request, User $user, $customFields, EloquentCollection $projects): void
+    private function validateTicketRelationships($request, $customFields): void
     {
-        $projectId     = (int) $request->input('team_id');
         $categoryId    = $request->input('category_id');
         $subcategoryId = $request->input('subcategory_id');
-        $requesterId   = $user->isUser() ? $user->id : (int) $request->input('requester_id');
-        $assignedTo    = $request->input('assigned_to') ? (int) $request->input('assigned_to') : null;
-        $deviceId      = $request->input('device_id') ? (int) $request->input('device_id') : null;
-
-        $project = $projects->firstWhere('id', $projectId);
-        if (! $project) {
-            throw ValidationException::withMessages(['team_id' => 'Project yang dipilih tidak tersedia untuk user ini.']);
-        }
-
-        if (! $project->members->contains('id', $requesterId)) {
-            throw ValidationException::withMessages(['requester_id' => 'Requester harus menjadi member dari project yang dipilih.']);
-        }
-
-        if ($assignedTo && ! $project->members->contains('id', $assignedTo)) {
-            throw ValidationException::withMessages(['assigned_to' => 'Assignee harus menjadi member dari project yang dipilih.']);
-        }
-
-        if ($deviceId && ! $project->devices->contains('id', $deviceId)) {
-            throw ValidationException::withMessages(['device_id' => 'Affected device harus berasal dari project yang dipilih.']);
-        }
 
         if ($subcategoryId && ! $categoryId) {
             throw ValidationException::withMessages(['subcategory_id' => 'Pilih category utama sebelum memilih subcategory.']);
-        }
-
-        if ($categoryId) {
-            $category = Category::query()
-                ->with('projects:id')
-                ->find($categoryId);
-
-            if (! $category) {
-                throw ValidationException::withMessages(['category_id' => 'Category tidak valid untuk company ini.']);
-            }
-
-            if ($projectId && ! $category->projects->contains('id', $projectId)) {
-                throw ValidationException::withMessages(['category_id' => 'Category tidak tersedia untuk project yang dipilih.']);
-            }
         }
 
         if ($subcategoryId) {
@@ -251,17 +217,6 @@ class TicketManager
                 throw ValidationException::withMessages(['custom_fields.' . $field->key => $field->name . ' wajib diisi.']);
             }
         }
-    }
-
-    private function syncAffectedDeviceField(Helpdesk $helpdesk, Ticket $ticket, $affectedDeviceField): void
-    {
-        if (! $affectedDeviceField) {
-            return;
-        }
-
-        $helpdesk->syncCustomFields($ticket, collect([$affectedDeviceField]), [
-            $affectedDeviceField->key => $ticket->device?->name,
-        ]);
     }
 
     private function recordStatusHistory(Helpdesk $helpdesk, Ticket $ticket, User $actor, ?string $fromStatus, string $toStatus): void
@@ -290,7 +245,7 @@ class TicketManager
             ['ticket_id' => $ticket->id]
         );
 
-        if ((int) ($before['assigned_to'] ?? 0) !== (int) ($ticket->assigned_to ?? 0) && $ticket->assignee) {
+        if (($before['assigned_to'] ?? null) !== $ticket->assigned_to && $ticket->assignee) {
             $helpdesk->notifyUsers(
                 collect([$ticket->assignee]),
                 $ticket,
