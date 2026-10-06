@@ -29,6 +29,7 @@ Full redesign from top horizontal navbar to **FlowMail-style left collapsible si
 | Vendor → Contract | `vendor.contracts` |
 | Report → Issues | `report.issues` |
 | Report → Expenses | `report.expenses` |
+| Report → Data | `report.data` |
 | Tickets | `tickets.index` |
 | Admin *(admin only)* | `admin.users.index` |
 

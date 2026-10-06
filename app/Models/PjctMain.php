@@ -17,13 +17,23 @@ class PjctMain extends Model
     public    $timestamps   = false;
     protected $keyType      = 'string';
 
+    /** PK prefix — `PJ` + 4-digit running number, e.g. `PJ0111`. */
+    public const ID_PREFIX = 'PJ';
+
+    /** Beyond this the ID gains a fifth digit and `max(id)` stops sorting correctly. */
+    public const ID_SEQUENCE_MAX = 9999;
+
+    /**
+     * Pilihan `pjct_cotype` (jenis dokumen kontrak). Kolomnya VARCHAR, jadi daftar inilah
+     * satu-satunya pembatas nilai — tambah tipe baru cukup di sini.
+     */
+    public const COTYPES = ['Contract', 'Contract Addendum'];
+
     protected static function booted(): void
     {
         static::creating(function (self $model): void {
             if (empty($model->id)) {
-                $max = static::withTrashed()->max('id'); // e.g. 'PJ0066'
-                $num = $max ? ((int) substr($max, 2)) + 1 : 1;
-                $model->id = 'PJ' . str_pad($num, 4, '0', STR_PAD_LEFT);
+                $model->id = static::nextId();
             }
         });
 
@@ -32,23 +42,73 @@ class PjctMain extends Model
         });
     }
 
+    /**
+     * Next free PK, e.g. `PJ0112`.
+     */
+    public static function nextId(): string
+    {
+        return static::nextIds(1)[0];
+    }
+
+    /**
+     * Reserve a block of consecutive IDs in one query, for bulk inserts that bypass the
+     * `creating` hook. Soft-deleted rows count — reusing an archived project's ID would
+     * resurrect it under a new project's name.
+     *
+     * @return array<int, string>
+     *
+     * @throws \RuntimeException when the `PJ9999` ceiling would be crossed
+     */
+    public static function nextIds(int $count): array
+    {
+        $max = static::withTrashed()->max('id'); // e.g. 'PJ0111'
+        $start = ($max ? (int) substr($max, strlen(self::ID_PREFIX)) : 0) + 1;
+
+        if ($start + $count - 1 > self::ID_SEQUENCE_MAX) {
+            throw new \RuntimeException(sprintf(
+                'Kuota ID project habis: terpakai %d dari %d, butuh %d lagi.',
+                $start - 1,
+                self::ID_SEQUENCE_MAX,
+                $count
+            ));
+        }
+
+        return array_map(
+            fn (int $i) => self::ID_PREFIX.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+            range($start, $start + $count - 1)
+        );
+    }
+
     protected $fillable = [
         'pjct_contract', 'pjct_codate', 'pjct_div', 'pjct_name',
-        'pjct_type', 'pjct_client', 'pjct_area', 'pjct_value',
+        'pjct_type', 'pjct_cotype', 'pjct_parcon', 'pjct_client', 'pjct_area', 'pjct_value',
         'pjct_budgetid', 'pjct_costart', 'pjct_totalperiod',
-        'pjct_coend_m', 'pjct_status', 'pjct_misc',
+        'pjct_coend_m', 'pjct_accdate', 'pjct_accby', 'pjct_status', 'pjct_misc',
     ];
 
     protected $casts = [
         'pjct_codate'  => 'date',
         'pjct_costart' => 'date',
         'pjct_coend_m' => 'date',
+        'pjct_accdate' => 'date',
         'pjct_value'   => 'integer',
     ];
 
     public function assets()
     {
         return $this->hasMany(AstMain::class, 'ast_pjctid', 'id');
+    }
+
+    /** Kontrak induk dari sebuah addendum (`pjct_parcon` → `pjct_main.id`). */
+    public function parentContract()
+    {
+        return $this->belongsTo(self::class, 'pjct_parcon', 'id');
+    }
+
+    /** Semua addendum yang menginduk ke kontrak ini. */
+    public function addenda()
+    {
+        return $this->hasMany(self::class, 'pjct_parcon', 'id');
     }
 
     public function docs()
