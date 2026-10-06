@@ -15,9 +15,12 @@ class AssetImportController extends Controller
 
     public function __construct(private AssetImportService $service) {}
 
-    public function downloadTemplate(): StreamedResponse
+    public function downloadTemplate(Request $request): StreamedResponse
     {
-        $spreadsheet = $this->service->makeTemplate();
+        $this->authorizeImport($request);
+
+        // Sheet Referensi hanya berisi project yang boleh diisi user ini.
+        $spreadsheet = $this->service->makeTemplate($request->user()->allowedDivCodes());
 
         return response()->streamDownload(function () use ($spreadsheet): void {
             (new Xlsx($spreadsheet))->save('php://output');
@@ -28,6 +31,8 @@ class AssetImportController extends Controller
 
     public function preview(Request $request)
     {
+        $this->authorizeImport($request);
+
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls|max:10240',
         ], [], ['file' => 'File Excel']);
@@ -58,7 +63,7 @@ class AssetImportController extends Controller
         $this->forgetPending($request);
         $request->session()->put(self::SESSION_KEY, $stored);
 
-        $classified = $this->service->classify($rows);
+        $classified = $this->service->classify($rows, $request->user()->allowedDivCodes());
 
         return view('project.assets_import_preview', [
             'classified' => $classified,
@@ -69,6 +74,8 @@ class AssetImportController extends Controller
 
     public function confirm(Request $request)
     {
+        $this->authorizeImport($request);
+
         $stored = $request->session()->pull(self::SESSION_KEY);
 
         if (! $stored || ! Storage::disk('local')->exists($stored)) {
@@ -78,7 +85,8 @@ class AssetImportController extends Controller
 
         try {
             $classified = $this->service->classify(
-                $this->service->parse(Storage::disk('local')->path($stored))
+                $this->service->parse(Storage::disk('local')->path($stored)),
+                $request->user()->allowedDivCodes()
             );
 
             $result = $this->service->execute($classified, $request->user());
@@ -107,6 +115,12 @@ class AssetImportController extends Controller
         $this->forgetPending($request);
 
         return redirect()->route('project.assets');
+    }
+
+    /** Route sudah membatasi ke superadmin/admin; di sini dipersempit ke admin divisi E&T O&M. */
+    private function authorizeImport(Request $request): void
+    {
+        abort_unless($request->user()->canImportAssets(), 403);
     }
 
     private function forgetPending(Request $request): void

@@ -87,13 +87,18 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 - **Assets** (`AssetController`, `AstMain`): equipment inventory, FK'd to `pjct_main` via `ast_pjctid`.
 - **Manpower** (`ManpowerController`, `PjctEmp`): staff assigned per project.
 - **Bulk import, preview-then-confirm** (`AssetImportController` + `Support/AssetImportService.php` for
-  `ast_main`; `ProjectImportController` + `Support/ProjectImportService.php` for `pjct_main`): two
-  superadmin-only flows built on the same shape — `parse()` → `classify()` (tags every row `new` / `skip`
+  `ast_main`; `ProjectImportController` + `Support/ProjectImportService.php` for `pjct_main`;
+  `ManpowerImportController` + `Support/ManpowerImportService.php` for `pjct_emp`, keyed on project + NIK):
+  three flows built on the same shape (project & manpower: superadmin only; asset: `User::canImportAssets()`
+  = superadmin + admins of division "Equipment & Technology Operation & Maintenance", with non-superadmins
+  limited to projects in their `allowedDivCodes()` — both the template's Referensi sheet and `classify()`) —
+  `parse()` → `classify()` (tags every row `new` / `skip`
   / `error`) → preview screen → `execute()`. The upload is parked on the `local` disk between the two
   requests (session holds only the path) and re-parsed on confirm, so duplicates are re-checked against
-  live data. Both are insert-only — a duplicate is skipped, never updated — and both mass-insert, which
+  live data. All are insert-only — a duplicate is skipped, never updated — and all mass-insert, which
   bypasses Eloquent events: that is why the PKs are reserved in a block up front
-  (`AstMain::nextIds()` / `PjctMain::nextIds()`), why the `SystemLog` row is written by hand, and why
+  (`AstMain::nextIds()` / `PjctMain::nextIds()` / `PjctEmp::nextIds()`), why the `SystemLog` row is written
+  by hand, and why
   `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
   hook would normally make. Distinct from the equipment import below, which has its own route names
   (`monitoring.import.*` vs `monitoring.projects.import.*`).

@@ -146,6 +146,17 @@ class User extends Model implements AuthenticatableContract
         return $this->isSuperAdmin();
     }
 
+    /**
+     * Import Excel aset (tombol + template di Project → Asset): superadmin, dan admin divisi
+     * Equipment & Technology Operation & Maintenance. Non-superadmin hanya boleh mengimpor ke
+     * project dalam allowedDivCodes() — dibatasi di AssetImportService.
+     */
+    public function canImportAssets(): bool
+    {
+        return $this->isSuperAdmin()
+            || ($this->isAdmin() && $this->user_div === 'Equipment & Technology Operation & Maintenance');
+    }
+
     public function canViewReports(): bool
     {
         return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();

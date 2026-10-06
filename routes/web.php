@@ -50,8 +50,9 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         ->middleware('role:superadmin,admin,siteadmin,user,vip')
         ->name('project.manpower');
 
-    // Bulk insert aset dari Excel — superadmin only
-    Route::middleware('role:superadmin')->prefix('/project/assets/import')->name('project.assets.import.')->group(function (): void {
+    // Bulk insert aset dari Excel — superadmin + admin divisi E&T O&M (User::canImportAssets(),
+    // dicek lagi di controller); non-superadmin dibatasi ke project divisinya.
+    Route::middleware('role:superadmin,admin')->prefix('/project/assets/import')->name('project.assets.import.')->group(function (): void {
         Route::get('/template', [AssetImportController::class, 'downloadTemplate'])->name('template');
         Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
         Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');

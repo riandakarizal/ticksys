@@ -37,8 +37,8 @@
 </div>
 
 
-{{-- ── Bulk Import (superadmin only) ───────────────────────────────── --}}
-@if(auth()->user()->isSuperAdmin())
+{{-- ── Bulk Import (superadmin + admin E&T O&M) ───────────────────────────────── --}}
+@if(auth()->user()->canImportAssets())
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
     <div>
         <p class="text-sm font-bold text-slate-800">Input Data Asset</p>
@@ -184,7 +184,7 @@
 </div>
 
 {{-- ══ Modal: Import Asset dari Excel ══ --}}
-@if(auth()->user()->isSuperAdmin())
+@if(auth()->user()->canImportAssets())
 <dialog id="modal-asset-import" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
