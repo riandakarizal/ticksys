@@ -130,13 +130,14 @@ class AssetImportService
      * Tag every parsed row as `new`, `skip` (duplicate) or `error` (invalid).
      *
      * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, string>|null  $allowedDivs  `User::allowedDivCodes()`; null = semua divisi (superadmin)
      * @return array<int, array{status: string, message: string, line: int, row: array, data: array}>
      */
-    public function classify(array $rows): array
+    public function classify(array $rows, ?array $allowedDivs = null): array
     {
-        $projectIds = PjctMain::pluck('id')
-            ->mapWithKeys(fn ($id) => [strtolower($id) => $id])
-            ->all();
+        $projects = PjctMain::get(['id', 'pjct_div']);
+        $projectIds = $projects->mapWithKeys(fn ($p) => [strtolower($p->id) => $p->id])->all();
+        $projectDivs = $projects->pluck('pjct_div', 'id')->all();
 
         $existing = $this->existingKeys();
         $prepared = [];
@@ -152,6 +153,8 @@ class AssetImportService
                 $errors[] = 'Project ID wajib diisi';
             } elseif (! $pjctId) {
                 $errors[] = "Project ID \"{$pjctIdRaw}\" tidak ada di pjct_main";
+            } elseif ($allowedDivs !== null && ! in_array($projectDivs[$pjctId] ?? null, $allowedDivs, true)) {
+                $errors[] = "Project {$pjctId} ({$projectDivs[$pjctId]}) di luar divisi Anda — hanya boleh ".implode(', ', $allowedDivs);
             }
 
             $serial = trim((string) ($row['ast_serial'] ?? ''));
@@ -345,7 +348,8 @@ class AssetImportService
 
     // ─── Template ──────────────────────────────────────────────────────────
 
-    public function makeTemplate(): Spreadsheet
+    /** @param  array<int, string>|null  $allowedDivs  null = semua project di sheet Referensi */
+    public function makeTemplate(?array $allowedDivs = null): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
 
@@ -359,7 +363,7 @@ class AssetImportService
 
         // The example lives on the Referensi sheet, not here — a sample row left in
         // place on this sheet would be imported as a real asset.
-        $this->addReferenceSheet($spreadsheet);
+        $this->addReferenceSheet($spreadsheet, $allowedDivs);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -390,7 +394,7 @@ class AssetImportService
         $sheet->setDataValidation($column.'2:'.$column.self::VALIDATION_ROWS, $validation);
     }
 
-    private function addReferenceSheet(Spreadsheet $spreadsheet): void
+    private function addReferenceSheet(Spreadsheet $spreadsheet, ?array $allowedDivs = null): void
     {
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('Referensi');
@@ -416,6 +420,7 @@ class AssetImportService
         }
 
         $projects = PjctMain::orderBy('id')
+            ->when($allowedDivs !== null, fn ($q) => $q->whereIn('pjct_div', $allowedDivs))
             ->get(['id', 'pjct_contract', 'pjct_name', 'pjct_div', 'pjct_status']);
 
         $r = 2;

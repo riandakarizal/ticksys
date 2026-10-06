@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\PjctEmp;
+use App\Models\PjctMain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class ManpowerController extends Controller
@@ -13,7 +15,12 @@ class ManpowerController extends Controller
         $unit    = $request->input('unit', '');
         $jabatan = $request->input('jabatan', '');
 
-        $query = PjctEmp::query();
+        // Manpower dibatasi ke project dalam divisi user (sama seperti Asset & Monitoring).
+        $keys = $this->allowedProjectKeys($request->user()->allowedDivCodes());
+        $scoped = fn (): Builder => PjctEmp::query()
+            ->when($keys !== null, fn ($q) => $q->whereIn('emp_pjctid', $keys));
+
+        $query = $scoped();
 
         if ($unit)    $query->where('emp_unit', $unit);
         if ($jabatan) $query->where('emp_levname', $jabatan);
@@ -29,7 +36,7 @@ class ManpowerController extends Controller
 
         $employees = $query->orderBy('emp_unit')->orderBy('emp_area')->orderBy('emp_name')->paginate(25)->withQueryString();
 
-        $all = PjctEmp::query();
+        $all = $scoped();
         $kpi = [
             'total'   => $all->count(),
             'reg2'    => (clone $all)->where('emp_unit', 'Regional 2')->count(),
@@ -37,13 +44,34 @@ class ManpowerController extends Controller
             'teknisi' => (clone $all)->where('emp_levname', 'Teknisi')->count(),
         ];
 
-        $filterUnits    = PjctEmp::distinct()->orderBy('emp_unit')->pluck('emp_unit');
-        $filterJabatans = PjctEmp::distinct()->orderBy('emp_levname')->pluck('emp_levname');
+        $filterUnits    = $scoped()->distinct()->orderBy('emp_unit')->pluck('emp_unit');
+        $filterJabatans = $scoped()->distinct()->orderBy('emp_levname')->pluck('emp_levname');
 
         return view('project.manpower', compact(
             'employees', 'kpi',
             'filterUnits', 'filterJabatans',
             'search', 'unit', 'jabatan'
         ));
+    }
+
+    /**
+     * Nilai `emp_pjctid` yang boleh dilihat, atau null kalau tanpa batas (superadmin/vip).
+     *
+     * Data baru menyimpan ID project (`PJxxxx`); data lama menyimpan nomor kontrak yang
+     * terpotong 20 karakter (lebar kolom `emp_pjctid`) — keduanya dicocokkan.
+     *
+     * @return array<int, string>|null
+     */
+    private function allowedProjectKeys(?array $allowedDivs): ?array
+    {
+        if ($allowedDivs === null) {
+            return null;
+        }
+
+        $projects = PjctMain::withTrashed()->whereIn('pjct_div', $allowedDivs)->get(['id', 'pjct_contract']);
+
+        return $projects->pluck('id')
+            ->merge($projects->pluck('pjct_contract')->filter()->map(fn ($c) => mb_substr(trim($c), 0, 20)))
+            ->unique()->values()->all();
     }
 }
