@@ -22,6 +22,9 @@ class PjctMain extends Model
     /** Beyond this the ID gains a fifth digit and `max(id)` stops sorting correctly. */
     public const ID_SEQUENCE_MAX = 9999;
 
+    /** Nilai yang boleh untuk `pjct_cotype` (jenis dokumen kontrak) — sama dengan ENUM di database. */
+    public const COTYPES = ['Contract', 'Contract Addendum'];
+
     protected static function booted(): void
     {
         static::creating(function (self $model): void {
@@ -74,7 +77,7 @@ class PjctMain extends Model
 
     protected $fillable = [
         'pjct_contract', 'pjct_codate', 'pjct_div', 'pjct_name',
-        'pjct_type', 'pjct_client', 'pjct_area', 'pjct_value',
+        'pjct_type', 'pjct_cotype', 'pjct_parcon', 'pjct_client', 'pjct_area', 'pjct_value',
         'pjct_budgetid', 'pjct_costart', 'pjct_totalperiod',
         'pjct_coend_m', 'pjct_accdate', 'pjct_accby', 'pjct_status', 'pjct_misc',
     ];
@@ -90,6 +93,18 @@ class PjctMain extends Model
     public function assets()
     {
         return $this->hasMany(AstMain::class, 'ast_pjctid', 'id');
+    }
+
+    /** Kontrak induk dari sebuah addendum (`pjct_parcon` → `pjct_main.id`). */
+    public function parentContract()
+    {
+        return $this->belongsTo(self::class, 'pjct_parcon', 'id');
+    }
+
+    /** Semua addendum yang menginduk ke kontrak ini. */
+    public function addenda()
+    {
+        return $this->hasMany(self::class, 'pjct_parcon', 'id');
     }
 
     public function docs()

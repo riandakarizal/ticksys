@@ -82,6 +82,8 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_div` | varchar(225) | Kode divisi: `TC`, `TCREG1`, `TCREG2`, `EQ`, `EQC`, `EQREG1`, `EQREG2`, `EQREG3` |
 | `pjct_name` | varchar(255) | Nama project |
 | `pjct_type` | varchar(255) | `RENT` / `SUPPLY` / `JASA` |
+| `pjct_cotype` | enum NULL | Jenis dokumen kontrak: `Contract` / `Contract Addendum` (`PjctMain::COTYPES`) |
+| `pjct_parcon` | varchar(10) NULL, index | Untuk addendum: ID project kontrak induk (→ `pjct_main.id`). Tanpa FK agar `TRUNCATE` tetap bisa; relasi `parentContract()` / `addenda()` di model |
 | `pjct_client` | varchar(255) | Nama klien |
 | `pjct_area` | varchar(255) | Lokasi / area project |
 | `pjct_value` | bigint(20) | Nilai kontrak (Rupiah) |
