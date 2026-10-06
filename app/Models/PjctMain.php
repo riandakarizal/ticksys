@@ -76,13 +76,14 @@ class PjctMain extends Model
         'pjct_contract', 'pjct_codate', 'pjct_div', 'pjct_name',
         'pjct_type', 'pjct_client', 'pjct_area', 'pjct_value',
         'pjct_budgetid', 'pjct_costart', 'pjct_totalperiod',
-        'pjct_coend_m', 'pjct_status', 'pjct_misc',
+        'pjct_coend_m', 'pjct_accdate', 'pjct_accby', 'pjct_status', 'pjct_misc',
     ];
 
     protected $casts = [
         'pjct_codate'  => 'date',
         'pjct_costart' => 'date',
         'pjct_coend_m' => 'date',
+        'pjct_accdate' => 'date',
         'pjct_value'   => 'integer',
     ];
 

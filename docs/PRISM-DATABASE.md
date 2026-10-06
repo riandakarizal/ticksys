@@ -89,6 +89,8 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_costart` | date | Tanggal mulai kontrak |
 | `pjct_totalperiod` | int(11) | Durasi kontrak (bulan) |
 | `pjct_coend_m` | date | Tanggal akhir kontrak |
+| `pjct_accdate` | date NULL | Tanggal accrual project |
+| `pjct_accby` | varchar(225) NULL | Unit/divisi yang meng-accrue project |
 | `pjct_status` | varchar(255) | `OG` / `HVR` / `DLY` / `END` |
 | `pjct_misc` | text | Catatan tambahan |
 | `deleted_at` | timestamp | Soft delete |
