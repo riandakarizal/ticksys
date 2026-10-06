@@ -22,7 +22,10 @@ class PjctMain extends Model
     /** Beyond this the ID gains a fifth digit and `max(id)` stops sorting correctly. */
     public const ID_SEQUENCE_MAX = 9999;
 
-    /** Nilai yang boleh untuk `pjct_cotype` (jenis dokumen kontrak) — sama dengan ENUM di database. */
+    /**
+     * Pilihan `pjct_cotype` (jenis dokumen kontrak). Kolomnya VARCHAR, jadi daftar inilah
+     * satu-satunya pembatas nilai — tambah tipe baru cukup di sini.
+     */
     public const COTYPES = ['Contract', 'Contract Addendum'];
 
     protected static function booted(): void

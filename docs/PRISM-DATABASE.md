@@ -72,7 +72,7 @@ Akun login PRISM. PK manual format `USR-NNN`. Auth Laravel override via virtual 
 ---
 
 ### `pjct_main`
-Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `creating` event.
+Master data project. PK format `PJ0001`, `PJ0002`, … (running number), auto-generate via Eloquent `creating` event; bulk insert memesan blok ID lewat `PjctMain::nextIds()`.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -82,7 +82,7 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_div` | varchar(225) | Kode divisi: `TC`, `TCREG1`, `TCREG2`, `EQ`, `EQC`, `EQREG1`, `EQREG2`, `EQREG3` |
 | `pjct_name` | varchar(255) | Nama project |
 | `pjct_type` | varchar(255) | `RENT` / `SUPPLY` / `JASA` |
-| `pjct_cotype` | enum NULL | Jenis dokumen kontrak: `Contract` / `Contract Addendum` (`PjctMain::COTYPES`) |
+| `pjct_cotype` | varchar(50) NULL | Jenis dokumen kontrak: `Contract` / `Contract Addendum`. Sengaja VARCHAR (bukan ENUM) supaya tipe bisa bertambah; daftar yang berlaku di `PjctMain::COTYPES` |
 | `pjct_parcon` | varchar(10) NULL, index | Untuk addendum: ID project kontrak induk (→ `pjct_main.id`). Tanpa FK agar `TRUNCATE` tetap bisa; relasi `parentContract()` / `addenda()` di model |
 | `pjct_client` | varchar(255) | Nama klien |
 | `pjct_area` | varchar(255) | Lokasi / area project |
@@ -93,7 +93,7 @@ Master data project. PK format `PJ0001`–`PJ0066`, auto-generate via Eloquent `
 | `pjct_coend_m` | date | Tanggal akhir kontrak |
 | `pjct_accdate` | date NULL | Tanggal accrual project |
 | `pjct_accby` | varchar(225) NULL | Unit/divisi yang meng-accrue project |
-| `pjct_status` | varchar(255) | `OG` / `HVR` / `DLY` / `END` |
+| `pjct_status` | varchar(255) | `UPC` / `OG` / `HVR` / `DLY` / `END` |
 | `pjct_misc` | text | Catatan tambahan |
 | `deleted_at` | timestamp | Soft delete |
 
