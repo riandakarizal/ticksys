@@ -151,11 +151,13 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 ---
 
 ### `pjct_emp`
-Data manpower / karyawan yang terlibat dalam project. 45 baris.
+Data manpower / karyawan yang terlibat dalam project. Diisi lewat **Import Excel** di halaman Manpower
+(superadmin, `ManpowerImportController` + `Support/ManpowerImportService.php`, pola sama dengan import aset).
+Kunci duplikat: (`emp_pjctid` + `emp_id`) — satu orang boleh tercatat di beberapa project.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | varchar(20) PK | Format: `EM00001` |
+| `id` | varchar(20) PK | Format: `EM00001`, dibuat otomatis (`PjctEmp::nextIds()` / hook `creating`) |
 | `emp_id` | varchar(20) | NIK karyawan |
 | `emp_name` | varchar(225) | Nama lengkap |
 | `emp_level` | varchar(20) | Level jabatan (L7, L7.1, dll) |
@@ -163,8 +165,10 @@ Data manpower / karyawan yang terlibat dalam project. 45 baris.
 | `emp_unit` | varchar(20) | Unit kerja |
 | `emp_div` | varchar(20) | Site / lokasi penugasan |
 | `emp_area` | varchar(225) | Region / area |
-| `emp_pjctid` | varchar(20) | Nomor kontrak pekerjaan |
+| `emp_pjctid` | varchar(20) | **Project ID** (`PJxxxx`, → `pjct_main.id`). Data lama sebelum Okt 2026 berisi nomor kontrak |
 | `emp_coid` | varchar(225) | Nomor PKWT |
+| `emp_costart` | date NULL | Mulai PKWT |
+| `emp_coend` | date NULL | Selesai PKWT |
 | `emp_contact` | varchar(225) NULL | Nomor HP |
 | `emp_misc` | text NULL | Catatan |
 

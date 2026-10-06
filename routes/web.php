@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
 use App\Http\Controllers\ManpowerController;
+use App\Http\Controllers\ManpowerImportController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
@@ -55,6 +56,14 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
         Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');
         Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
+    });
+
+    // Bulk insert manpower dari Excel — superadmin only
+    Route::middleware('role:superadmin')->prefix('/project/manpower/import')->name('project.manpower.import.')->group(function (): void {
+        Route::get('/template', [ManpowerImportController::class, 'downloadTemplate'])->name('template');
+        Route::post('/preview', [ManpowerImportController::class, 'preview'])->name('preview');
+        Route::post('/confirm', [ManpowerImportController::class, 'confirm'])->name('confirm');
+        Route::post('/cancel', [ManpowerImportController::class, 'cancel'])->name('cancel');
     });
 
     // Report Issues (M-07) — semua role kecuali `fin`
