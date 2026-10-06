@@ -29,6 +29,7 @@ COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/zz-prism-uploads.ini
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \
     && chmod -R 775 storage bootstrap/cache
