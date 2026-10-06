@@ -171,10 +171,13 @@ Data manpower / karyawan yang terlibat dalam project. 45 baris.
 ---
 
 ### `pjct_doc`
-Dokumen legal/administratif per project. Diisi lewat form **Upload Dokumen** di halaman Monitoring
-(`PjctDocController@store`): file disimpan di `docfile/PJxxxx/` (folder dibuat kalau belum ada; nama file yang
-sudah dipakai diberi akhiran ` (2)`, ` (3)`, … agar tidak menimpa), lalu satu baris `pjct_doc` dibuat dan
-tercatat di `system_logs` (aksi `create`). Data lama (sebelum 5 Okt 2026) berasal dari scan file fisik.
+Dokumen legal/administratif per project. Diisi lewat form **Upload Dokumen** di halaman Monitoring, dua
+langkah seperti Google Drive: (1) `PjctDocController@upload` menerima file — **wajib PDF, maks. 5 MB** —
+menyimpannya sementara di `storage/app/private/doc-uploads/<token>.pdf` dan mengembalikan token (terikat ke
+sesi user + project; sisa yang tidak disimpan dihapus setelah 24 jam); (2) `PjctDocController@store` memakai
+token itu: file dipindah ke `docfile/PJxxxx/` (folder dibuat kalau belum ada; nama file yang sudah dipakai
+diberi akhiran ` (2)`, ` (3)`, … agar tidak menimpa), lalu satu baris `pjct_doc` dibuat dan tercatat di
+`system_logs` (aksi `create`). Data lama (sebelum 5 Okt 2026) berasal dari scan file fisik.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|

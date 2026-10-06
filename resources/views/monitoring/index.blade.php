@@ -436,7 +436,8 @@ $rp = function($n) {
 </dialog>
 @endif
 
-{{-- ══ Modal: Upload Dokumen Project (Equipment & Technology Commercial) ══ --}}
+{{-- ══ Modal: Upload Dokumen Project (Equipment & Technology Commercial) ══
+     Dua langkah seperti Google Drive: file diunggah dulu (progress bar) → isi nama & jenis → Simpan. --}}
 @if($canCreateProject)
 <dialog id="modal-doc-upload" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
@@ -447,12 +448,49 @@ $rp = function($n) {
             </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-doc-upload" method="POST" enctype="multipart/form-data">
+
+        {{-- Langkah 1: pilih / seret file → langsung terunggah --}}
+        <input type="file" id="doc-file-input" accept="application/pdf,.pdf" class="hidden">
+        <div id="doc-dropzone" role="button" tabindex="0"
+             class="flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-6 text-center cursor-pointer transition hover:border-green-400 hover:bg-green-50/40">
+            <svg class="h-8 w-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+            </svg>
+            <p class="text-sm font-semibold text-slate-700">Klik atau seret file ke sini</p>
+            <p class="text-[11px] text-slate-400">Hanya PDF &middot; maks. 5 MB</p>
+        </div>
+
+        <div id="doc-file-card" class="hidden rounded-2xl border border-slate-200 px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 shrink-0 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-[10px] font-black">PDF</div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-slate-800 truncate" id="doc-file-name">&nbsp;</p>
+                    <p class="text-[11px] text-slate-400" id="doc-file-status">&nbsp;</p>
+                </div>
+                <button type="button" id="doc-file-remove" title="Ganti file"
+                        class="shrink-0 h-8 w-8 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition">✕</button>
+            </div>
+            <div class="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div id="doc-progress-bar" class="h-full rounded-full bg-green-600 transition-[width] duration-150" style="width: 0%"></div>
+            </div>
+        </div>
+        <div id="doc-file-error" role="alert" class="hidden mt-3">
+            <div class="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700">
+                <svg class="h-4 w-4 shrink-0 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                </svg>
+                <span id="doc-file-error-text"></span>
+            </div>
+        </div>
+
+        {{-- Langkah 2: detail dokumen → Simpan --}}
+        <form id="form-doc-upload" method="POST" class="mt-4">
             @csrf
+            <input type="hidden" name="upload_token" id="doc-upload-token">
             <div class="grid gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Dokumen *</label>
-                    <input type="text" name="doc_name" required maxlength="255" placeholder="mis. Kontrak Induk 2026"
+                    <input type="text" name="doc_name" id="doc-name" required maxlength="255" placeholder="mis. Kontrak Induk 2026"
                            class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 </div>
                 <div>
@@ -464,18 +502,12 @@ $rp = function($n) {
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">File *</label>
-                    <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                    <p class="text-[11px] text-slate-400 mt-1">PDF, gambar, Excel, atau Word &middot; maks. 10 MB</p>
-                </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
-                <button type="submit"
-                        class="inline-flex items-center justify-center rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                    Upload
+                <button type="submit" id="doc-submit" disabled
+                        class="inline-flex items-center justify-center rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600 disabled:hover:shadow-sm">
+                    Simpan
                 </button>
             </div>
         </form>
@@ -512,17 +544,147 @@ function openEdit(id, data) {
 
 document.querySelector('#form-edit-project [name="pjct_value"]')?.addEventListener('input', editValuePreview);
 
-const DOC_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+// ── Upload dokumen: file diunggah dulu (XHR + progress), lalu form disimpan dengan token ──
+const DOC_UPLOAD_ROUTE_TEMPLATE = '{{ route('monitoring.docs.upload', ['project' => '__ID__']) }}';
+const DOC_STORE_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+const DOC_MAX_BYTES = {{ \App\Http\Controllers\PjctDocController::MAX_KB }} * 1024;
+const docEl = (id) => document.getElementById(id);
+let docProjectId = null;
+let docXhr = null;
 
-function openDocUpload(id, name) {
-    document.getElementById('doc-project-name').textContent = name + ' (' + id + ')';
-    document.getElementById('form-doc-upload').action = DOC_ROUTE_TEMPLATE.replace('__ID__', id);
-    document.getElementById('modal-doc-upload').showModal();
+function docFormatSize(bytes) {
+    return bytes >= 1048576 ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
-document.getElementById('modal-doc-upload')?.addEventListener('close', function() {
-    document.getElementById('form-doc-upload').reset();
-});
+function docShowError(message) {
+    docEl('doc-file-error-text').textContent = message;
+    docEl('doc-file-error').classList.toggle('hidden', !message);
+}
+
+// Sama bunyinya dengan PjctDocController::describeProblem() di server.
+function docKindOf(ext) {
+    const kinds = {
+        'file Word': ['doc', 'docx', 'rtf', 'odt'],
+        'file Excel': ['xls', 'xlsx', 'csv', 'ods'],
+        'file PowerPoint': ['ppt', 'pptx', 'odp'],
+        'file gambar': ['jpg', 'jpeg', 'png', 'gif', 'heic', 'webp', 'bmp', 'tif', 'tiff'],
+        'file arsip (zip/rar)': ['zip', 'rar', '7z'],
+    };
+    for (const [kind, exts] of Object.entries(kinds)) if (exts.includes(ext)) return kind;
+    return ext ? 'file .' + ext : 'file tanpa ekstensi';
+}
+
+function docDescribeProblem(file) {
+    const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+    const tooBig = file.size > DOC_MAX_BYTES;
+    const size = docFormatSize(file.size);
+    if (ext !== 'pdf') {
+        return tooBig
+            ? '"' + file.name + '" adalah ' + docKindOf(ext) + ', bukan PDF, dan ukurannya ' + size + ' (maks. 5 MB).'
+            : '"' + file.name + '" adalah ' + docKindOf(ext) + ', bukan PDF. Simpan/ekspor dulu sebagai PDF, lalu unggah ulang.';
+    }
+    if (tooBig) return '"' + file.name + '" berukuran ' + size + ', melebihi batas 5 MB. Kompres PDF-nya atau pecah jadi beberapa file.';
+    return null;
+}
+
+function docResetFile() {
+    if (docXhr) { docXhr.abort(); docXhr = null; }
+    docEl('doc-file-input').value = '';
+    docEl('doc-upload-token').value = '';
+    docEl('doc-submit').disabled = true;
+    docEl('doc-file-card').classList.add('hidden');
+    docEl('doc-dropzone').classList.remove('hidden');
+    docEl('doc-progress-bar').style.width = '0%';
+    docEl('doc-progress-bar').classList.remove('bg-red-500');
+    docShowError('');
+}
+
+function docUpload(file) {
+    docShowError('');
+    if (!file) return;
+    const problem = docDescribeProblem(file);
+    if (problem) { docEl('doc-file-input').value = ''; docShowError(problem); return; }
+
+    docEl('doc-dropzone').classList.add('hidden');
+    docEl('doc-file-card').classList.remove('hidden');
+    docEl('doc-file-name').textContent = file.name;
+    docEl('doc-file-status').textContent = 'Mengunggah… 0%';
+    docEl('doc-progress-bar').style.width = '0%';
+    docEl('doc-submit').disabled = true;
+
+    const nameInput = docEl('doc-name');
+    if (!nameInput.value.trim()) nameInput.value = file.name.replace(/\.pdf$/i, '');
+
+    const body = new FormData();
+    body.append('doc_file', file);
+
+    const xhr = new XMLHttpRequest();
+    docXhr = xhr;
+    xhr.open('POST', DOC_UPLOAD_ROUTE_TEMPLATE.replace('__ID__', docProjectId));
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('#form-doc-upload input[name="_token"]').value);
+    xhr.upload.addEventListener('progress', function (e) {
+        if (!e.lengthComputable) return;
+        const pct = Math.round(e.loaded / e.total * 100);
+        docEl('doc-progress-bar').style.width = pct + '%';
+        docEl('doc-file-status').textContent = 'Mengunggah… ' + pct + '%';
+    });
+    xhr.addEventListener('load', function () {
+        docXhr = null;
+        let res = {};
+        try { res = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status === 200 && res.token) {
+            docEl('doc-upload-token').value = res.token;
+            docEl('doc-progress-bar').style.width = '100%';
+            docEl('doc-file-status').textContent = docFormatSize(res.size) + ' · Terunggah ✓';
+            docEl('doc-submit').disabled = false;
+        } else {
+            const msg = (res.errors && Object.values(res.errors)[0][0]) || res.message || ('Upload gagal (HTTP ' + xhr.status + ').');
+            docEl('doc-progress-bar').classList.add('bg-red-500');
+            docEl('doc-file-status').textContent = 'Gagal';
+            docShowError(msg);
+        }
+    });
+    xhr.addEventListener('error', function () {
+        docXhr = null;
+        docEl('doc-progress-bar').classList.add('bg-red-500');
+        docEl('doc-file-status').textContent = 'Gagal';
+        docShowError('Koneksi terputus saat mengunggah. Coba lagi.');
+    });
+    xhr.send(body);
+}
+
+function openDocUpload(id, name) {
+    docProjectId = id;
+    docEl('doc-project-name').textContent = name + ' (' + id + ')';
+    docEl('form-doc-upload').action = DOC_STORE_ROUTE_TEMPLATE.replace('__ID__', id);
+    docEl('modal-doc-upload').showModal();
+}
+
+if (docEl('modal-doc-upload')) {
+    const dropzone = docEl('doc-dropzone');
+    dropzone.addEventListener('click', () => docEl('doc-file-input').click());
+    dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); docEl('doc-file-input').click(); } });
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-green-400', 'bg-green-50/40'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-green-400', 'bg-green-50/40'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-green-400', 'bg-green-50/40');
+        docUpload(e.dataTransfer.files[0]);
+    });
+    docEl('doc-file-input').addEventListener('change', (e) => docUpload(e.target.files[0]));
+    docEl('doc-file-remove').addEventListener('click', docResetFile);
+    docEl('form-doc-upload').addEventListener('submit', function (e) {
+        if (!docEl('doc-upload-token').value) { e.preventDefault(); docShowError('Unggah file PDF dulu sebelum menyimpan.'); return; }
+        docEl('doc-submit').disabled = true;
+        docEl('doc-submit').textContent = 'Menyimpan…';
+    });
+    docEl('modal-doc-upload').addEventListener('close', function () {
+        docResetFile();
+        docEl('form-doc-upload').reset();
+        docEl('doc-submit').textContent = 'Simpan';
+    });
+}
 
 @endif
 </script>
