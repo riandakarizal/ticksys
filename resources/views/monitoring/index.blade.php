@@ -141,8 +141,8 @@ $rp = function($n) {
                     <th class="w-[6%] py-1.5 pr-2 font-medium">Status</th>
                     <th class="w-[5%] py-1.5 pr-2 font-medium">Assets</th>
                     <th class="w-[9%] py-1.5 pr-2 font-medium">Doc</th>
-                    <th class="w-[10%] py-1.5 pr-2 font-medium">Notes</th>
-                    @if($isAdmin)<th class="w-[6%] py-1.5 pr-4"></th>@endif
+                    <th class="w-[8%] py-1.5 pr-2 font-medium">Notes</th>
+                    @if($isAdmin)<th class="w-[8%] py-1.5 pr-4"></th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -184,7 +184,7 @@ $rp = function($n) {
                                 <span class="text-slate-300">—</span>
                             @else
                                 <div class="flex flex-wrap gap-1">
-                                @foreach(['KONTRAK','RKST','RAB','BAST','SOP','BOQ'] as $dt)
+                                @foreach([...array_keys(\App\Models\PjctDoc::TYPES), 'SOP'] as $dt)
                                     @continue(!$docsByType->has($dt))
                                     <a href="{{ route('monitoring.docs.show', $docsByType[$dt]->id) }}" target="_blank" rel="noopener"
                                        class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold hover:opacity-75 transition {{ \App\Models\PjctDoc::badgeClassFor($dt) }}">{{ $dt }}</a>
@@ -201,21 +201,31 @@ $rp = function($n) {
                                         <button type="submit" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Restore</button>
                                     </form>
                                 @elseif($canCreateProject)
-                                    <details class="relative inline-block text-left" data-row-menu>
-                                        <summary title="Input BoQ / KAK" aria-label="Input BoQ / KAK"
-                                                 class="cursor-pointer list-none inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-600 text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md active:scale-95 [&::-webkit-details-marker]:hidden">
-                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
-                                                <path d="M14 3v5h5M12 11v6M9 14h6"/>
-                                            </svg>
-                                        </summary>
-                                        <div class="absolute right-0 top-[calc(100%+0.25rem)] z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-200/80 text-left">
-                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openBoq('{{ $p->id }}', {{ $p->toJson() }})"
-                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-slate-50">BoQ</button>
-                                            <button type="button" onclick="this.closest('details').removeAttribute('open'); openKak('{{ $p->id }}', {{ $p->toJson() }})"
-                                                    class="block w-full px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50">KAK/RKST</button>
-                                        </div>
-                                    </details>
+                                    <div class="inline-flex items-center gap-1">
+                                    <button type="button" title="Edit project" aria-label="Edit project {{ $p->id }}"
+                                            onclick="openEdit('{{ $p->id }}', @js([
+                                                'pjct_contract' => $p->pjct_contract,
+                                                'pjct_name' => $p->pjct_name,
+                                                'pjct_value' => $p->pjct_value ?: null,
+                                                'pjct_client' => $p->pjct_client,
+                                                'pjct_area' => $p->pjct_area,
+                                                'pjct_codate' => $p->pjct_codate?->format('Y-m-d'),
+                                            ]))"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm transition-all duration-200 ease-out hover:bg-amber-600 hover:shadow-md active:scale-95">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 20h9"/>
+                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" title="Upload dokumen" aria-label="Upload dokumen {{ $p->id }}"
+                                            onclick="openDocUpload('{{ $p->id }}', @js($p->pjct_name))"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-600 text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-md active:scale-95">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                            <path d="M14 3v5h5M12 11v6M9 14h6"/>
+                                        </svg>
+                                    </button>
+                                    </div>
                                 @endif
                             </td>
                         @endif
@@ -369,30 +379,56 @@ $rp = function($n) {
 </dialog>
 @endif
 
-{{-- ══ Modal: Upload KAK/RKST (Equipment & Technology Commercial) ══ --}}
+{{-- ══ Modal: Edit Project (Equipment & Technology Commercial) ══ --}}
 @if($canCreateProject)
-<dialog id="modal-kak" class="max-w-lg w-full">
+<dialog id="modal-edit-project" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-                <h2 class="text-xl font-black">Upload KAK/RKST</h2>
-                <p class="text-xs text-slate-400 mt-0.5" id="kak-project-name">&nbsp;</p>
+                <h2 class="text-xl font-black">Edit Project</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="edit-project-id">&nbsp;</p>
             </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-kak" method="POST" enctype="multipart/form-data">
+        <form id="form-edit-project" method="POST">
             @csrf
-            <input type="hidden" name="doc_type" value="RKST">
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Dokumen KAK/RKST *</label>
-                <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            @method('PATCH')
+            <div class="grid gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Kontrak</label>
+                    <input type="text" name="pjct_contract" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Kontrak *</label>
+                    <textarea name="pjct_name" rows="2" required maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nilai Kontrak (Rp)</label>
+                        <input type="number" name="pjct_value" min="0" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1" id="edit-value-preview">&nbsp;</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Kontrak</label>
+                        <input type="date" name="pjct_codate" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Klien</label>
+                        <input type="text" name="pjct_client" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Area Kontrak</label>
+                        <input type="text" name="pjct_area" maxlength="255" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
                 <button type="submit"
-                        class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                    Upload
+                        class="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-amber-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Simpan
                 </button>
             </div>
         </form>
@@ -400,39 +436,46 @@ $rp = function($n) {
 </dialog>
 @endif
 
-{{-- ══ Modal: Input BoQ (Equipment & Technology Commercial) ══ --}}
+{{-- ══ Modal: Upload Dokumen Project (Equipment & Technology Commercial) ══ --}}
 @if($canCreateProject)
-<dialog id="modal-boq" class="max-w-4xl w-full">
+<dialog id="modal-doc-upload" class="max-w-lg w-full">
     <div class="panel m-0 max-h-[90vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-                <h2 class="text-xl font-black">Input BoQ</h2>
-                <p class="text-xs text-slate-400 mt-0.5" id="boq-project-name">&nbsp;</p>
+                <h2 class="text-xl font-black">Upload Dokumen</h2>
+                <p class="text-xs text-slate-400 mt-0.5" id="doc-project-name">&nbsp;</p>
             </div>
             <button type="button" class="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200" onclick="this.closest('dialog').close()">✕</button>
         </div>
-        <form id="form-boq" method="POST" enctype="multipart/form-data">
+        <form id="form-doc-upload" method="POST" enctype="multipart/form-data">
             @csrf
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-semibold text-slate-600">Komponen BoQ *</label>
-                    <button type="button" id="boq-add-row"
-                            class="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                        + Komponen
-                    </button>
+            <div class="grid gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Dokumen *</label>
+                    <input type="text" name="doc_name" required maxlength="255" placeholder="mis. Kontrak Induk 2026"
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 </div>
-                <div id="boq-components" class="grid gap-2"></div>
-            </div>
-            <div class="mt-4">
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Dokumen BoQ</label>
-                <input type="file" name="boq_file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Dokumen *</label>
+                    <select name="doc_type" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="" disabled selected hidden>Pilih jenis dokumen</option>
+                        @foreach(\App\Models\PjctDoc::TYPES as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">File *</label>
+                    <input type="file" name="doc_file" required accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">PDF, gambar, Excel, atau Word &middot; maks. 10 MB</p>
+                </div>
             </div>
             <div class="mt-5 flex justify-end gap-3">
                 <button type="button" class="btn-soft" onclick="this.closest('dialog').close()">Cancel</button>
                 <button type="submit"
-                        class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-rose-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
-                    Simpan BoQ
+                        class="inline-flex items-center justify-center rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-out hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95">
+                    Upload
                 </button>
             </div>
         </form>
@@ -447,74 +490,40 @@ document.getElementById('modal-project-tc')?.addEventListener('close', function(
     this.querySelector('form').reset();
 });
 
-let boqRowIndex = 0;
-const BOQ_ROUTE_TEMPLATE = '{{ route('monitoring.boq.store', ['project' => '__ID__']) }}';
+const EDIT_ROUTE_TEMPLATE = '{{ route('monitoring.details.update', ['project' => '__ID__']) }}';
 
-function boqRowTemplate(i) {
-    return `<div class="flex flex-nowrap items-center gap-2" data-boq-row>
-        <input type="text" name="components[${i}][bdg_name]" placeholder="Komponen" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <select name="components[${i}][bdg_type]" required class="flex-[2] min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-            <option value="" disabled selected hidden>Jenis</option>
-            <option value="PENGADAAN">Pengadaan</option>
-            <option value="PEKERJAAN">Pekerjaan</option>
-            <option value="JASA">Jasa</option>
-        </select>
-        <input type="number" name="components[${i}][bdg_value]" placeholder="Jumlah" min="0" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <input type="text" name="components[${i}][bdg_type2]" placeholder="Unit" required class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        <button type="button" class="shrink-0 h-9 w-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition" onclick="this.closest('[data-boq-row]').remove()">✕</button>
-    </div>`;
+function editValuePreview() {
+    const input = document.querySelector('#form-edit-project [name="pjct_value"]');
+    const v = parseInt(input.value, 10);
+    document.getElementById('edit-value-preview').textContent = Number.isFinite(v) ? 'Rp ' + v.toLocaleString('id-ID') : ' ';
 }
 
-function boqAddRow() {
-    document.getElementById('boq-components').insertAdjacentHTML('beforeend', boqRowTemplate(boqRowIndex));
-    boqRowIndex++;
-}
-
-document.getElementById('boq-add-row')?.addEventListener('click', boqAddRow);
-
-function openBoq(id, data) {
-    document.getElementById('boq-project-name').textContent = data.pjct_name + ' (' + id + ')';
-    document.getElementById('form-boq').action = BOQ_ROUTE_TEMPLATE.replace('__ID__', id);
-    document.getElementById('boq-components').innerHTML = '';
-    boqRowIndex = 0;
-    boqAddRow();
-    document.getElementById('modal-boq').showModal();
-}
-
-document.getElementById('modal-boq')?.addEventListener('close', function() {
-    document.getElementById('form-boq').reset();
-    document.getElementById('boq-components').innerHTML = '';
-    boqRowIndex = 0;
-});
-
-const KAK_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
-
-function openKak(id, data) {
-    document.getElementById('kak-project-name').textContent = data.pjct_name + ' (' + id + ')';
-    document.getElementById('form-kak').action = KAK_ROUTE_TEMPLATE.replace('__ID__', id);
-    document.getElementById('modal-kak').showModal();
-}
-
-document.getElementById('modal-kak')?.addEventListener('close', function() {
-    document.getElementById('form-kak').reset();
-});
-
-// Row action dropdowns: only one open at a time, close when clicking outside
-document.querySelectorAll('details[data-row-menu]').forEach(function(menu) {
-    menu.addEventListener('toggle', function() {
-        if (menu.open) {
-            document.querySelectorAll('details[data-row-menu][open]').forEach(function(other) {
-                if (other !== menu) other.removeAttribute('open');
-            });
-        }
+// Form diisi data project yang sedang tampil, supaya user hanya mengubah yang perlu.
+function openEdit(id, data) {
+    const form = document.getElementById('form-edit-project');
+    form.action = EDIT_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('edit-project-id').textContent = id;
+    ['pjct_contract', 'pjct_name', 'pjct_value', 'pjct_client', 'pjct_area', 'pjct_codate'].forEach(function (field) {
+        form.elements[field].value = data[field] ?? '';
     });
+    editValuePreview();
+    document.getElementById('modal-edit-project').showModal();
+}
+
+document.querySelector('#form-edit-project [name="pjct_value"]')?.addEventListener('input', editValuePreview);
+
+const DOC_ROUTE_TEMPLATE = '{{ route('monitoring.docs.store', ['project' => '__ID__']) }}';
+
+function openDocUpload(id, name) {
+    document.getElementById('doc-project-name').textContent = name + ' (' + id + ')';
+    document.getElementById('form-doc-upload').action = DOC_ROUTE_TEMPLATE.replace('__ID__', id);
+    document.getElementById('modal-doc-upload').showModal();
+}
+
+document.getElementById('modal-doc-upload')?.addEventListener('close', function() {
+    document.getElementById('form-doc-upload').reset();
 });
 
-document.addEventListener('click', function(e) {
-    document.querySelectorAll('details[data-row-menu][open]').forEach(function(menu) {
-        if (!menu.contains(e.target)) menu.removeAttribute('open');
-    });
-});
 @endif
 </script>
 @endpush

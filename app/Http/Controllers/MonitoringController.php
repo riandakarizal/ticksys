@@ -114,6 +114,38 @@ class MonitoringController extends Controller
         return back()->with('success', 'Project updated successfully.');
     }
 
+    /**
+     * Edit ringkas dari tombol pensil di tabel Monitoring: hanya identitas kontrak.
+     * Terpisah dari `update()` (yang mewajibkan nama/type/status dan tidak membatasi divisi)
+     * supaya form kecil ini tidak menimpa kolom lain dan tidak bisa dipakai lintas divisi.
+     */
+    public function updateDetails(Request $request, PjctMain $project)
+    {
+        $user = auth()->user();
+        abort_unless(
+            $user->isSuperAdmin() || ($user->isAdmin() && $user->user_div === 'Equipment & Technology Commercial'),
+            403
+        );
+
+        $allowedDivs = $user->allowedDivCodes();
+        abort_if($allowedDivs !== null && ! in_array($project->pjct_div, $allowedDivs, true), 403);
+
+        $data = $request->validate([
+            'pjct_contract' => 'nullable|string|max:255',
+            'pjct_name'     => 'required|string|max:255',
+            'pjct_value'    => 'nullable|integer|min:0',
+            'pjct_client'   => 'nullable|string|max:255',
+            'pjct_area'     => 'nullable|string|max:255',
+            'pjct_codate'   => 'nullable|date',
+        ]);
+        // Kolom NOT NULL DEFAULT 0 — kosong berarti nilai belum diketahui.
+        $data['pjct_value'] ??= 0;
+
+        $project->update($data);
+
+        return back()->with('success', "Project {$project->id} updated.");
+    }
+
     public function destroy(string $type, int $id)
     {
         abort_unless($type === 'projects', 404);

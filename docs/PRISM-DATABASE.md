@@ -95,6 +95,8 @@ Master data project. PK format `PJ0001`, `PJ0002`, … (running number), auto-ge
 | `pjct_accby` | varchar(225) NULL | Unit/divisi yang meng-accrue project |
 | `pjct_status` | varchar(255) | `UPC` / `OG` / `HVR` / `DLY` / `END` |
 | `pjct_misc` | text | Catatan tambahan |
+| `created_at` | timestamp | ⚠ Didefinisikan `ON UPDATE current_timestamp()` (skema legacy), jadi ikut berubah setiap baris di-update — tidak bisa dipakai sebagai tanggal pembuatan |
+| `updated_at` | timestamp NULL | |
 | `deleted_at` | timestamp | Soft delete |
 
 **Division scoping (`User::allowedDivCodes()`, dipakai oleh `MonitoringController` dan `PjctDocController`):**
@@ -169,20 +171,21 @@ Data manpower / karyawan yang terlibat dalam project. 45 baris.
 ---
 
 ### `pjct_doc`
-Dokumen legal/administratif per project (Kontrak, RKST, RAB, BAST, SOP). 65 baris, diisi dari file fisik di
-folder `docfile/PJxxxx/` (level teratas project saja, bukan subfolder). File yang nama-nya tidak mengandung
-salah satu dari 5 keyword doc_type sengaja tidak diinsert.
+Dokumen legal/administratif per project. Diisi lewat form **Upload Dokumen** di halaman Monitoring
+(`PjctDocController@store`): file disimpan di `docfile/PJxxxx/` (folder dibuat kalau belum ada; nama file yang
+sudah dipakai diberi akhiran ` (2)`, ` (3)`, … agar tidak menimpa), lalu satu baris `pjct_doc` dibuat dan
+tercatat di `system_logs` (aksi `create`). Data lama (sebelum 5 Okt 2026) berasal dari scan file fisik.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | varchar(20) PK | Format: `DOC00001`, auto-generate via Eloquent `creating` event |
 | `doc_number` | varchar(225) | Nomor dokumen (diekstrak dari prefix nama file sebelum " - ", atau nama file itu sendiri kalau tidak ada pemisah) |
 | `doc_pjctid` | varchar(20) | FK → `pjct_main.id` |
-| `doc_type` | varchar(225) | `KONTRAK` / `RKST` / `RAB` / `BAST` / `SOP` |
+| `doc_type` | varchar(225) | `KONTRAK` / `RAB` / `PNL` / `RKST` (RKST/KAK) / `BOQ` / `BAK` / `BAST` / `BASTO` / `BAPP` — daftar di `PjctDoc::TYPES`. `SOP` = jenis lama, masih tampil tapi tidak bisa diunggah lagi |
 | `doc_filetype` | varchar(225) | Ekstensi file (`pdf`, `xlsx`, dll) |
 | `doc_filename` | text | Nama file asli |
 | `doc_filepath` | text | Path relatif ke disk `docfile` (mis. `PJ0001/nama-file.pdf`) |
-| `doc_desc` | text | Deskripsi (bagian nama file setelah " - ", atau nama file itu sendiri) |
+| `doc_desc` | text | **Nama dokumen** yang diisi user di form upload (data lama: bagian nama file setelah " - ") |
 
 Diakses via route `monitoring.docs.show` (`PjctDocController@show`) — stream file langsung dari disk `docfile`
 (`config/filesystems.php`) dengan `Content-Disposition: inline` supaya PDF terbuka di tab browser baru

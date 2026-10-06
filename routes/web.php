@@ -121,6 +121,7 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
                 ->whereIn('type', ['project_eq', 'project_tech', 'handover', 'vehicle', 'maintenance']);
             Route::get('/export', [EqtImportController::class, 'export'])->name('export');
 
+            Route::patch('/projects/{project}/details', [MonitoringController::class, 'updateDetails'])->name('details.update');
             Route::post('/projects/{project}/boq', [PjctBudgetController::class, 'store'])->name('boq.store');
             Route::post('/projects/{project}/docs', [PjctDocController::class, 'store'])->name('docs.store');
         });
