@@ -64,3 +64,20 @@ test('client tidak melihat tiket milik client lain', function () {
 
     $response->assertDontSee($this->otherTicket->ticket_number);
 });
+
+test('ticket index metrics count only visible tickets and ignore list filters', function () {
+    $requester = User::factory()->client()->create();
+    $stranger  = User::factory()->client()->create();
+
+    Ticket::factory()->forRequester($requester)->create(['status' => 'open', 'assigned_to' => null, 'resolution_due_at' => now()->subHour()]);
+    Ticket::factory()->forRequester($requester)->create(['status' => 'pending', 'assigned_to' => $this->admin->id, 'resolution_due_at' => now()->addDay()]);
+    Ticket::factory()->forRequester($requester)->create(['status' => 'resolved', 'created_at' => now()->subHours(5), 'resolved_at' => now()->subHour()]);
+    Ticket::factory()->forRequester($stranger)->create(['status' => 'open']);
+
+    $metrics = $this->actingAs($requester)->get('/tickets?status=closed')->assertOk()->viewData('metrics');
+
+    expect($metrics)->toMatchArray([
+        'total' => 3, 'active' => 2, 'pending' => 1, 'unassigned' => 1, 'breached' => 1,
+        'resolved_30d' => 1, 'avg_resolve_h' => 4.0,
+    ]);
+});

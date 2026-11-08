@@ -73,6 +73,7 @@ class TicketController extends Controller
         $pjctProjects = $this->pjctProjectOptions($user);
 
         return view('tickets.index', [
+            'metrics'       => $this->ticketMetrics($helpdesk, $user),
             'tickets'       => $query->latest()->paginate(25)->withQueryString(),
             'categories'    => $this->categoryQuery()->whereNull('parent_id')->orderBy('name')->get(),
             // Nama klien dari Project → Main (pjct_main.pjct_client), bukan user aplikasi.
@@ -235,6 +236,40 @@ class TicketController extends Controller
         // Kategori tiket bersifat global — pemetaan category_team tidak pernah dipakai
         // secara nyata (0 baris di database), jadi tidak ada gunanya membatasi per-project.
         return Category::query();
+    }
+
+    // Ringkasan di atas daftar tiket — selalu dihitung atas seluruh tiket yang boleh
+    // dilihat user (tidak ikut filter), supaya angkanya stabil saat menyaring daftar.
+    private function ticketMetrics(Helpdesk $helpdesk, User $user): array
+    {
+        $now = now();
+        $active = "status in ('open', 'in_progress', 'pending')";
+
+        $row = $helpdesk->visibleTickets($user)->toBase()->selectRaw("
+            count(*) as total,
+            sum(case when $active then 1 else 0 end) as active,
+            sum(case when $active and assigned_to is null then 1 else 0 end) as unassigned,
+            sum(case when $active and resolution_due_at < ? then 1 else 0 end) as breached,
+            sum(case when status = 'pending' then 1 else 0 end) as pending
+        ", [$now])->first();
+
+        // Rata-rata waktu penyelesaian dihitung di PHP — selisih tanggal di SQL beda
+        // antara MySQL dan SQLite (test).
+        $resolved = $helpdesk->visibleTickets($user)
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', $now->copy()->subDays(30))
+            ->get(['created_at', 'resolved_at']);
+
+        return [
+            'total'         => (int) $row->total,
+            'active'        => (int) $row->active,
+            'unassigned'    => (int) $row->unassigned,
+            'breached'      => (int) $row->breached,
+            'pending'       => (int) $row->pending,
+            'resolved_30d'  => $resolved->count(),
+            'avg_resolve_h' => $resolved->isEmpty() ? null
+                : round($resolved->avg(fn (Ticket $t) => $t->created_at->diffInMinutes($t->resolved_at)) / 60, 1),
+        ];
     }
 
     private function pjctProjectOptions(User $user): EloquentCollection

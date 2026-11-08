@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\ActivityLog;
+use App\Models\AppNotification;
 use App\Models\AstMain;
 use App\Models\PjctMain;
 use App\Models\SlaPolicy;
@@ -176,4 +178,112 @@ test('client hanya bisa melihat tiket miliknya sendiri', function () {
     $this->actingAs($this->client)
         ->get(route('tickets.show', $otherTicket))
         ->assertForbidden();
+});
+
+// ── Siklus hidup penuh: create → closed ──────────────────────────────────────
+
+test('siklus penuh: create → in_progress → pending → reopen → resolved → warning → auto closed → terkunci', function () {
+    $laptop = $this->laptops->first();
+
+    // 1. Client buat tiket
+    $this->actingAs($this->client)->post(route('tickets.store'), [
+        'subject'     => 'Laptop mati total',
+        'description' => 'Tidak ada respon saat tombol power ditekan.',
+        'priority'    => 'high',
+        'pjct_id'     => $this->project->id,
+        'ast_id'      => $laptop->id,
+        'assigned_to' => $this->teknisi->id,
+    ])->assertRedirect();
+
+    $ticket = Ticket::sole();
+    expect($ticket->status)->toBe('open')
+        ->and($ticket->response_due_at)->not->toBeNull()
+        ->and($ticket->resolution_due_at)->not->toBeNull()
+        ->and($laptop->fresh()->ast_cond)->toBe('Bad');
+
+    // 2. Teknisi balas → in_progress
+    $this->actingAs($this->teknisi)->post(route('tickets.messages.store', $ticket), [
+        'body' => 'Sedang dicek.',
+    ])->assertRedirect();
+    expect($ticket->fresh()->status)->toBe('in_progress')
+        ->and($ticket->fresh()->first_responded_at)->not->toBeNull();
+
+    // 3. Teknisi set pending (menunggu info client)
+    $update = fn (string $status) => $this->actingAs($this->teknisi)->patch(route('tickets.update', $ticket), [
+        'status'      => $status,
+        'priority'    => 'high',
+        'pjct_id'     => $this->project->id,
+        'ast_id'      => $laptop->id,
+        'assigned_to' => $this->teknisi->id,
+    ]);
+    $update('pending')->assertRedirect();
+    expect($ticket->fresh()->status)->toBe('pending');
+
+    // 4. Client balas → reopen ke open, teknisi balas lagi → in_progress
+    $this->actingAs($this->client)->post(route('tickets.messages.store', $ticket), ['body' => 'Charger sudah dicoba ganti, tetap mati.'])->assertRedirect();
+    expect($ticket->fresh()->status)->toBe('open');
+    $this->actingAs($this->teknisi)->post(route('tickets.messages.store', $ticket), ['body' => 'Baik, mainboard diganti.'])->assertRedirect();
+    expect($ticket->fresh()->status)->toBe('in_progress');
+
+    // 5. Teknisi resolve
+    $update('resolved')->assertRedirect();
+    $ticket->refresh();
+    $resolvedAt = $ticket->resolved_at->toDateTimeString();
+    expect($ticket->status)->toBe('resolved')
+        ->and($laptop->fresh()->ast_cond)->toBe('Good');
+
+    // 6. Automation sebelum waktunya: tidak terjadi apa-apa
+    $this->travel(1)->days();
+    $this->artisan('app:run-helpdesk-automation')->assertSuccessful();
+    expect($ticket->fresh()->status)->toBe('resolved')
+        ->and($ticket->fresh()->auto_close_warned_at)->toBeNull();
+
+    // 7. H-1 auto close (auto_close_days = 3): warning ke client, tiket masih resolved
+    $this->travel(1)->days();
+    $this->artisan('app:run-helpdesk-automation')->assertSuccessful();
+    $ticket->refresh();
+    expect($ticket->status)->toBe('resolved')
+        ->and($ticket->auto_close_warned_at)->not->toBeNull()
+        ->and($ticket->resolved_at->toDateTimeString())->toBe($resolvedAt, 'resolved_at tidak boleh bergeser karena warning')
+        ->and(AppNotification::where('user_id', $this->client->id)->where('type', 'ticket_auto_close_warning')->count())->toBe(1);
+
+    // 8. Hari ke-3: auto closed + notifikasi ke client & teknisi
+    $this->travel(1)->days();
+    $this->artisan('app:run-helpdesk-automation')->assertSuccessful();
+    $ticket->refresh();
+    expect($ticket->status)->toBe('closed')
+        ->and($ticket->closed_at)->not->toBeNull()
+        ->and(ActivityLog::where('ticket_id', $ticket->id)->where('action', 'ticket_auto_closed')->exists())->toBeTrue()
+        ->and(AppNotification::where('ticket_id', $ticket->id)->where('type', 'ticket_status_changed')
+            ->whereIn('user_id', [$this->client->id, $this->teknisi->id])->where('data->status', 'closed')->count())->toBe(2)
+        ->and($laptop->fresh()->ast_cond)->toBe('Good');
+
+    // 9. Tiket closed terkunci: tidak bisa dibalas / diubah, tapi masih bisa dilihat
+    $this->travelBack(); // sesi login kedaluwarsa setelah travel 3 hari
+    $this->actingAs($this->client)->post(route('tickets.messages.store', $ticket), ['body' => 'Halo?'])->assertForbidden();
+    $update('in_progress')->assertForbidden();
+    $this->actingAs($this->client)->get(route('tickets.show', $ticket))->assertOk();
+    expect($ticket->fresh()->status)->toBe('closed')
+        ->and(TicketMessage::where('ticket_id', $ticket->id)->count())->toBe(3);
+});
+
+test('teknisi bisa menutup tiket resolved secara manual', function () {
+    $ticket = Ticket::factory()->forRequester($this->client)->create([
+        'pjct_id'     => $this->project->id,
+        'assigned_to' => $this->teknisi->id,
+        'status'      => 'resolved',
+        'resolved_at' => now(),
+    ]);
+
+    $this->actingAs($this->teknisi)->patch(route('tickets.update', $ticket), [
+        'status'      => 'closed',
+        'priority'    => $ticket->priority,
+        'pjct_id'     => $this->project->id,
+        'assigned_to' => $this->teknisi->id,
+    ])->assertRedirect();
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('closed')
+        ->and($ticket->closed_at)->not->toBeNull()
+        ->and($ticket->resolved_at)->not->toBeNull();
 });
