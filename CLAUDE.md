@@ -53,7 +53,9 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
   user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
   `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Di ticketing, `user` berarti
-  **teknisi lapangan**, bukan client (client tidak punya akun). Menambah role baru bertipe sempit
+  **teknisi lapangan**, bukan client (client tidak punya akun). Teknisi juga tidak punya Project → Main:
+  route `monitoring.index` tanpa `user` (dokumen `monitoring.docs.show` tetap), dan `/dashboard` untuk
+  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Menambah role baru bertipe sempit
   berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
   menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
@@ -61,6 +63,16 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `subordinateDivCodes()` (self-referential `users.user_parid` hierarchy — a parent sees everything their
   reports can see). Controllers that touch `pjct_main`-derived data (`MonitoringController`,
   `PjctDocController`) must apply this filter manually; it is not a global scope.
+- Project-level (technicians only): role `user` is scoped to the projects they are assigned to in
+  `pjct_emp`, matched by NIK (`users.user_empid` = `pjct_emp.emp_id`) — `User::assignedProjectIds()`
+  (via `PjctEmp::projectIdsForNik()`, which also resolves legacy `emp_pjctid` values that hold a contract
+  number truncated to 20 chars). For them this **replaces** the division filter; no assignment = no
+  projects. Use the shared helpers rather than `allowedDivCodes()` directly: `PjctMain::visibleTo($user)`
+  scope (Eloquent queries on `pjct_main`), `User::visibleProjectIds()` (ID list for `whereIn` on other
+  tables — avoids cross-collation joins), `User::canSeeProject($project)` (single-record checks). Already
+  wired into Dashboard, Monitoring, `PjctDocController@show`, Asset, Manpower, and ticketing
+  (`projectOptions`, `projectAssets`, `TicketStoreRequest`, `Helpdesk::visibleTickets()` — a technician
+  still sees tickets they created).
 
 ### Custom string primary keys
 Several models generate their own PK in a `booted()` → `static::creating()` hook instead of using

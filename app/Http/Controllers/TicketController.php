@@ -171,14 +171,14 @@ class TicketController extends Controller
         return back()->with('success', TicketManager::TRANSITIONS[$action]['label'].'.');
     }
 
-    /** Device milik satu project, untuk pemilih device di form tiket (dibatasi divisi user). */
+    /** Device milik satu project, untuk pemilih device di form tiket (dibatasi project yang boleh dilihat user). */
     public function projectAssets(Request $request): JsonResponse
     {
         $user = $request->user();
         abort_unless($user->can('create', Ticket::class), 403);
 
         $project = PjctMain::query()->findOrFail($request->string('pjct_id')->toString());
-        abort_unless($user->coversDivision($project->pjct_div), 403);
+        abort_unless($user->canSeeProject($project), 403);
 
         $assets = AstMain::query()
             ->where('ast_pjctid', $project->id)
@@ -212,10 +212,8 @@ class TicketController extends Controller
 
     private function projectOptions(User $user): EloquentCollection
     {
-        $allowedDivs = $user->allowedDivCodes();
-
         return PjctMain::query()
-            ->when($allowedDivs !== null, fn (Builder $q) => $q->whereIn('pjct_div', $allowedDivs))
+            ->visibleTo($user)
             ->orderBy('pjct_name')
             ->get(['id', 'pjct_name', 'pjct_client', 'pjct_div', 'pjct_type']);
     }

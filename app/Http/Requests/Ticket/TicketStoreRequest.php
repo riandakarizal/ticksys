@@ -16,12 +16,13 @@ class TicketStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $allowedDivs = $this->user()->allowedDivCodes();
+        $projectIds = $this->user()->visibleProjectIds();
 
         return [
-            // Project harus di divisi teknisi — dicek di server, bukan hanya disaring di dropdown.
+            // Project harus project penugasan teknisi (pjct_emp) — dicek di server, bukan hanya
+            // disaring di dropdown.
             'pjct_id' => ['required', 'string', Rule::exists('pjct_main', 'id')->where(
-                fn ($query) => $allowedDivs === null ? $query : $query->whereIn('pjct_div', $allowedDivs)
+                fn ($query) => $projectIds === null ? $query : $query->whereIn('id', $projectIds)
             )],
             'issue_type' => ['required', Rule::in(array_keys(Ticket::ISSUE_TYPES))],
             'subject' => ['required', 'string', 'max:255'],

@@ -60,6 +60,45 @@ class PjctEmp extends Model
         );
     }
 
+    /**
+     * ID project (`pjct_main.id`) tempat NIK ini ditugaskan.
+     *
+     * `emp_pjctid` berisi ID project (`PJxxxx`) untuk data baru, atau nomor kontrak terpotong
+     * 20 karakter untuk data lama — keduanya dicocokkan, sama seperti halaman Manpower. Tidak
+     * pakai JOIN: `pjct_emp` dan `pjct_main` beda collation di MySQL.
+     *
+     * @return array<int, string>
+     */
+    public static function projectIdsForNik(?string $nik): array
+    {
+        $nik = trim((string) $nik);
+        if ($nik === '') {
+            return [];
+        }
+
+        $keys = static::query()->where('emp_id', $nik)->pluck('emp_pjctid')
+            ->map(fn ($key) => trim((string) $key))->filter()->unique()->values();
+        if ($keys->isEmpty()) {
+            return [];
+        }
+
+        $direct = PjctMain::withTrashed()->whereIn('id', $keys->all())->pluck('id');
+        $contractKeys = $keys->diff($direct)->values();
+
+        // LIKE hanya menyaring kandidat; kecocokan pastinya (20 karakter pertama) dicek di PHP.
+        $byContract = $contractKeys->isEmpty() ? collect() : PjctMain::withTrashed()
+            ->where(function ($query) use ($contractKeys): void {
+                foreach ($contractKeys as $key) {
+                    $query->orWhere('pjct_contract', 'like', '%'.$key.'%');
+                }
+            })
+            ->get(['id', 'pjct_contract'])
+            ->filter(fn (PjctMain $project) => $contractKeys->contains(mb_substr(trim((string) $project->pjct_contract), 0, 20)))
+            ->pluck('id');
+
+        return $direct->merge($byContract)->unique()->values()->all();
+    }
+
     protected $fillable = [
         'id', 'emp_id', 'emp_name', 'emp_level', 'emp_levname',
         'emp_unit', 'emp_div', 'emp_area', 'emp_pjctid',

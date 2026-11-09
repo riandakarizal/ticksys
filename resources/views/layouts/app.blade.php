@@ -98,7 +98,7 @@
                     </svg>
                 </button>
                 <div data-nav-sub class="{{ $projectActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
-                    @unless(auth()->user()->isFin())
+                    @unless(auth()->user()->isFin() || auth()->user()->isUser())
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
                     @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>

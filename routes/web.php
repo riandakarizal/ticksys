@@ -75,12 +75,13 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         ->middleware('role:superadmin,admin,siteadmin,user,vip')
         ->name('report.issues');
 
-    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin`
+    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin` dan teknisi (`user`):
+    // teknisi bekerja dari Dashboard (aset & issue), Asset, Manpower, dan Tickets.
+    Route::middleware('role:superadmin,admin,siteadmin,vip')
+        ->get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    // Dokumen project tetap terbuka untuk teknisi, dibatasi project penugasannya (canSeeProject()).
     Route::middleware('role:superadmin,admin,siteadmin,user,vip')
-        ->prefix('/monitoring')->name('monitoring.')->group(function (): void {
-            Route::get('/', [MonitoringController::class, 'index'])->name('index');
-            Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
-        });
+        ->get('/monitoring/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('monitoring.docs.show');
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {
         // M-05/M-06 Vendor, M-08 Report Expenses — User (client-tier) excluded

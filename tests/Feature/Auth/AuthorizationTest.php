@@ -31,8 +31,8 @@ test('admin bisa akses /reports', function () {
 
 // ── /monitoring — semua role login boleh akses (M-02, all ✓) ─────────────
 
-test('client bisa akses /monitoring', function () {
-    $this->actingAs(makeUser('client'))->get('/monitoring')->assertOk();
+test('client (teknisi) tidak bisa akses /monitoring — bekerja dari dashboard aset & issue', function () {
+    $this->actingAs(makeUser('client'))->get('/monitoring')->assertForbidden();
 });
 
 test('agent bisa akses /monitoring', function () {

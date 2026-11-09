@@ -3,6 +3,7 @@
 use App\Models\ActivityLog;
 use App\Models\AppNotification;
 use App\Models\AstMain;
+use App\Models\PjctEmp;
 use App\Models\PjctMain;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
@@ -35,6 +36,10 @@ beforeEach(function () {
 
     $this->project = PjctMain::create(['pjct_name' => 'Seat Management API HO', 'pjct_client' => 'APINDO', 'pjct_type' => 'RENT', 'pjct_status' => 'OG', 'pjct_div' => 'TC']);
     $this->projectEq = PjctMain::create(['pjct_name' => 'Sewa GSE', 'pjct_client' => 'GAPURA', 'pjct_type' => 'RENT', 'pjct_status' => 'OG', 'pjct_div' => 'EQ']);
+
+    // Teknisi hanya melihat project penugasannya di pjct_emp (dicocokkan lewat NIK).
+    PjctEmp::create(['emp_id' => $this->teknisi->user_empid, 'emp_name' => $this->teknisi->user_name, 'emp_level' => 'L7', 'emp_levname' => 'Teknisi', 'emp_unit' => 'Technology Operation', 'emp_div' => 'HO', 'emp_area' => 'Jakarta', 'emp_pjctid' => $this->project->id, 'emp_coid' => '']);
+    PjctEmp::create(['emp_id' => $this->teknisiEq->user_empid, 'emp_name' => $this->teknisiEq->user_name, 'emp_level' => 'L7', 'emp_levname' => 'Teknisi', 'emp_unit' => 'Regional 2', 'emp_div' => 'CGK', 'emp_area' => 'Tangerang', 'emp_pjctid' => $this->projectEq->id, 'emp_coid' => '']);
 
     $makeAsset = fn (PjctMain $project, string $serial, string $cond) => AstMain::create([
         'ast_type' => 'Laptop', 'ast_brand' => 'Dell', 'ast_brandmodel' => 'Latitude', 'ast_serial' => $serial,

@@ -39,7 +39,7 @@ Akun login PRISM. PK manual format `USR-NNN`. Auth Laravel override via virtual 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | varchar(20) PK | Format: `USR-001` |
-| `user_empid` | varchar(20) | NIK karyawan |
+| `user_empid` | varchar(20) | NIK karyawan — untuk teknisi (role `user`) harus sama dengan `pjct_emp.emp_id`, karena akses project-nya diambil dari penugasan di `pjct_emp` |
 | `user_name` | varchar(20) | Nama tampil |
 | `user_email` | varchar(225) | Login username |
 | `user_pass` | varchar(225) | Bcrypt hash |
@@ -155,6 +155,9 @@ Inventory aset. 3,583 baris. FK ke `pjct_main` via `ast_pjctid`.
 Data manpower / karyawan yang terlibat dalam project. Diisi lewat **Import Excel** di halaman Manpower
 (superadmin, `ManpowerImportController` + `Support/ManpowerImportService.php`, pola sama dengan import aset).
 Kunci duplikat: (`emp_pjctid` + `emp_id`) — satu orang boleh tercatat di beberapa project.
+Tabel ini juga menentukan **akses teknisi**: user role `user` hanya melihat project tempat NIK-nya
+(`users.user_empid` = `emp_id`) tercatat di sini (`User::assignedProjectIds()` /
+`PjctEmp::projectIdsForNik()`; `emp_pjctid` format lama berupa nomor kontrak terpotong ikut dicocokkan).
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|

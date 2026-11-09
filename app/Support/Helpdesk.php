@@ -25,8 +25,10 @@ class Helpdesk
     /**
      * Tiket yang boleh dilihat user:
      * - superadmin & vip: semua;
-     * - lainnya: tiket project di divisinya (allowedDivCodes(), null = semua divisi), tiket yang
-     *   ia buat sendiri, dan — untuk atasan — tiket buatan bawahan langsungnya (perlu di-approve).
+     * - teknisi: tiket di project penugasannya (pjct_emp, User::assignedProjectIds());
+     * - lainnya: tiket project di divisinya (allowedDivCodes(), null = semua divisi);
+     * - ditambah tiket yang ia buat sendiri, dan — untuk atasan — tiket buatan bawahan
+     *   langsungnya (perlu di-approve).
      */
     public function visibleTickets(User $user): Builder
     {
@@ -38,15 +40,19 @@ class Helpdesk
             return Ticket::query()->whereRaw('1 = 0');
         }
 
-        $codes = $user->allowedDivCodes();
+        $assigned = $user->assignedProjectIds();
+        $codes = $assigned === null ? $user->allowedDivCodes() : [];
 
-        if ($codes === null) {
+        if ($assigned === null && $codes === null) {
             return Ticket::query();
         }
 
-        return Ticket::query()->where(function (Builder $query) use ($user, $codes): void {
-            $query->whereHas('project', fn (Builder $project) => $project->whereIn('pjct_div', $codes))
-                ->orWhere('tickets.created_by', $user->id)
+        return Ticket::query()->where(function (Builder $query) use ($user, $assigned, $codes): void {
+            $assigned !== null
+                ? $query->whereIn('tickets.pjct_id', $assigned)
+                : $query->whereHas('project', fn (Builder $project) => $project->whereIn('pjct_div', $codes));
+
+            $query->orWhere('tickets.created_by', $user->id)
                 ->orWhereIn('tickets.created_by', $this->directReportIds($user));
         });
     }

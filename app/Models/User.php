@@ -186,6 +186,56 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
         return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();
     }
 
+    // ── Project assignment (pjct_emp) ──────────────────────────────────────────
+    /** @var array<int, string>|null */
+    private ?array $assignedProjectIdsCache = null;
+
+    /**
+     * Teknisi (role `user`) hanya melihat project tempat ia ditugaskan di `pjct_emp`, dicocokkan
+     * lewat NIK (`users.user_empid` = `pjct_emp.emp_id`). Penugasan ini menggantikan filter
+     * divisi untuknya. Role lain → null (tidak dibatasi per project, tetap lewat allowedDivCodes()).
+     *
+     * @return array<int, string>|null  [] = belum ditugaskan di project mana pun → tidak melihat apa pun
+     */
+    public function assignedProjectIds(): ?array
+    {
+        if (! $this->isUser()) {
+            return null;
+        }
+
+        return $this->assignedProjectIdsCache ??= PjctEmp::projectIdsForNik($this->user_empid);
+    }
+
+    /**
+     * ID project (termasuk yang diarsipkan) yang boleh dilihat, atau null = semua project.
+     * Untuk menyaring tabel lain lewat whereIn — `pjct_main` beda collation dengan tabel legacy
+     * lain, jadi JOIN/whereHas ke sana bisa ditolak MySQL.
+     *
+     * @return array<int, string>|null
+     */
+    public function visibleProjectIds(): ?array
+    {
+        if (($assigned = $this->assignedProjectIds()) !== null) {
+            return $assigned;
+        }
+
+        $divs = $this->allowedDivCodes();
+
+        return $divs === null ? null : PjctMain::withTrashed()->whereIn('pjct_div', $divs)->pluck('id')->all();
+    }
+
+    /** Project ini boleh dilihat user — penugasan pjct_emp (teknisi) atau divisi (role lain). */
+    public function canSeeProject(?PjctMain $project): bool
+    {
+        if (($assigned = $this->assignedProjectIds()) !== null) {
+            return $project !== null && in_array($project->id, $assigned, true);
+        }
+
+        $divs = $this->allowedDivCodes();
+
+        return $divs === null || ($project !== null && in_array($project->pjct_div, $divs, true));
+    }
+
     // ── Division-based project visibility ──────────────────────────────────────
     private const UNIT_DIV_MAP = [
         'Technology Operation & Maintenance' => ['TC'],

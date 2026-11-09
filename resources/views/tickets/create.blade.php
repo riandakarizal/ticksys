@@ -32,6 +32,12 @@
                         @endforeach
                     </select>
                     <p class="mt-2 text-xs text-slate-500">Client: <span class="font-semibold text-slate-700" data-ticket-client-label>-</span></p>
+                    @if($pjctProjects->isEmpty())
+                        <p class="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Anda belum ditugaskan di project mana pun. Minta admin mendaftarkan NIK Anda
+                            ({{ auth()->user()->user_empid ?: '-' }}) di data Manpower project terkait.
+                        </p>
+                    @endif
                 </div>
 
                 <div>

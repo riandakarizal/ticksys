@@ -17,13 +17,10 @@ class AssetController extends Controller
         $cond     = $request->input('cond', '');
         $loc      = $request->input('loc', '');
 
-        // Data aset dibatasi ke project dalam divisi user (sama seperti Monitoring). Daftar
-        // ID project diambil lebih dulu: `ast_main` dan `pjct_main` beda collation, jadi
-        // JOIN/subquery SQL antar keduanya ditolak MySQL.
-        $allowedDivs = $request->user()->allowedDivCodes();
-        $projectIds = $allowedDivs === null
-            ? null
-            : PjctMain::withTrashed()->whereIn('pjct_div', $allowedDivs)->pluck('id')->all();
+        // Data aset dibatasi ke project yang boleh dilihat user (penugasan pjct_emp untuk teknisi,
+        // divisi untuk role lain — sama seperti Monitoring). Daftar ID project diambil lebih dulu:
+        // `ast_main` dan `pjct_main` beda collation, jadi JOIN/subquery SQL antar keduanya ditolak MySQL.
+        $projectIds = $request->user()->visibleProjectIds();
         $scoped = fn (): Builder => AstMain::query()
             ->when($projectIds !== null, fn ($q) => $q->whereIn('ast_pjctid', $projectIds));
 
