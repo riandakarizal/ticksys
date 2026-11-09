@@ -15,9 +15,10 @@
 | `pjct_doc` | 65 | Dokumen legal/administratif per project (Kontrak, RKST, RAB, BAST, SOP) |
 | `pjct_budget` | 0 | Budget project (belum diisi) |
 | `pjct_expense` | 0 | Pengeluaran project (belum diisi) |
-| `tickets` | — | Tiket helpdesk |
-| `ticket_messages` | — | Pesan balasan tiket |
-| `ticket_attachments` | — | Lampiran tiket |
+| `tickets` | — | Ticket kerusakan/accident/masalah sistem per project (lihat detail di bawah) |
+| `ticket_assets` | — | Device (`ast_main`) yang terlibat di ticket — pivot, bisa >1 per ticket |
+| `ticket_messages` | — | Komentar diskusi ticket |
+| `ticket_attachments` | — | Dokumen ticket (kronologi, BA serah terima, dll.) |
 | `categories` | 4 | Kategori tiket |
 | `sla_policies` | 2 | Kebijakan SLA |
 | `eqt_maintenances` | 12 | Log maintenance equipment |
@@ -199,6 +200,46 @@ Diakses via route `monitoring.docs.show` (`PjctDocController@show`) — stream f
 (document viewer bawaan browser). Akses dibatasi oleh `User::allowedDivCodes()` — user tidak bisa buka dokumen
 project di luar divisinya. Badge doc_type di kolom "Doc" halaman Monitoring adalah link ke route ini.
 
+### `tickets` (rework 2026-11-05)
+Ticket dibuat teknisi lapangan (role `user`). Alur: `open → (escalated → open) → solved → closed`.
+Nomor `HD-YYYYMMDD-NNNN` dari tabel `ticket_sequences`.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint PK | auto increment |
+| `ticket_number` | varchar unique | `HD-20261105-0001` |
+| `pjct_id` | varchar(10) | Project PRISM (tanpa FK constraint); collation disamakan dengan `pjct_main.id` |
+| `created_by` | varchar(20) FK users | Teknisi pembuat — atasannya (`user_parid`) yang meng-approve |
+| `assigned_to` | varchar(20) FK users | Sama dengan `created_by` (penanggung jawab) |
+| `requester_name` | varchar | Nama client dari `pjct_main.pjct_client` |
+| `reporter_name` | varchar null | Nama user client yang melapor ke teknisi |
+| `issue_type` | varchar(20) | `kerusakan` / `accident` (device wajib) · `sistem` (device opsional). Ticket lama tanpa aset → `sistem` |
+| `status` | varchar | `open` / `escalated` / `solved` / `closed` (data lama `in_progress`/`pending` → `open`, `resolved` → `solved`) |
+| `priority` | varchar | `low` / `medium` / `high` / `critical` |
+| `subject`, `description` | varchar / longtext | Judul; kronologi & rencana penanganan |
+| `category_id`, `subcategory_id` | FK categories null | Opsional |
+| `sla_policy_id` | FK sla_policies | Policy default; `response_due_at`, `resolution_due_at` dihitung saat dibuat |
+| `first_responded_at` | timestamp | = saat dibuat (teknisi sudah di lokasi) |
+| `resolved_at` | timestamp null | Waktu ditandai **solved** (nama kolom warisan) |
+| `closed_at`, `approved_by` | timestamp / varchar(20) null | Waktu & atasan yang meng-approve |
+| `metadata` | json null | `sla_breach_notified_at` (notifikasi SLA sekali) |
+| `ast_id`, `asset_cond_before` | — | **Usang** — sudah disalin ke `ticket_assets`, tidak dipakai kode |
+| `requester_id`, `team_id`, `merged_into_ticket_id`, `split_from_ticket_id`, `tags`, `auto_close_warned_at` | — | Usang (flow helpdesk lama), dibiarkan untuk data lama |
+
+### `ticket_assets`
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `ticket_id` | FK tickets (cascade) | |
+| `ast_id` | varchar(20) | `ast_main.id` (tanpa FK constraint; collation disamakan dengan `ast_main.id`); unique per ticket |
+| `cond_before` | varchar null | Kondisi device sebelum dilaporkan — dipulihkan ke `ast_main.ast_cond` saat ticket closed, kecuali device masih ditahan ticket aktif lain |
+
+Selama ticket belum closed, `ast_main.ast_cond = 'Bad'` dan `ast_main.ast_last_ticket_id` menunjuk ticket aktif terbaru.
+
+### `ticket_attachments`
+`doc_type`: `kronologi` (wajib saat buat), `ba_eskalasi` (BA serah terima ke pusat, wajib saat escalate),
+`ba_pengembalian` (BA serah terima dari pusat, wajib saat kembali ke open), `penyelesaian` (opsional saat solved),
+`lampiran` (lampiran komentar; `ticket_message_id` terisi). File di disk `local`, folder `ticket-attachments/`.
+
 ---
 
 ## Relasi Antar Tabel
@@ -210,6 +251,9 @@ pjct_main (id)
     └── pjct_doc (doc_pjctid)       — 1 project → banyak dokumen (Kontrak/RKST/RAB/BAST/SOP)
     └── pjct_budget (id)            — 1 project → 1 budget
     └── pjct_expense (pjct_id)      — 1 project → banyak pengeluaran
+    └── tickets (pjct_id)           — 1 project → banyak ticket
+            └── ticket_assets (ticket_id) ── ast_main (ast_id) — device yang terlibat
+            └── ticket_attachments (ticket_id) — dokumen per tahap
 
 users (id)
     └── users (user_parid)          — self-referential, hierarki atasan-bawahan

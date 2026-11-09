@@ -58,12 +58,8 @@ class DashboardController extends Controller
         $recentProjects = $recentProjectsQuery->latest('pjct_codate')->limit(8)->get();
 
         // ── Ticket quick-stats ───────────────────────────────────────────
-        $ticketCounts = [
-            'open'        => (clone $visible)->where('status', 'open')->count(),
-            'in_progress' => (clone $visible)->where('status', 'in_progress')->count(),
-            'pending'     => (clone $visible)->where('status', 'pending')->count(),
-            'resolved'    => (clone $visible)->where('status', 'resolved')->count(),
-        ];
+        $statusTotals = (clone $visible)->toBase()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $ticketCounts = collect(Ticket::STATUSES)->mapWithKeys(fn (string $status) => [$status => (int) ($statusTotals[$status] ?? 0)])->all();
 
         return view('dashboard', [
             'user'           => $user,

@@ -17,7 +17,7 @@ class AuthController extends Controller
         }
 
         $completedTicketCount = Ticket::query()
-            ->whereIn('status', ['resolved', 'closed'])
+            ->whereIn('status', ['solved', 'closed'])
             ->count();
 
         return view('auth.login', [

@@ -33,12 +33,15 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
         Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+        Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
         Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
         Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
         Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+        // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
+        Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
+            ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
+            ->name('tickets.transition');
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
-        Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
-        Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
 

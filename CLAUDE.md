@@ -52,7 +52,8 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
   dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
   user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
-  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Menambah role baru bertipe sempit
+  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Di ticketing, `user` berarti
+  **teknisi lapangan**, bukan client (client tidak punya akun). Menambah role baru bertipe sempit
   berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
   menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
@@ -79,8 +80,17 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 
 ### Domain areas
 - **Tickets** (`TicketController`, `TicketMessageController`, `Support/TicketManager.php`,
-  `Support/Helpdesk.php`): helpdesk ticketing — SLA policies, categories, custom fields, merge/split,
-  attachments, activity log + in-app notifications.
+  `Support/Helpdesk.php`, `Policies/TicketPolicy.php`): field-technician damage tickets per `pjct_main`
+  project. Flow `open → (escalated → open) → solved → closed`, driven only by
+  `POST tickets/{ticket}/transition/{action}` (`TicketManager::TRANSITIONS`: solve, escalate, return,
+  approve, reject) — status is never edited directly. Who: technician = role `user` (+ superadmin) creates /
+  solves / escalates; approver = the creator's `user_parid` (superadmin as fallback); escalations are
+  returned by admin/superadmin whose `coversDivision($project->pjct_div)`. Visibility is division-scoped
+  (`Helpdesk::visibleTickets()`, reused by the policy). Each step has a typed document
+  (`ticket_attachments.doc_type`; BA serah terima required for escalate/return). Devices live in the
+  `ticket_assets` pivot (multi-device, `cond_before`); `Helpdesk::syncTicketAssets()` /
+  `releaseTicketAssets()` keep `ast_main.ast_cond = 'Bad'` until close — don't write `ast_cond` from
+  ticket code any other way. `tickets.ast_id` is legacy. `User` uses `Authorizable`, so `$user->can()` works.
 - **Project monitoring** (`MonitoringController`, `PjctMain`, `PjctDoc`): `pjct_main` is the master
   project record (`pjct_div` = `TC`/`EQ`/`TCC`/`EQC`, `pjct_status` = `UPC`/`OG`/`HVR`/`DLY`/`END`,
   `pjct_type` = `RENT`/`SUPPLY`/`JASA`).

@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
+use App\Support\Helpdesk;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -118,49 +119,39 @@ class DatabaseSeeder extends Seeder
             'ast_pjctid' => $project->id,
         ]);
 
+        // Ticket contoh mengikuti flow teknisi: dibuat role `user` (teknisi), status open, device
+        // project terlampir — kondisinya otomatis menjadi Bad sampai ticket di-approve (closed).
         $ticket = Ticket::create([
-            'requester_id' => $client->id,
+            'requester_name' => $project->pjct_client,
             'created_by' => $client->id,
-            'assigned_to' => $siteAdmin->id,
-            'team_id' => $itTeam->id,
-            'ast_id' => $laptop->id,
+            'assigned_to' => $client->id,
+            'pjct_id' => $project->id,
             'category_id' => $network->id,
             'sla_policy_id' => $standardSla->id,
-            'subject' => 'VPN kantor tidak bisa terkoneksi',
-            'description' => 'Sejak pagi VPN gagal login dan akses server accounting terputus.',
-            'status' => 'in_progress',
+            'subject' => 'Laptop meja check-in tidak bisa menyala',
+            'description' => 'Laptop mati total sejak pagi setelah tersiram air. Rencana: cek adaptor dan board, eskalasi bila perlu.',
+            'issue_type' => 'kerusakan',
+            'status' => 'open',
             'priority' => 'high',
-            'tags' => ['vpn', 'remote'],
-            'first_responded_at' => now()->subMinutes(20),
-            'last_reply_at' => now()->subMinutes(10),
+            'first_responded_at' => now(),
         ]);
+        app(Helpdesk::class)->syncTicketAssets($ticket, [$laptop->id]);
 
         TicketMessage::create([
             'ticket_id' => $ticket->id,
             'user_id' => $siteAdmin->id,
-            'body' => 'Kami sedang cek endpoint VPN dan policy user. Mohon standby 15 menit ya.',
+            'body' => 'Kalau board-nya kena, langsung eskalasi ke pusat ya.',
             'is_internal' => false,
         ]);
 
         DB::table('activity_logs')->insert([
-            [
-                'ticket_id'   => $ticket->id,
-                'user_id'     => $client->id,
-                'action'      => 'ticket_created',
-                'description' => 'Ticket dibuat',
-                'properties'  => json_encode(['status' => 'open', 'priority' => 'high', 'assigned_to' => $siteAdmin->id]),
-                'created_at'  => now()->subMinutes(30),
-                'updated_at'  => now()->subMinutes(30),
-            ],
-            [
-                'ticket_id'   => $ticket->id,
-                'user_id'     => $siteAdmin->id,
-                'action'      => 'ticket_status_changed',
-                'description' => 'Status ticket berubah dari Open ke In Progress',
-                'properties'  => json_encode(['from' => 'open', 'to' => 'in_progress']),
-                'created_at'  => now()->subMinutes(20),
-                'updated_at'  => now()->subMinutes(20),
-            ],
+            'ticket_id'   => $ticket->id,
+            'user_id'     => $client->id,
+            'action'      => 'ticket_created',
+            'description' => 'Ticket dibuat',
+            'properties'  => json_encode(['to' => 'open', 'priority' => 'high', 'assets' => [$laptop->id]]),
+            'created_at'  => now()->subMinutes(30),
+            'updated_at'  => now()->subMinutes(30),
         ]);
     }
 }

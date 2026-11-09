@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Concerns\LogsSystemActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Authenticatable;
+use Illuminate\Foundation\Auth\Access\Authorizable;
+use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -30,9 +32,9 @@ use Illuminate\Support\Collection;
     'user_status',
 ])]
 #[Hidden(['user_pass'])]
-class User extends Model implements AuthenticatableContract
+class User extends Model implements AuthenticatableContract, AuthorizableContract
 {
-    use Authenticatable, HasFactory, Notifiable, LogsSystemActivity;
+    use Authenticatable, Authorizable, HasFactory, Notifiable, LogsSystemActivity;
 
     public $incrementing = false;
     public $timestamps   = false;
@@ -144,6 +146,28 @@ class User extends Model implements AuthenticatableContract
     public function canManageAllTickets(): bool
     {
         return $this->isSuperAdmin();
+    }
+
+    // ── Ticketing ──────────────────────────────────────────────────────────────
+    // Teknisi lapangan = role `user`: membuat tiket, eskalasi, menandai solved.
+    // Atasan = user_parid teknisi pembuat tiket: approve/tolak solved.
+    // Tim divisi project = admin/superadmin yang divisinya mencakup pjct_div: menurunkan escalated.
+    public function isTicketTechnician(): bool
+    {
+        return $this->isUser();
+    }
+
+    /** Divisi project masuk cakupan user ini (allowedDivCodes() null = semua divisi). */
+    public function coversDivision(?string $divCode): bool
+    {
+        $codes = $this->allowedDivCodes();
+
+        return $codes === null || in_array($divCode, $codes, true);
+    }
+
+    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(self::class, 'user_parid');
     }
 
     /**

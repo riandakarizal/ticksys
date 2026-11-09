@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\LogsSystemActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AstMain extends Model
 {
@@ -100,9 +100,11 @@ class AstMain extends Model
         return $this->belongsTo(PjctMain::class, 'ast_pjctid', 'id');
     }
 
-    public function tickets(): HasMany
+    public function tickets(): BelongsToMany
     {
-        return $this->hasMany(Ticket::class, 'ast_id', 'id');
+        return $this->belongsToMany(Ticket::class, 'ticket_assets', 'ast_id', 'ticket_id')
+            ->withPivot('cond_before')
+            ->withTimestamps();
     }
 
     public function lastTicket(): BelongsTo
