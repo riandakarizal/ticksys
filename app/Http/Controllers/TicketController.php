@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Ticket\TicketStoreRequest;
+use App\Http\Requests\Ticket\TicketTransitionRequest;
 use App\Http\Requests\Ticket\TicketUpdateRequest;
 use App\Models\AppNotification;
 use App\Models\AstMain;
 use App\Models\Category;
 use App\Models\PjctMain;
-use App\Models\SlaPolicy;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\User;
@@ -22,123 +22,96 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketController extends Controller
 {
     public function index(Request $request, Helpdesk $helpdesk): View
     {
         $user = Auth::user();
+        $visible = $helpdesk->visibleTickets($user);
 
-        $query = $helpdesk->visibleTickets($user)
-            ->with(['requester', 'assignee', 'team', 'asset', 'project', 'category', 'subcategory']);
+        $query = (clone $visible)
+            ->with(['project:id,pjct_name,pjct_client,pjct_div', 'creator:id,user_name', 'category', 'subcategory'])
+            ->withCount('assets');
+
+        if ($request->boolean('needs_action')) {
+            $helpdesk->whereNeedsAction($query, $user);
+        }
 
         if ($search = $request->string('search')->toString()) {
-            $query->where(function ($builder) use ($search): void {
+            $query->where(function (Builder $builder) use ($search): void {
                 $builder
-                    ->where('subject', 'like', '%' . $search . '%')
-                    ->orWhere('ticket_number', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%');
+                    ->where('subject', 'like', '%'.$search.'%')
+                    ->orWhere('ticket_number', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%');
             });
         }
 
-        foreach (['status', 'priority'] as $filter) {
+        foreach (['status', 'priority', 'issue_type', 'pjct_id'] as $filter) {
             if ($value = $request->string($filter)->toString()) {
-                $query->where($filter, $value);
+                $query->where('tickets.'.$filter, $value);
             }
-        }
-
-        if ($pjctId = $request->string('pjct_id')->toString()) {
-            $query->where('pjct_id', $pjctId);
         }
 
         if ($categoryId = $request->integer('category_id')) {
             $query->where('category_id', $categoryId);
         }
 
-        // Client di sini adalah nama klien project PRISM (pjct_main.pjct_client,
-        // sama seperti kolom "Client" di Project → Main).
+        // Client = pjct_main.pjct_client (sama seperti kolom "Client" di Project → Main).
         if ($client = $request->string('client')->toString()) {
             $query->whereHas('project', fn (Builder $q) => $q->where('pjct_client', $client));
         }
 
         if ($from = $request->input('date_from')) {
-            $query->whereDate('created_at', '>=', $from);
+            $query->whereDate('tickets.created_at', '>=', $from);
         }
 
         if ($to = $request->input('date_to')) {
-            $query->whereDate('created_at', '<=', $to);
+            $query->whereDate('tickets.created_at', '<=', $to);
         }
 
-        $pjctProjects = $this->pjctProjectOptions($user);
+        $pjctProjects = $this->projectOptions($user);
 
         return view('tickets.index', [
-            'metrics'       => $this->ticketMetrics($helpdesk, $user),
-            'tickets'       => $query->latest()->paginate(25)->withQueryString(),
-            'categories'    => $this->categoryQuery()->whereNull('parent_id')->orderBy('name')->get(),
-            // Nama klien dari Project → Main (pjct_main.pjct_client), bukan user aplikasi.
-            'clients'       => $pjctProjects->pluck('pjct_client')->filter()->unique()->sort()->values(),
-            'pjctProjects'  => $pjctProjects,
-            'statuses'      => Ticket::STATUSES,
-            'priorities'    => Ticket::PRIORITIES,
+            'tickets' => $query->latest('tickets.created_at')->paginate(25)->withQueryString(),
+            'statusCounts' => (clone $visible)->toBase()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+            'needsActionCount' => $helpdesk->whereNeedsAction(clone $visible, $user)->count(),
+            'categories' => Category::query()->whereNull('parent_id')->orderBy('name')->get(),
+            'clients' => $pjctProjects->pluck('pjct_client')->filter()->unique()->sort()->values(),
+            'pjctProjects' => $pjctProjects,
+            'statuses' => Ticket::STATUS_LABELS,
+            'priorities' => Ticket::PRIORITIES,
+            'issueTypes' => Ticket::ISSUE_TYPES,
         ]);
     }
 
     public function create(Helpdesk $helpdesk): View
     {
-        $user = Auth::user();
-        $customFields = $helpdesk->defaultCustomFields($user);
+        $this->authorize('create', Ticket::class);
 
         return view('tickets.create', [
-            'categories'  => $this->categoryQuery()->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            // Project PRISM — memilihnya menentukan client (pjct_client) secara otomatis.
-            'pjctProjects' => $this->pjctProjectOptions($user),
-            // Aset PRISM (ast_main) yang bisa dikaitkan ke tiket, lintas project —
-            // ponytail: select penuh, ganti ke endpoint pencarian async kalau ast_main tumbuh besar.
-            'assets'      => $this->assetOptions(),
-            // Semua user dengan role staff — bukan cuma yang kebetulan terdaftar sebagai
-            // member Team, karena keanggotaan Team tidak dipakai secara nyata.
-            'agents'      => User::query()->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->orderBy('user_name')->get(),
-            'customFields' => $customFields,
-            'priorities'  => Ticket::PRIORITIES,
-            'slaPolicies' => SlaPolicy::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            'pjctProjects' => $this->projectOptions(Auth::user()),
+            'categories' => Category::query()->whereNull('parent_id')->with('children')->orderBy('name')->get(),
+            'customFields' => $helpdesk->defaultCustomFields(),
+            'priorities' => Ticket::PRIORITIES,
+            'issueTypes' => Ticket::ISSUE_TYPES,
         ]);
     }
 
-    public function store(TicketStoreRequest $request, Helpdesk $helpdesk, TicketManager $ticketManager): RedirectResponse|JsonResponse
+    public function store(TicketStoreRequest $request, TicketManager $ticketManager): RedirectResponse|JsonResponse
     {
-        $ticket = $ticketManager->createTicket(auth()->user(), $request, $helpdesk);
-        $supervisors = User::query()->whereIn('user_role', ['admin', 'superadmin'])->get();
-
-        $helpdesk->notifyUsers(
-            $helpdesk->participants($ticket)->merge($supervisors),
-            $ticket,
-            'ticket_created',
-            'Ticket ' . $ticket->ticket_number . ' created',
-            'A new ticket has been created with subject: ' . $ticket->subject,
-            ['ticket_id' => $ticket->id]
-        );
-
-        if ($ticket->assignee) {
-            $helpdesk->notifyUsers(
-                collect([$ticket->assignee]),
-                $ticket,
-                'ticket_assigned',
-                'Ticket ' . $ticket->ticket_number . ' assigned to you',
-                'A new ticket has been added to your queue.',
-                ['ticket_id' => $ticket->id]
-            );
-        }
+        $ticket = $ticketManager->createTicket($request->user(), $request);
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message'       => 'Ticket created successfully.',
-                'redirect'      => route('tickets.index'),
+                'message' => 'Ticket '.$ticket->ticket_number.' berhasil dibuat.',
+                'redirect' => route('tickets.show', $ticket),
                 'ticket_number' => $ticket->ticket_number,
             ]);
         }
 
-        return redirect()->route('tickets.index')->with('success', 'Ticket created successfully.');
+        return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket '.$ticket->ticket_number.' berhasil dibuat.');
     }
 
     public function show(Ticket $ticket, Helpdesk $helpdesk): View
@@ -153,141 +126,95 @@ class TicketController extends Controller
             ->update(['read_at' => now()]);
 
         $ticket->load([
-            'requester',
-            'creator',
-            'assignee',
-            'team',
-            'asset',
+            'creator.parent',
+            'approver',
             'project',
+            'assets',
             'category',
             'subcategory',
-            'slaPolicy',
-            'attachments',
+            'attachments.user',
             'messages.user',
             'messages.attachments',
             'customFieldValues.customField',
             'activityLogs.user',
         ]);
 
+        $abilities = collect(['update', 'comment', ...array_keys(TicketManager::TRANSITIONS)])
+            ->mapWithKeys(fn (string $ability) => [$ability => $user->can($ability, $ticket)]);
+
         return view('tickets.show', [
-            'ticket'       => $ticket,
-            'agents'       => User::query()->whereIn('user_role', ['siteadmin', 'admin', 'superadmin'])->orderBy('user_name')->get(),
-            'pjctProjects' => $this->pjctProjectOptions($user),
-            'assets'       => $this->assetOptions(),
-            'categories'   => $this->categoryQuery()->whereNull('parent_id')->with('children')->orderBy('name')->get(),
-            'statuses'     => Ticket::STATUSES,
-            'priorities'   => Ticket::PRIORITIES,
-            'mergeTargets' => $helpdesk->visibleTickets($user)
-                ->whereKeyNot($ticket->id)
-                ->whereNull('merged_into_ticket_id')
-                ->whereIn('status', ['open', 'in_progress', 'pending'])
-                ->latest()
-                ->limit(20)
-                ->get(),
+            'ticket' => $ticket,
+            'abilities' => $abilities,
+            'approver' => $helpdesk->approverFor($ticket),
+            // Dokumen alur (bukan lampiran diskusi), dikelompokkan per jenis sesuai urutan alur.
+            'documents' => $ticket->attachments
+                ->whereNull('ticket_message_id')
+                ->groupBy(fn (TicketAttachment $attachment) => $attachment->docTypeKey())
+                ->sortBy(fn ($group, string $type) => array_search($type, array_keys(TicketAttachment::DOC_TYPES), true)),
+            'categories' => $abilities['update'] ? Category::query()->whereNull('parent_id')->with('children')->orderBy('name')->get() : collect(),
+            'priorities' => Ticket::PRIORITIES,
+            'issueTypes' => Ticket::ISSUE_TYPES,
         ]);
     }
 
-    public function update(TicketUpdateRequest $request, Ticket $ticket, Helpdesk $helpdesk, TicketManager $ticketManager): RedirectResponse
+    public function update(TicketUpdateRequest $request, Ticket $ticket, TicketManager $ticketManager): RedirectResponse
     {
-        $this->authorize('update', $ticket);
+        $ticketManager->updateDetails($ticket, $request, $request->user());
 
-        $ticketManager->updateTicket($ticket, $request, $helpdesk);
-
-        return back()->with('success', 'Ticket updated successfully.');
+        return back()->with('success', 'Detail ticket diperbarui.');
     }
 
-    public function download(Ticket $ticket, TicketAttachment $attachment, Helpdesk $helpdesk): BinaryFileResponse
+    public function transition(TicketTransitionRequest $request, Ticket $ticket, string $action, TicketManager $ticketManager): RedirectResponse
+    {
+        $ticketManager->transition($ticket, $action, $request, $request->user());
+
+        return back()->with('success', TicketManager::TRANSITIONS[$action]['label'].'.');
+    }
+
+    /** Device milik satu project, untuk pemilih device di form tiket (dibatasi project yang boleh dilihat user). */
+    public function projectAssets(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->can('create', Ticket::class), 403);
+
+        $project = PjctMain::query()->findOrFail($request->string('pjct_id')->toString());
+        abort_unless($user->canSeeProject($project), 403);
+
+        $assets = AstMain::query()
+            ->where('ast_pjctid', $project->id)
+            ->orderBy('ast_type')
+            ->orderBy('id')
+            ->get(['id', 'ast_type', 'ast_brand', 'ast_brandmodel', 'ast_serial', 'ast_userloc', 'ast_cond', 'ast_last_ticket_id']);
+
+        return response()->json([
+            'assets' => $assets->map(fn (AstMain $asset) => [
+                'id' => $asset->id,
+                'label' => trim($asset->ast_type.' — '.$asset->ast_brand.' '.$asset->ast_brandmodel),
+                'serial' => $asset->ast_serial,
+                'location' => $asset->ast_userloc,
+                'cond' => $asset->ast_cond,
+                'has_ticket' => $asset->ast_last_ticket_id !== null,
+            ]),
+        ]);
+    }
+
+    public function download(Ticket $ticket, TicketAttachment $attachment, Helpdesk $helpdesk): StreamedResponse
     {
         $this->authorize('download', $ticket);
-        abort_unless($attachment->ticket_id === $ticket->id, 404);
+        abort_unless((int) $attachment->ticket_id === (int) $ticket->id, 404);
         abort_unless($helpdesk->attachmentPathExists($attachment->path), 404);
 
-        return Storage::download($attachment->path, $attachment->original_name);
+        // PDF & gambar dibuka langsung di browser, sisanya diunduh.
+        $inline = str_starts_with((string) $attachment->mime_type, 'image/') || $attachment->mime_type === 'application/pdf';
+
+        return Storage::response($attachment->path, $attachment->original_name, [], $inline ? 'inline' : 'attachment');
     }
 
-    public function merge(Request $request, Ticket $ticket, Helpdesk $helpdesk, TicketManager $ticketManager): RedirectResponse
+    private function projectOptions(User $user): EloquentCollection
     {
-        $this->authorize('merge', $ticket);
-
-        if ($ticket->isClosed()) {
-            return back()->withErrors(['ticket' => 'Closed tickets cannot be modified.']);
-        }
-
-        $target = $ticketManager->mergeTicket($ticket, $request, $helpdesk);
-
-        return redirect()->route('tickets.show', $target)->with('success', 'Ticket merged successfully.');
-    }
-
-    public function split(Request $request, Ticket $ticket, Helpdesk $helpdesk, TicketManager $ticketManager): RedirectResponse
-    {
-        $this->authorize('split', $ticket);
-
-        if ($ticket->isClosed()) {
-            return back()->withErrors(['ticket' => 'Closed tickets cannot be modified.']);
-        }
-
-        $newTicket = $ticketManager->splitTicket($ticket, $request, $helpdesk);
-
-        return redirect()->route('tickets.show', $newTicket)->with('success', 'New ticket created from split successfully.');
-    }
-
-    private function categoryQuery(): Builder
-    {
-        // Kategori tiket bersifat global — pemetaan category_team tidak pernah dipakai
-        // secara nyata (0 baris di database), jadi tidak ada gunanya membatasi per-project.
-        return Category::query();
-    }
-
-    // Ringkasan di atas daftar tiket — selalu dihitung atas seluruh tiket yang boleh
-    // dilihat user (tidak ikut filter), supaya angkanya stabil saat menyaring daftar.
-    private function ticketMetrics(Helpdesk $helpdesk, User $user): array
-    {
-        $now = now();
-        $active = "status in ('open', 'in_progress', 'pending')";
-
-        $row = $helpdesk->visibleTickets($user)->toBase()->selectRaw("
-            count(*) as total,
-            sum(case when $active then 1 else 0 end) as active,
-            sum(case when $active and assigned_to is null then 1 else 0 end) as unassigned,
-            sum(case when $active and resolution_due_at < ? then 1 else 0 end) as breached,
-            sum(case when status = 'pending' then 1 else 0 end) as pending
-        ", [$now])->first();
-
-        // Rata-rata waktu penyelesaian dihitung di PHP — selisih tanggal di SQL beda
-        // antara MySQL dan SQLite (test).
-        $resolved = $helpdesk->visibleTickets($user)
-            ->whereNotNull('resolved_at')
-            ->where('resolved_at', '>=', $now->copy()->subDays(30))
-            ->get(['created_at', 'resolved_at']);
-
-        return [
-            'total'         => (int) $row->total,
-            'active'        => (int) $row->active,
-            'unassigned'    => (int) $row->unassigned,
-            'breached'      => (int) $row->breached,
-            'pending'       => (int) $row->pending,
-            'resolved_30d'  => $resolved->count(),
-            'avg_resolve_h' => $resolved->isEmpty() ? null
-                : round($resolved->avg(fn (Ticket $t) => $t->created_at->diffInMinutes($t->resolved_at)) / 60, 1),
-        ];
-    }
-
-    private function pjctProjectOptions(User $user): EloquentCollection
-    {
-        $allowedDivs = $user->allowedDivCodes();
-
         return PjctMain::query()
-            ->when($allowedDivs !== null, fn (Builder $q) => $q->whereIn('pjct_div', $allowedDivs))
+            ->visibleTo($user)
             ->orderBy('pjct_name')
-            ->get(['id', 'pjct_name', 'pjct_client']);
-    }
-
-    private function assetOptions(): EloquentCollection
-    {
-        return AstMain::query()
-            ->with('project:id,pjct_name')
-            ->orderBy('ast_pjctid')
-            ->orderBy('id')
-            ->get(['id', 'ast_type', 'ast_brand', 'ast_brandmodel', 'ast_userloc', 'ast_pjctid']);
+            ->get(['id', 'pjct_name', 'pjct_client', 'pjct_div', 'pjct_type']);
     }
 }

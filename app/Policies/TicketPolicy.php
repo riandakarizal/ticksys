@@ -4,15 +4,27 @@ namespace App\Policies;
 
 use App\Models\Ticket;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Support\Helpdesk;
 
+/**
+ * Hak akses ticketing (route: semua role kecuali `fin`).
+ *
+ * | Aksi                      | Siapa                                                      |
+ * |---------------------------|------------------------------------------------------------|
+ * | lihat                     | lihat Helpdesk::visibleTickets()                           |
+ * | buat, ubah detail         | teknisi (role user) & superadmin                           |
+ * | solve, escalate (dr open) | teknisi (role user) & superadmin                           |
+ * | return (dr escalated)     | admin/superadmin yang divisinya mencakup project tiket     |
+ * | approve, reject (dr solved)| atasan langsung teknisi pembuat (user_parid) & superadmin |
+ * | komentar                  | semua yang bisa melihat, kecuali vip (hanya-lihat)         |
+ */
 class TicketPolicy
 {
-    use HandlesAuthorization;
+    public function __construct(private readonly Helpdesk $helpdesk) {}
 
     public function create(User $user): bool
     {
-        return ! $user->isVip();
+        return $user->isSuperAdmin() || $user->isTicketTechnician();
     }
 
     public function view(User $user, Ticket $ticket): bool
@@ -22,29 +34,47 @@ class TicketPolicy
 
     public function update(User $user, Ticket $ticket): bool
     {
-        if ($user->isUser() || $user->isVip()) {
-            return false;
-        }
-
-        return $this->visible($user, $ticket) && ! $ticket->isClosed();
+        return ! $ticket->isClosed() && $this->create($user) && $this->visible($user, $ticket);
     }
 
-    public function merge(User $user, Ticket $ticket): bool
+    public function solve(User $user, Ticket $ticket): bool
     {
-        if (! ($user->isSuperAdmin() || $user->isAdmin())) {
-            return false;
-        }
-
-        return $this->visible($user, $ticket) && ! $ticket->isClosed();
+        return $ticket->status === 'open' && $this->create($user) && $this->visible($user, $ticket);
     }
 
-    public function split(User $user, Ticket $ticket): bool
+    public function escalate(User $user, Ticket $ticket): bool
     {
-        if (! ($user->isSuperAdmin() || $user->isAdmin())) {
+        return $this->solve($user, $ticket);
+    }
+
+    public function return(User $user, Ticket $ticket): bool
+    {
+        if ($ticket->status !== 'escalated') {
             return false;
         }
 
-        return $this->visible($user, $ticket) && ! $ticket->isClosed();
+        return $user->isSuperAdmin()
+            || ($user->isAdmin() && $user->coversDivision($ticket->project?->pjct_div));
+    }
+
+    public function approve(User $user, Ticket $ticket): bool
+    {
+        if ($ticket->status !== 'solved') {
+            return false;
+        }
+
+        return $user->isSuperAdmin()
+            || ($ticket->creator?->user_parid !== null && $ticket->creator->user_parid === $user->id);
+    }
+
+    public function reject(User $user, Ticket $ticket): bool
+    {
+        return $this->approve($user, $ticket);
+    }
+
+    public function comment(User $user, Ticket $ticket): bool
+    {
+        return ! $ticket->isClosed() && ! $user->isVip() && $this->visible($user, $ticket);
     }
 
     public function download(User $user, Ticket $ticket): bool
@@ -52,23 +82,12 @@ class TicketPolicy
         return $this->visible($user, $ticket);
     }
 
-    public function createMessage(User $user, Ticket $ticket): bool
-    {
-        return $this->visible($user, $ticket) && ! $ticket->isClosed();
-    }
-
     private function visible(User $user, Ticket $ticket): bool
     {
-        // Tiket tidak lagi terikat ke Team (lihat TicketManager::createTicket) — jadi
-        // visibilitas staff tidak lagi disaring lewat keanggotaan team_user.
-        if ($user->isSuperAdmin() || $user->isVip() || $user->isAdmin()) {
+        if ($user->isSuperAdmin() || $user->isVip()) {
             return true;
         }
 
-        if ($user->isSiteAdmin()) {
-            return $ticket->assigned_to === $user->id;
-        }
-
-        return $ticket->requester_id === $user->id && $user->isUser();
+        return $this->helpdesk->visibleTickets($user)->whereKey($ticket->id)->exists();
     }
 }

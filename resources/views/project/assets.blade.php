@@ -2,7 +2,8 @@
 
 @section('content')
 
-{{-- ── KPI Cards ────────────────────────────────────────────────────── --}}
+{{-- ── KPI Cards (tidak untuk teknisi — mereka cukup daftar asetnya) ──────────── --}}
+@unless(auth()->user()->isUser())
 <div class="flex gap-3 mb-5">
     <div class="flex-1 bg-slate-50 rounded-xl border border-slate-200 shadow-sm p-4">
         <p class="text-2xl font-black text-slate-800">{{ number_format($kpi['total']) }}</p>
@@ -35,6 +36,7 @@
         <p class="text-[10px] {{ $kpi['aktif_end'] > 0 ? 'text-orange-400' : 'text-slate-400' }} mt-0.5">{{ $kpi['aktif_end'] > 0 ? 'Perlu ditarik / relokasi' : 'Semua clear' }}</p>
     </div>
 </div>
+@endunless
 
 
 {{-- ── Bulk Import (superadmin + admin E&T O&M) ───────────────────────────────── --}}

@@ -52,7 +52,10 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
   dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
   user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
-  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Menambah role baru bertipe sempit
+  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Di ticketing, `user` berarti
+  **teknisi lapangan**, bukan client (client tidak punya akun). Teknisi juga tidak punya Project → Main:
+  route `monitoring.index` tanpa `user` (dokumen `monitoring.docs.show` tetap), dan `/dashboard` untuk
+  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Menambah role baru bertipe sempit
   berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
   menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
@@ -60,6 +63,16 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `subordinateDivCodes()` (self-referential `users.user_parid` hierarchy — a parent sees everything their
   reports can see). Controllers that touch `pjct_main`-derived data (`MonitoringController`,
   `PjctDocController`) must apply this filter manually; it is not a global scope.
+- Project-level (technicians only): role `user` is scoped to the projects they are assigned to in
+  `pjct_emp`, matched by NIK (`users.user_empid` = `pjct_emp.emp_id`) — `User::assignedProjectIds()`
+  (via `PjctEmp::projectIdsForNik()`, which also resolves legacy `emp_pjctid` values that hold a contract
+  number truncated to 20 chars). For them this **replaces** the division filter; no assignment = no
+  projects. Use the shared helpers rather than `allowedDivCodes()` directly: `PjctMain::visibleTo($user)`
+  scope (Eloquent queries on `pjct_main`), `User::visibleProjectIds()` (ID list for `whereIn` on other
+  tables — avoids cross-collation joins), `User::canSeeProject($project)` (single-record checks). Already
+  wired into Dashboard, Monitoring, `PjctDocController@show`, Asset, Manpower, and ticketing
+  (`projectOptions`, `projectAssets`, `TicketStoreRequest`, `Helpdesk::visibleTickets()` — a technician
+  still sees tickets they created).
 
 ### Custom string primary keys
 Several models generate their own PK in a `booted()` → `static::creating()` hook instead of using
@@ -79,8 +92,17 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 
 ### Domain areas
 - **Tickets** (`TicketController`, `TicketMessageController`, `Support/TicketManager.php`,
-  `Support/Helpdesk.php`): helpdesk ticketing — SLA policies, categories, custom fields, merge/split,
-  attachments, activity log + in-app notifications.
+  `Support/Helpdesk.php`, `Policies/TicketPolicy.php`): field-technician damage tickets per `pjct_main`
+  project. Flow `open → (escalated → open) → solved → closed`, driven only by
+  `POST tickets/{ticket}/transition/{action}` (`TicketManager::TRANSITIONS`: solve, escalate, return,
+  approve, reject) — status is never edited directly. Who: technician = role `user` (+ superadmin) creates /
+  solves / escalates; approver = the creator's `user_parid` (superadmin as fallback); escalations are
+  returned by admin/superadmin whose `coversDivision($project->pjct_div)`. Visibility is division-scoped
+  (`Helpdesk::visibleTickets()`, reused by the policy). Each step has a typed document
+  (`ticket_attachments.doc_type`; BA serah terima required for escalate/return). Devices live in the
+  `ticket_assets` pivot (multi-device, `cond_before`); `Helpdesk::syncTicketAssets()` /
+  `releaseTicketAssets()` keep `ast_main.ast_cond = 'Bad'` until close — don't write `ast_cond` from
+  ticket code any other way. `tickets.ast_id` is legacy. `User` uses `Authorizable`, so `$user->can()` works.
 - **Project monitoring** (`MonitoringController`, `PjctMain`, `PjctDoc`): `pjct_main` is the master
   project record (`pjct_div` = `TC`/`EQ`/`TCC`/`EQC`, `pjct_status` = `UPC`/`OG`/`HVR`/`DLY`/`END`,
   `pjct_type` = `RENT`/`SUPPLY`/`JASA`).
@@ -119,6 +141,18 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   (tanpa nilai / tanpa tanggal mulai-selesai / tanpa nomor kontrak) dan sel kosong ditandai kuning di layar
   maupun Excel, serta filter arsip (soft delete). Role: superadmin/admin/siteadmin/vip — **tanpa `fin`**
   (Finance tidak boleh melihat daftar project) dan tanpa `user`.
+- **Surat → Nomor Surat / Jenis Surat** (`LetterController`, `LetterTypeController`,
+  `Support/LetterNumberService.php`, models `Letter` / `LetterType` / `LetterCounter`, routes `letters.*`):
+  register nomor surat, superadmin + admin (semua divisi, tidak dibatasi `allowedDivCodes()`). Format
+  `IASS/{unit}/{kode}/{bulan romawi}/{tahun}/{urut 3 digit}[.{turunan}]`; urutan per **kode + tahun** (jenis
+  yang kodenya sama berbagi urutan), reset tiap tahun. Nomor **hanya** dibuat lewat `LetterNumberService`
+  (`issue()` / `issueSub()`): mengunci baris `letter_counters` dengan `lockForUpdate` dan melompati urutan
+  yang sudah ada di `letters` — jangan insert ke `letters` langsung dari kode aplikasi. Setelah dibuat,
+  jenis/tanggal/nomor tidak bisa diedit; salah buat → dibatalkan (`status = cancelled` + alasan), tidak
+  dihapus. `letters.number` sengaja tidak unique (data impor Excel berisi nomor ganda, ditandai di
+  `import_note`). Register Excel lama diimpor sekali lewat `php artisan letters:import <xlsx> --dry-run`
+  (`Support/LetterImportService.php`), yang juga menaikkan counter. File surat disimpan di disk `local`
+  (`letter-files/{tahun}/`).
 - **Equipment import/export** (`EqtImportController`, `Support/EqtImportService.php`): xlsx-driven bulk
   import/export for equipment projects, handovers, maintenance, vehicles — template-based via
   PhpSpreadsheet, admin-only routes under `/monitoring/import` and `/monitoring/export`.

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Concerns\LogsSystemActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Authenticatable;
+use Illuminate\Foundation\Auth\Access\Authorizable;
+use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -30,9 +32,9 @@ use Illuminate\Support\Collection;
     'user_status',
 ])]
 #[Hidden(['user_pass'])]
-class User extends Model implements AuthenticatableContract
+class User extends Model implements AuthenticatableContract, AuthorizableContract
 {
-    use Authenticatable, HasFactory, Notifiable, LogsSystemActivity;
+    use Authenticatable, Authorizable, HasFactory, Notifiable, LogsSystemActivity;
 
     public $incrementing = false;
     public $timestamps   = false;
@@ -146,6 +148,28 @@ class User extends Model implements AuthenticatableContract
         return $this->isSuperAdmin();
     }
 
+    // ── Ticketing ──────────────────────────────────────────────────────────────
+    // Teknisi lapangan = role `user`: membuat tiket, eskalasi, menandai solved.
+    // Atasan = user_parid teknisi pembuat tiket: approve/tolak solved.
+    // Tim divisi project = admin/superadmin yang divisinya mencakup pjct_div: menurunkan escalated.
+    public function isTicketTechnician(): bool
+    {
+        return $this->isUser();
+    }
+
+    /** Divisi project masuk cakupan user ini (allowedDivCodes() null = semua divisi). */
+    public function coversDivision(?string $divCode): bool
+    {
+        $codes = $this->allowedDivCodes();
+
+        return $codes === null || in_array($divCode, $codes, true);
+    }
+
+    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(self::class, 'user_parid');
+    }
+
     /**
      * Import Excel aset (tombol + template di Project → Asset): superadmin, dan admin divisi
      * Equipment & Technology Operation & Maintenance. Non-superadmin hanya boleh mengimpor ke
@@ -160,6 +184,56 @@ class User extends Model implements AuthenticatableContract
     public function canViewReports(): bool
     {
         return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();
+    }
+
+    // ── Project assignment (pjct_emp) ──────────────────────────────────────────
+    /** @var array<int, string>|null */
+    private ?array $assignedProjectIdsCache = null;
+
+    /**
+     * Teknisi (role `user`) hanya melihat project tempat ia ditugaskan di `pjct_emp`, dicocokkan
+     * lewat NIK (`users.user_empid` = `pjct_emp.emp_id`). Penugasan ini menggantikan filter
+     * divisi untuknya. Role lain → null (tidak dibatasi per project, tetap lewat allowedDivCodes()).
+     *
+     * @return array<int, string>|null  [] = belum ditugaskan di project mana pun → tidak melihat apa pun
+     */
+    public function assignedProjectIds(): ?array
+    {
+        if (! $this->isUser()) {
+            return null;
+        }
+
+        return $this->assignedProjectIdsCache ??= PjctEmp::projectIdsForNik($this->user_empid);
+    }
+
+    /**
+     * ID project (termasuk yang diarsipkan) yang boleh dilihat, atau null = semua project.
+     * Untuk menyaring tabel lain lewat whereIn — `pjct_main` beda collation dengan tabel legacy
+     * lain, jadi JOIN/whereHas ke sana bisa ditolak MySQL.
+     *
+     * @return array<int, string>|null
+     */
+    public function visibleProjectIds(): ?array
+    {
+        if (($assigned = $this->assignedProjectIds()) !== null) {
+            return $assigned;
+        }
+
+        $divs = $this->allowedDivCodes();
+
+        return $divs === null ? null : PjctMain::withTrashed()->whereIn('pjct_div', $divs)->pluck('id')->all();
+    }
+
+    /** Project ini boleh dilihat user — penugasan pjct_emp (teknisi) atau divisi (role lain). */
+    public function canSeeProject(?PjctMain $project): bool
+    {
+        if (($assigned = $this->assignedProjectIds()) !== null) {
+            return $project !== null && in_array($project->id, $assigned, true);
+        }
+
+        $divs = $this->allowedDivCodes();
+
+        return $divs === null || ($project !== null && in_array($project->pjct_div, $divs, true));
     }
 
     // ── Division-based project visibility ──────────────────────────────────────

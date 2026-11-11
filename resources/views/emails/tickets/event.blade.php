@@ -26,16 +26,16 @@
                     </tr>
                     <tr>
                         <td style="font-size:13px;font-weight:700;color:#5e759f;">Status</td>
-                        <td style="font-size:14px;color:#14213d;">{{ str($ticket->status)->headline() }}</td>
+                        <td style="font-size:14px;color:#14213d;">{{ $ticket->statusLabel() }}</td>
                     </tr>
                     <tr>
                         <td style="font-size:13px;font-weight:700;color:#5e759f;">Priority</td>
                         <td style="font-size:14px;color:#14213d;">{{ str($ticket->priority)->headline() }}</td>
                     </tr>
-                    @if($ticket->team?->name)
+                    @if($ticket->project?->pjct_name)
                         <tr>
                             <td style="font-size:13px;font-weight:700;color:#5e759f;">Project</td>
-                            <td style="font-size:14px;color:#14213d;">{{ $ticket->team->name }}</td>
+                            <td style="font-size:14px;color:#14213d;">{{ $ticket->project->pjct_name }}</td>
                         </tr>
                     @endif
                     @if(!empty($data['comment_body']))

@@ -25,10 +25,10 @@ test('agent bisa akses /monitoring', function () {
         ->assertOk();
 });
 
-test('client bisa akses /monitoring', function () {
+test('client (teknisi) tidak bisa akses /monitoring', function () {
     $this->actingAs(User::factory()->client()->create())
         ->get('/monitoring')
-        ->assertOk();
+        ->assertForbidden();
 });
 
 // ── /monitoring/import — role:superadmin,admin ───────────

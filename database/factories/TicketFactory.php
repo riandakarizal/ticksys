@@ -2,8 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Category;
-use App\Models\Team;
+use App\Models\PjctMain;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -18,12 +17,10 @@ class TicketFactory extends Factory
     public function definition(): array
     {
         return [
-            'team_id' => Team::factory(),
-            'requester_id' => User::factory()->client(),
             'created_by' => User::factory()->client(),
-            'category_id' => Category::factory(),
             'subject' => fake()->sentence(),
             'description' => fake()->paragraph(),
+            'issue_type' => 'sistem',
             'status' => 'open',
             'priority' => 'medium',
         ];
@@ -34,26 +31,24 @@ class TicketFactory extends Factory
         return $this->state(['status' => 'open']);
     }
 
-    public function resolved(): static
+    public function escalated(): static
     {
-        return $this->state(['status' => 'resolved', 'resolved_at' => now()]);
+        return $this->state(['status' => 'escalated']);
     }
 
-    public function assignedTo(User $user): static
+    public function solved(): static
     {
-        return $this->state(['assigned_to' => $user->id]);
+        return $this->state(['status' => 'solved', 'resolved_at' => now()]);
     }
 
-    public function forTeam(Team $team): static
+    /** Ticket dibuat (dan ditangani) oleh teknisi ini. */
+    public function byTechnician(User $user): static
     {
-        return $this->state(['team_id' => $team->id]);
+        return $this->state(['created_by' => $user->id, 'assigned_to' => $user->id]);
     }
 
-    public function forRequester(User $user): static
+    public function forProject(PjctMain $project): static
     {
-        return $this->state([
-            'requester_id' => $user->id,
-            'created_by' => $user->id,
-        ]);
+        return $this->state(['pjct_id' => $project->id, 'requester_name' => $project->pjct_client]);
     }
 }

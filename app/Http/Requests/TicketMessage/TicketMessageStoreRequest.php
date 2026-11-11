@@ -2,21 +2,30 @@
 
 namespace App\Http\Requests\TicketMessage;
 
+use App\Models\TicketAttachment;
 use Illuminate\Foundation\Http\FormRequest;
 
 class TicketMessageStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        return $this->user()?->can('comment', $this->route('ticket')) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'body' => ['required', 'string'],
-            'is_internal' => ['nullable', 'boolean'],
-            'attachments.*' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,txt,log,doc,docx,xls,xlsx,csv'],
+            'body' => ['required', 'string', 'max:10000'],
+            'attachments' => ['nullable', 'array'],
+            'attachments.*' => TicketAttachment::FILE_RULES,
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'attachments.*.max' => 'Ukuran lampiran maksimal 10 MB per file.',
+            'attachments.*.mimes' => 'Lampiran harus berupa PDF, JPG, PNG, Word, atau Excel.',
         ];
     }
 }

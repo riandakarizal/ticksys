@@ -35,10 +35,7 @@ class PjctDocController extends Controller
 
     public function show(PjctDoc $pjctDoc)
     {
-        $allowedDivs = auth()->user()->allowedDivCodes();
-        if ($allowedDivs !== null) {
-            abort_unless(in_array($pjctDoc->project?->pjct_div, $allowedDivs, true), 403);
-        }
+        abort_unless(auth()->user()->canSeeProject($pjctDoc->project), 403);
 
         abort_unless(Storage::disk('docfile')->exists($pjctDoc->doc_filepath), 404);
 

@@ -17,13 +17,10 @@ class MonitoringController extends Controller
         $search       = $request->input('search', '');
         $showArchived = $request->boolean('archived', false);
 
-        $user        = auth()->user();
-        $allowedDivs = $user->allowedDivCodes();
+        $user = auth()->user();
 
-        $query = $showArchived ? PjctMain::withTrashed() : PjctMain::query();
-        if ($allowedDivs !== null) {
-            $query->whereIn('pjct_div', $allowedDivs);
-        }
+        // Teknisi: hanya project penugasannya (pjct_emp); role lain: per divisi.
+        $query = ($showArchived ? PjctMain::withTrashed() : PjctMain::query())->visibleTo($user);
 
         if ($yearFilter !== 'all') {
             $query->whereYear('pjct_codate', $yearFilter);
@@ -50,11 +47,7 @@ class MonitoringController extends Controller
             ->with(['docs:id,doc_pjctid,doc_type'])
             ->orderByRaw('pjct_codate DESC')->orderBy('id')->paginate(25)->withQueryString();
 
-        $kpiQuery = PjctMain::query();
-        if ($allowedDivs !== null) {
-            $kpiQuery->whereIn('pjct_div', $allowedDivs);
-        }
-        $allForKpi = $kpiQuery->get();
+        $allForKpi = PjctMain::query()->visibleTo($user)->get();
         $kpi = [
             'total'  => $allForKpi->count(),
             'upc'    => $allForKpi->where('pjct_status', 'UPC')->count(),

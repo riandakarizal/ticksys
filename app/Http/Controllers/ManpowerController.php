@@ -15,8 +15,9 @@ class ManpowerController extends Controller
         $unit    = $request->input('unit', '');
         $jabatan = $request->input('jabatan', '');
 
-        // Manpower dibatasi ke project dalam divisi user (sama seperti Asset & Monitoring).
-        $keys = $this->allowedProjectKeys($request->user()->allowedDivCodes());
+        // Manpower dibatasi ke project yang boleh dilihat user (sama seperti Asset & Monitoring):
+        // teknisi hanya melihat rekan di project penugasannya.
+        $keys = $this->allowedProjectKeys($request->user()->visibleProjectIds());
         $scoped = fn (): Builder => PjctEmp::query()
             ->when($keys !== null, fn ($q) => $q->whereIn('emp_pjctid', $keys));
 
@@ -62,13 +63,13 @@ class ManpowerController extends Controller
      *
      * @return array<int, string>|null
      */
-    private function allowedProjectKeys(?array $allowedDivs): ?array
+    private function allowedProjectKeys(?array $projectIds): ?array
     {
-        if ($allowedDivs === null) {
+        if ($projectIds === null) {
             return null;
         }
 
-        $projects = PjctMain::withTrashed()->whereIn('pjct_div', $allowedDivs)->get(['id', 'pjct_contract']);
+        $projects = PjctMain::withTrashed()->whereIn('id', $projectIds)->get(['id', 'pjct_contract']);
 
         return $projects->pluck('id')
             ->merge($projects->pluck('pjct_contract')->filter()->map(fn ($c) => mb_substr(trim($c), 0, 20)))
