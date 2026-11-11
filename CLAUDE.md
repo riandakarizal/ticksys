@@ -141,6 +141,18 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   (tanpa nilai / tanpa tanggal mulai-selesai / tanpa nomor kontrak) dan sel kosong ditandai kuning di layar
   maupun Excel, serta filter arsip (soft delete). Role: superadmin/admin/siteadmin/vip — **tanpa `fin`**
   (Finance tidak boleh melihat daftar project) dan tanpa `user`.
+- **Surat → Nomor Surat / Jenis Surat** (`LetterController`, `LetterTypeController`,
+  `Support/LetterNumberService.php`, models `Letter` / `LetterType` / `LetterCounter`, routes `letters.*`):
+  register nomor surat, superadmin + admin (semua divisi, tidak dibatasi `allowedDivCodes()`). Format
+  `IASS/{unit}/{kode}/{bulan romawi}/{tahun}/{urut 3 digit}[.{turunan}]`; urutan per **kode + tahun** (jenis
+  yang kodenya sama berbagi urutan), reset tiap tahun. Nomor **hanya** dibuat lewat `LetterNumberService`
+  (`issue()` / `issueSub()`): mengunci baris `letter_counters` dengan `lockForUpdate` dan melompati urutan
+  yang sudah ada di `letters` — jangan insert ke `letters` langsung dari kode aplikasi. Setelah dibuat,
+  jenis/tanggal/nomor tidak bisa diedit; salah buat → dibatalkan (`status = cancelled` + alasan), tidak
+  dihapus. `letters.number` sengaja tidak unique (data impor Excel berisi nomor ganda, ditandai di
+  `import_note`). Register Excel lama diimpor sekali lewat `php artisan letters:import <xlsx> --dry-run`
+  (`Support/LetterImportService.php`), yang juga menaikkan counter. File surat disimpan di disk `local`
+  (`letter-files/{tahun}/`).
 - **Equipment import/export** (`EqtImportController`, `Support/EqtImportService.php`): xlsx-driven bulk
   import/export for equipment projects, handovers, maintenance, vehicles — template-based via
   PhpSpreadsheet, admin-only routes under `/monitoring/import` and `/monitoring/export`.

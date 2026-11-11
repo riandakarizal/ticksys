@@ -7,6 +7,8 @@ use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
+use App\Http\Controllers\LetterController;
+use App\Http\Controllers\LetterTypeController;
 use App\Http\Controllers\ManpowerController;
 use App\Http\Controllers\ManpowerImportController;
 use App\Http\Controllers\MonitoringController;
@@ -95,6 +97,21 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         // Finance sengaja tidak diberi akses ke daftar project (lihat Monitoring).
         Route::get('/report/projects', [ProjectReportController::class, 'index'])->name('report.projects');
         Route::get('/report/projects/export', [ProjectReportController::class, 'export'])->name('report.projects.export');
+    });
+
+    // Surat → Nomor Surat & Jenis Surat — superadmin + admin (semua divisi), tanpa siteadmin/vip/fin/user.
+    Route::middleware('role:superadmin,admin')->prefix('/letters')->name('letters.')->group(function (): void {
+        Route::get('/types', [LetterTypeController::class, 'index'])->name('types.index');
+        Route::post('/types', [LetterTypeController::class, 'store'])->name('types.store');
+        Route::patch('/types/{letterType}', [LetterTypeController::class, 'update'])->name('types.update');
+
+        Route::get('/', [LetterController::class, 'index'])->name('index');
+        Route::get('/export', [LetterController::class, 'export'])->name('export');
+        Route::post('/', [LetterController::class, 'store'])->name('store');
+        Route::patch('/{letter}', [LetterController::class, 'update'])->name('update');
+        Route::post('/{letter}/sub', [LetterController::class, 'storeSub'])->name('sub');
+        Route::post('/{letter}/cancel', [LetterController::class, 'cancel'])->name('cancel');
+        Route::get('/{letter}/file', [LetterController::class, 'file'])->name('file');
     });
 
     // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel.
