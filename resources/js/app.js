@@ -163,7 +163,162 @@ const initTicketForm = () => {
 
     projectSelect?.addEventListener('change', syncClientLabel);
     categorySelect?.addEventListener('change', syncSubcategories);
+    syncClientLabel();
     syncSubcategories();
+};
+
+// Pemilih device project di form ticket (partial tickets/partials/asset-picker). Semua device
+// project dirender sekali; pencarian hanya menyembunyikan baris, supaya checkbox terpilih yang
+// sedang tersaring tetap ikut terkirim.
+const initAssetPickers = () => {
+    document.querySelectorAll('[data-asset-picker]').forEach((picker) => {
+        const form = picker.closest('form');
+        const list = picker.querySelector('[data-asset-list]');
+        const search = picker.querySelector('[data-asset-search]');
+        const counter = picker.querySelector('[data-asset-count]');
+        const requiredMark = picker.querySelector('[data-asset-required]');
+        const optionalMark = picker.querySelector('[data-asset-optional]');
+        const projectSelect = picker.dataset.projectSelect ? form?.querySelector(picker.dataset.projectSelect) : null;
+        const requiringTypes = JSON.parse(picker.dataset.requiringTypes || '[]');
+        let selected = new Set(JSON.parse(picker.dataset.selected || '[]').map(String));
+
+        const showMessage = (text) => {
+            const paragraph = document.createElement('p');
+            paragraph.className = 'px-2 py-6 text-center text-sm text-slate-500';
+            paragraph.textContent = text;
+            list.replaceChildren(paragraph);
+        };
+
+        const updateCount = () => {
+            counter.textContent = `${selected.size} dipilih`;
+        };
+
+        const applySearch = () => {
+            const term = (search?.value || '').trim().toLowerCase();
+            let visible = 0;
+            list.querySelectorAll('[data-asset-item]').forEach((item) => {
+                const match = !term || item.dataset.search.includes(term);
+                item.classList.toggle('hidden', !match);
+                visible += match ? 1 : 0;
+            });
+            list.querySelector('[data-asset-nomatch]')?.classList.toggle('hidden', visible > 0);
+        };
+
+        const render = (assets) => {
+            if (!assets.length) {
+                showMessage('Project ini belum punya device terdaftar.');
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'choice-list';
+
+            assets.forEach((asset) => {
+                const item = document.createElement('label');
+                item.className = 'choice-card';
+                item.dataset.assetItem = '';
+                item.dataset.search = [asset.id, asset.label, asset.serial, asset.location].filter(Boolean).join(' ').toLowerCase();
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.name = 'ast_ids[]';
+                input.value = asset.id;
+                input.className = 'sr-only';
+                input.checked = selected.has(asset.id);
+                input.addEventListener('change', () => {
+                    if (input.checked) {
+                        selected.add(asset.id);
+                    } else {
+                        selected.delete(asset.id);
+                    }
+                    updateCount();
+                });
+
+                const box = document.createElement('span');
+                box.className = 'choice-card-box';
+                const indicator = document.createElement('span');
+                indicator.className = 'choice-indicator';
+                indicator.textContent = '✓';
+                const text = document.createElement('span');
+                text.className = 'min-w-0';
+                const title = document.createElement('span');
+                title.className = 'block font-semibold';
+                title.textContent = `${asset.id} · ${asset.label}`;
+                const meta = document.createElement('span');
+                meta.className = 'block text-xs text-slate-500';
+                meta.textContent = [
+                    asset.serial && `SN ${asset.serial}`,
+                    asset.location,
+                    asset.cond && `Kondisi ${asset.cond}`,
+                    asset.has_ticket && 'ada ticket aktif',
+                ].filter(Boolean).join(' · ');
+                text.append(title, meta);
+                box.append(indicator, text);
+                item.append(input, box);
+                grid.append(item);
+            });
+
+            const noMatch = document.createElement('p');
+            noMatch.className = 'hidden px-2 py-6 text-center text-sm text-slate-500';
+            noMatch.dataset.assetNomatch = '';
+            noMatch.textContent = 'Tidak ada device yang cocok.';
+
+            list.replaceChildren(grid, noMatch);
+            applySearch();
+        };
+
+        const load = async (projectId) => {
+            if (!projectId) {
+                showMessage('Pilih project terlebih dahulu.');
+                return;
+            }
+
+            showMessage('Memuat device…');
+
+            try {
+                const response = await fetch(`${picker.dataset.endpoint}?pjct_id=${encodeURIComponent(projectId)}`, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!response.ok) {
+                    throw new Error(String(response.status));
+                }
+                const assets = (await response.json()).assets || [];
+                const ids = new Set(assets.map((asset) => asset.id));
+                selected = new Set([...selected].filter((id) => ids.has(id)));
+                updateCount();
+                render(assets);
+            } catch {
+                showMessage('Gagal memuat device. Muat ulang halaman lalu coba lagi.');
+                // Device yang sudah terpilih tetap ikut terkirim, supaya simpan form tidak melepasnya.
+                selected.forEach((id) => {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'ast_ids[]';
+                    hidden.value = id;
+                    list.append(hidden);
+                });
+            }
+        };
+
+        const syncRequirement = () => {
+            const checked = form?.querySelector('input[name="issue_type"]:checked');
+            const type = checked ? checked.value : form?.querySelector('select[name="issue_type"]')?.value;
+            const required = requiringTypes.includes(type);
+            requiredMark?.classList.toggle('hidden', !required);
+            optionalMark?.classList.toggle('hidden', required);
+        };
+
+        search?.addEventListener('input', applySearch);
+        form?.querySelectorAll('[name="issue_type"]').forEach((input) => input.addEventListener('change', syncRequirement));
+        projectSelect?.addEventListener('change', () => {
+            selected = new Set();
+            updateCount();
+            load(projectSelect.value);
+        });
+
+        syncRequirement();
+        load(projectSelect ? projectSelect.value : picker.dataset.projectId);
+    });
 };
 
 const initDialogs = () => {
@@ -433,6 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initPageToasts();
     initAjaxForms();
     initTicketForm();
+    initAssetPickers();
     initDialogs();
     initCharts();
     initDataTables();

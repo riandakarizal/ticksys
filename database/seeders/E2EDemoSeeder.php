@@ -124,27 +124,30 @@ class E2EDemoSeeder extends Seeder
             );
 
             // Buat tiket hanya jika aset ini belum punya tiket
-            if (Ticket::where('ast_id', $asset->id)->exists()) {
+            if ($asset->tickets()->exists()) {
                 continue;
             }
 
+            // Flow teknisi: Budi (role user = teknisi) membuat & menyelesaikan ticket; status solved
+            // menunggu approval atasannya, Aldo (user_parid).
             $ticket = Ticket::create([
-                'requester_id'       => $client->id,
+                'requester_name'     => $pjctProject->pjct_client,
                 'created_by'         => $client->id,
-                'assigned_to'        => $teknisi->id,
-                'team_id'            => $project->id,
-                'ast_id'             => $asset->id,
+                'assigned_to'        => $client->id,
+                'pjct_id'            => $pjctProject->id,
                 'category_id'        => $hardware->id,
                 'subcategory_id'     => $laptopCat->id,
                 'sla_policy_id'      => $sla->id,
                 'subject'            => $subjects[$i - 1],
                 'description'        => 'Perangkat mengalami masalah hardware dan memerlukan pengecekan segera oleh teknisi. Mohon bantuan secepatnya karena mengganggu pekerjaan.',
-                'status'             => 'resolved',
+                'issue_type'         => 'kerusakan',
+                'status'             => 'solved',
                 'priority'           => 'high',
-                'first_responded_at' => now()->subHours(47),
+                'first_responded_at' => now()->subHours(48),
                 'last_reply_at'      => now()->subHours(4),
                 'resolved_at'        => now()->subHours(3),
             ]);
+            app(\App\Support\Helpdesk::class)->syncTicketAssets($ticket, [$asset->id]);
 
             TicketMessage::create([
                 'ticket_id'   => $ticket->id,
@@ -173,16 +176,16 @@ class E2EDemoSeeder extends Seeder
                     'user_id'     => $client->id,
                     'action'      => 'ticket_created',
                     'description' => 'Ticket dibuat',
-                    'properties'  => json_encode(['status' => 'open', 'priority' => 'high', 'assigned_to' => $teknisi->id]),
+                    'properties'  => json_encode(['to' => 'open', 'priority' => 'high', 'assets' => [$asset->id]]),
                     'created_at'  => now()->subHours(48),
                     'updated_at'  => now()->subHours(48),
                 ],
                 [
                     'ticket_id'   => $ticket->id,
-                    'user_id'     => $teknisi->id,
-                    'action'      => 'ticket_status_changed',
-                    'description' => 'Status ticket berubah dari In Progress ke Resolved',
-                    'properties'  => json_encode(['from' => 'in_progress', 'to' => 'resolved']),
+                    'user_id'     => $client->id,
+                    'action'      => 'ticket_solve',
+                    'description' => 'Ditandai selesai (solved)',
+                    'properties'  => json_encode(['from' => 'open', 'to' => 'solved', 'note' => 'Perangkat sudah diperbaiki dan kembali normal.']),
                     'created_at'  => now()->subHours(3),
                     'updated_at'  => now()->subHours(3),
                 ],
@@ -196,8 +199,8 @@ class E2EDemoSeeder extends Seeder
             ['Role', 'Email', 'Password'],
             [
                 ['Admin',   $admin?->user_email ?? '(pakai akun admin yang sudah ada)', '-'],
-                ['Teknisi', 'aldo@ias.test', 'password'],
-                ['Client',  'budi@ias.test', 'password'],
+                ['Atasan (approver)', 'aldo@ias.test', 'password'],
+                ['Teknisi',           'budi@ias.test', 'password'],
             ]
         );
     }

@@ -1,183 +1,195 @@
 @extends('layouts.app', ['title' => $ticket->ticket_number, 'heading' => $ticket->ticket_number])
 
 @section('content')
+@php
+    $everEscalated = $ticket->status === 'escalated' || $ticket->activityLogs->contains('action', 'ticket_escalate');
+    $order = ['open' => 0, 'escalated' => 1, 'solved' => 2, 'closed' => 3];
+    $stepState = function (string $key) use ($ticket, $everEscalated, $order): string {
+        if ($key === $ticket->status) {
+            return 'current';
+        }
+        if ($key === 'escalated') {
+            return $everEscalated ? 'done' : 'skip';
+        }
+        return $order[$key] < ($order[$ticket->status] ?? 0) ? 'done' : 'todo';
+    };
+    $steps = [
+        'open'      => 'Teknisi menangani',
+        'escalated' => $everEscalated ? 'Ditangani tim pusat' : 'Hanya jika perlu',
+        'solved'    => 'Menunggu approval',
+        'closed'    => 'Disetujui atasan',
+    ];
+    $stepClasses = [
+        'current' => 'border-brand-500 bg-brand-600 text-white',
+        'done'    => 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        'todo'    => 'border-slate-200 bg-white text-slate-500',
+        'skip'    => 'border-dashed border-slate-200 bg-white text-slate-300',
+    ];
+
+    $actionDialogs = [
+        'solve' => [
+            'title' => 'Tandai Selesai (Solved)', 'button' => 'Tandai Selesai', 'primary' => true,
+            'intro' => 'Kerusakan sudah ditangani. Ticket akan dikirim ke atasan untuk di-approve.',
+            'note' => 'Tindakan perbaikan yang dilakukan', 'noteRequired' => true,
+            'doc' => 'Dokumen penyelesaian (opsional)', 'docRequired' => false,
+        ],
+        'escalate' => [
+            'title' => 'Eskalasi ke Tim Pusat', 'button' => 'Eskalasi ke Pusat', 'primary' => false,
+            'intro' => 'Kerusakan tidak bisa diatasi on-site — unit diserahkan ke tim pusat divisi project.',
+            'note' => 'Alasan eskalasi', 'noteRequired' => true,
+            'doc' => 'BA serah terima unit ke tim pusat', 'docRequired' => true,
+        ],
+        'return' => [
+            'title' => 'Kembalikan ke Teknisi', 'button' => 'Kembalikan ke Teknisi', 'primary' => true,
+            'intro' => 'Unit sudah diperbaiki/diganti tim pusat. Status kembali Open agar teknisi menyelesaikan ticket.',
+            'note' => 'Hasil perbaikan / penggantian unit', 'noteRequired' => true,
+            'doc' => 'BA serah terima unit dari pusat ke teknisi', 'docRequired' => true,
+        ],
+        'approve' => [
+            'title' => 'Approve & Tutup Ticket', 'button' => 'Approve & Close', 'primary' => true,
+            'intro' => 'Ticket ditutup dan kondisi device dikembalikan seperti sebelum dilaporkan.',
+            'note' => 'Catatan (opsional)', 'noteRequired' => false,
+            'doc' => null, 'docRequired' => false,
+        ],
+        'reject' => [
+            'title' => 'Tolak Penyelesaian', 'button' => 'Tolak', 'primary' => false,
+            'intro' => 'Ticket kembali ke status Open untuk ditindaklanjuti teknisi.',
+            'note' => 'Alasan penolakan', 'noteRequired' => true,
+            'doc' => null, 'docRequired' => false,
+        ],
+    ];
+    $availableActions = collect($actionDialogs)->keys()->filter(fn ($action) => $abilities[$action]);
+
+    $logs = $ticket->activityLogs->sortByDesc('created_at')->values();
+    $fileHint = 'PDF, JPG, PNG, Word, atau Excel — maks. 10 MB per file.';
+@endphp
+
 <nav class="mb-4 flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
     <a href="{{ route('tickets.index') }}" class="text-slate-500 hover:text-slate-700">Tickets</a>
     <span class="text-slate-300">›</span>
     <span class="font-medium text-slate-900">{{ $ticket->ticket_number }}</span>
 </nav>
 
+@if($errors->any())
+    <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        @foreach($errors->all() as $error)
+            <p>{{ $error }}</p>
+        @endforeach
+    </div>
+@endif
+
+{{-- Alur status --}}
+<ol class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    @foreach($steps as $key => $hint)
+        @php $state = $stepState($key); @endphp
+        <li class="rounded-2xl border px-4 py-3 {{ $stepClasses[$state] }}">
+            <p class="text-xs font-bold uppercase tracking-widest">{{ \App\Models\Ticket::STATUS_LABELS[$key] }}</p>
+            <p class="mt-0.5 text-xs {{ $state === 'current' ? 'text-white/80' : '' }}">{{ $hint }}</p>
+        </li>
+    @endforeach
+</ol>
+
 <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-    <div class="space-y-6">
+    <div class="min-w-0 space-y-6">
         <div class="panel">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
+                <div class="min-w-0">
                     <p class="text-sm uppercase tracking-[0.2em] text-slate-500">{{ $ticket->ticket_number }}</p>
-                    <h2 class="mt-2 text-3xl font-black">{{ $ticket->subject }}</h2>
-                    <p class="mt-3 text-slate-600">{{ $ticket->description }}</p>
+                    <h2 class="mt-2 text-3xl font-black break-words">{{ $ticket->subject }}</h2>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <span class="badge {{ $ticket->statusBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->status) }}</span>
+                    <span class="badge {{ $ticket->statusBadgeClass() }}">{{ $ticket->statusLabel() }}</span>
                     <span class="badge {{ $ticket->priorityBadgeClass() }}">{{ \Illuminate\Support\Str::headline($ticket->priority) }}</span>
+                    <span class="badge bg-slate-100 text-slate-700">{{ $ticket->issueTypeLabel() }}</span>
                     @if($ticket->isResolutionBreached())
                         <span class="badge bg-rose-100 text-rose-700">SLA Breached</span>
                     @endif
                 </div>
             </div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-widest text-slate-400">Kronologi & rencana penanganan</p>
+            <p class="mt-2 whitespace-pre-line break-words text-slate-700">{{ $ticket->description }}</p>
 
-            @if($ticket->tags)
-                <div class="mt-5 flex flex-wrap gap-2">
-                    @foreach($ticket->tags as $tag)
-                        <span class="badge bg-slate-100 text-slate-700">#{{ $tag }}</span>
+            @if($ticket->customFieldValues->filter(fn ($value) => filled($value->value))->isNotEmpty())
+                <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                    @foreach($ticket->customFieldValues->filter(fn ($value) => filled($value->value)) as $value)
+                        <div><dt class="text-slate-500">{{ $value->customField?->name }}</dt><dd class="font-semibold">{{ $value->value }}</dd></div>
                     @endforeach
-                </div>
+                </dl>
             @endif
+        </div>
 
-            @if($ticket->attachments->count())
-                <div class="mt-6">
-                    <p class="mb-3 text-sm font-semibold">Attachments</p>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($ticket->attachments as $attachment)
-                            <a class="btn-soft" href="{{ route('tickets.attachments.download', [$ticket, $attachment]) }}">{{ $attachment->original_name }}</a>
+        {{-- Dokumen alur --}}
+        <div class="panel">
+            <h3 class="text-xl font-black">Dokumen</h3>
+            @forelse($documents as $type => $files)
+                <div class="mt-4">
+                    <p class="text-xs font-bold uppercase tracking-widest text-slate-400">{{ \App\Models\TicketAttachment::DOC_TYPES[$type] }}</p>
+                    <ul class="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                        @foreach($files as $attachment)
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                                <a class="min-w-0 break-all font-semibold text-brand-600 hover:text-brand-700" target="_blank" href="{{ route('tickets.attachments.download', [$ticket, $attachment]) }}">{{ $attachment->original_name }}</a>
+                                <span class="text-xs text-slate-500">{{ $attachment->user?->user_name ?? '-' }} · {{ $attachment->created_at->format('d M Y H:i') }} · {{ number_format($attachment->size / 1024, 0) }} KB</span>
+                            </li>
                         @endforeach
-                    </div>
+                    </ul>
                 </div>
-            @endif
+            @empty
+                <p class="mt-4 text-sm text-slate-500">Belum ada dokumen.</p>
+            @endforelse
         </div>
 
+        {{-- Diskusi --}}
         <div class="panel">
-            <h3 class="text-xl font-black">Conversation</h3>
-            <div class="mt-6 space-y-4">
-                @forelse($ticket->messages as $message)
-                    @if(! $message->is_internal || ! auth()->user()->isUser())
-                        <div class="rounded-3xl {{ $message->is_internal ? 'bg-amber-50' : 'bg-slate-100' }} p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="font-semibold">{{ $message->user?->user_name ?? 'Deleted user' }}</p>
-                                    <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ $message->is_internal ? 'Internal Note' : 'Reply' }}</p>
-                                </div>
-                                <p class="text-sm text-slate-500">{{ $message->created_at->format('d M Y H:i') }}</p>
-                            </div>
-                            <div class="mt-4 whitespace-pre-line text-sm leading-7">{{ $message->body }}</div>
-                            @if($message->attachments->count())
-                                <div class="mt-4 flex flex-wrap gap-2">
-                                    @foreach($message->attachments as $attachment)
-                                        <a class="btn-soft" href="{{ route('tickets.attachments.download', [$ticket, $attachment]) }}">{{ $attachment->original_name }}</a>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-                @empty
-                    <p class="text-sm text-slate-500">No conversation yet.</p>
-                @endforelse
-            </div>
-        </div>
-
-        <div class="panel">
-            <h3 class="text-xl font-black">Reply</h3>
-            @if($ticket->isClosed())
-                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                    This ticket is <span class="font-semibold text-slate-800">closed</span> — no new replies can be added.
-                </div>
-            @else
-                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-4 space-y-4">
-                    @csrf
-                    <textarea class="field min-h-36" name="body" placeholder="Write a reply. Mention users with @username"></textarea>
-                    <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white file:transition hover:file:bg-blue-700" type="file" name="attachments[]" multiple>
-                    @if(! auth()->user()->isUser())
-                        <label class="flex items-center gap-3 text-sm text-slate-500"><input type="checkbox" name="is_internal" value="1"> Internal note</label>
-                    @endif
-                    <button class="btn-primary" type="submit">Send</button>
-                </form>
-            @endif
-        </div>
-
-        <div class="panel">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h3 class="text-xl font-black">Activity Log</h3>
-                </div>
-            </div>
-            @php
-                $allLogs = $ticket->activityLogs->sortByDesc('created_at')->values();
-                $latestLogs = $allLogs->take(3);
-                $statusColors = [
-                    'open'        => 'bg-blue-100 text-blue-700',
-                    'in_progress' => 'bg-amber-100 text-amber-700',
-                    'pending'     => 'bg-orange-100 text-orange-700',
-                    'resolved'    => 'bg-emerald-100 text-emerald-700',
-                    'closed'      => 'bg-slate-200 text-slate-700',
-                ];
-                $statusLabels = [
-                    'open'        => 'Open',
-                    'in_progress' => 'In Progress',
-                    'pending'     => 'Pending',
-                    'resolved'    => 'Resolved',
-                    'closed'      => 'Closed',
-                ];
-                $actionPills = [
-                    'ticket_created'       => ['bg-emerald-100 text-emerald-700', 'Ticket Dibuat'],
-                    'reply_added'          => ['bg-blue-100 text-blue-700',       'Balasan'],
-                    'internal_note_added'  => ['bg-violet-100 text-violet-700',   'Catatan Internal'],
-                    'ticket_updated'       => ['bg-slate-200 text-slate-600',     'Diperbarui'],
-                    'sla_escalated'        => ['bg-red-100 text-red-700',         'SLA Breach'],
-                    'ticket_auto_closed'   => ['bg-slate-200 text-slate-600',     'Auto Closed'],
-                    'ticket_merged'        => ['bg-slate-200 text-slate-600',     'Merged'],
-                    'ticket_split'         => ['bg-indigo-100 text-indigo-700',   'Split'],
-                ];
-            @endphp
+            <h3 class="text-xl font-black">Diskusi</h3>
             <div class="mt-4 space-y-3">
-                @forelse($latestLogs as $log)
-                    <div class="rounded-2xl bg-slate-100 p-4 text-sm">
-                        <p class="font-semibold">{{ $log->description }}</p>
-                        @if ($log->action === 'ticket_status_changed' && !empty($log->properties['to']))
-                            @php $from = $log->properties['from'] ?? null; $to = $log->properties['to']; @endphp
-                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                @if ($from)
-                                    <span class="badge {{ $statusColors[$from] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$from] ?? ucfirst($from) }}</span>
-                                    <span class="text-slate-400">→</span>
-                                @endif
-                                <span class="badge {{ $statusColors[$to] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$to] ?? ucfirst($to) }}</span>
-                            </div>
-                        @elseif (isset($actionPills[$log->action]))
-                            <div class="mt-1.5">
-                                <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
+                @forelse($ticket->messages as $message)
+                    <div class="rounded-3xl bg-slate-100 p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="font-semibold">{{ $message->user?->user_name ?? 'Deleted user' }}</p>
+                            <p class="text-sm text-slate-500">{{ $message->created_at->format('d M Y H:i') }}</p>
+                        </div>
+                        <div class="mt-3 whitespace-pre-line break-words text-sm leading-7">{{ $message->body }}</div>
+                        @if($message->attachments->count())
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @foreach($message->attachments as $attachment)
+                                    <a class="btn-soft max-w-full truncate" target="_blank" href="{{ route('tickets.attachments.download', [$ticket, $attachment]) }}">{{ $attachment->original_name }}</a>
+                                @endforeach
                             </div>
                         @endif
-                        <p class="mt-1 text-slate-500">{{ $log->user?->user_name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
                     </div>
                 @empty
-                    <p class="text-sm text-slate-500">No activity log yet.</p>
+                    <p class="text-sm text-slate-500">Belum ada komentar.</p>
                 @endforelse
             </div>
 
-            @if($allLogs->count() > 3)
-                <details class="mt-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
-                        <span>View all history</span>
-                        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">{{ $allLogs->count() }} entries</span>
-                    </summary>
-                    <div class="mt-4 space-y-3 border-t border-slate-200 pt-4">
-                        @foreach($allLogs as $log)
-                            <div class="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-slate-100">
-                                <p class="font-semibold">{{ $log->description }}</p>
-                                @if ($log->action === 'ticket_status_changed' && !empty($log->properties['to']))
-                                    @php $from = $log->properties['from'] ?? null; $to = $log->properties['to']; @endphp
-                                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                        @if ($from)
-                                            <span class="badge {{ $statusColors[$from] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$from] ?? ucfirst($from) }}</span>
-                                            <span class="text-slate-400">→</span>
-                                        @endif
-                                        <span class="badge {{ $statusColors[$to] ?? 'bg-slate-100 text-slate-700' }}">{{ $statusLabels[$to] ?? ucfirst($to) }}</span>
-                                    </div>
-                                @elseif (isset($actionPills[$log->action]))
-                                    <div class="mt-1.5">
-                                        <span class="badge {{ $actionPills[$log->action][0] }}">{{ $actionPills[$log->action][1] }}</span>
-                                    </div>
-                                @endif
-                                <p class="mt-1 text-slate-500">{{ $log->user?->user_name ?? 'System' }} — {{ $log->created_at->format('d M Y H:i') }}</p>
-                            </div>
+            @if($abilities['comment'])
+                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-5 space-y-3">
+                    @csrf
+                    <textarea class="field min-h-28" name="body" placeholder="Tulis komentar. Mention user dengan @nama" required>{{ old('body') }}</textarea>
+                    <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white" type="file" name="attachments[]" multiple>
+                    <div class="flex justify-end"><button class="btn-primary" type="submit">Kirim</button></div>
+                </form>
+            @elseif($ticket->isClosed())
+                <p class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Ticket sudah <span class="font-semibold">closed</span> — tidak bisa menambah komentar.</p>
+            @endif
+        </div>
+
+        {{-- Riwayat --}}
+        <div class="panel">
+            <h3 class="text-xl font-black">Riwayat</h3>
+            <div class="mt-4 space-y-3">
+                @forelse($logs->take(6) as $log)
+                    @include('tickets.partials.log-entry', ['log' => $log])
+                @empty
+                    <p class="text-sm text-slate-500">Belum ada riwayat.</p>
+                @endforelse
+            </div>
+            @if($logs->count() > 6)
+                <details class="mt-3">
+                    <summary class="cursor-pointer text-sm font-semibold text-slate-600 hover:text-slate-900">Lihat {{ $logs->count() - 6 }} riwayat lainnya</summary>
+                    <div class="mt-3 space-y-3">
+                        @foreach($logs->slice(6) as $log)
+                            @include('tickets.partials.log-entry', ['log' => $log])
                         @endforeach
                     </div>
                 </details>
@@ -185,192 +197,172 @@
         </div>
     </div>
 
-    <div class="space-y-6">
+    <div class="min-w-0 space-y-6">
+        {{-- Aksi alur --}}
         <div class="panel">
-            <h3 class="text-xl font-black">Ticket Details</h3>
+            <h3 class="text-xl font-black">Status & Tindakan</h3>
+            <div class="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                @switch($ticket->status)
+                    @case('open')
+                        Teknisi menangani di lokasi. Tandai <span class="font-semibold">selesai</span> bila sudah diperbaiki, atau <span class="font-semibold">eskalasi</span> bila perlu tim pusat.
+                        @break
+                    @case('escalated')
+                        Unit sedang ditangani tim pusat divisi <span class="font-semibold">{{ $ticket->project?->pjct_div ?? '-' }}</span>. Setelah diperbaiki/diganti, tim divisi mengembalikan status ke Open dengan BA serah terima.
+                        @break
+                    @case('solved')
+                        Menunggu approval <span class="font-semibold">{{ $approver?->user_name ?? 'superadmin' }}</span>.
+                        @break
+                    @case('closed')
+                        Ditutup {{ $ticket->closed_at?->format('d M Y H:i') ?? '' }}@if($ticket->approver) — disetujui <span class="font-semibold">{{ $ticket->approver->user_name }}</span>@endif.
+                        @break
+                @endswitch
+            </div>
+            @if($availableActions->isNotEmpty())
+                <div class="mt-4 flex flex-wrap gap-2">
+                    @foreach($availableActions as $action)
+                        <button type="button" class="{{ $actionDialogs[$action]['primary'] ? 'btn-primary' : 'btn-soft' }}" data-open-dialog="dialog-{{ $action }}">{{ $actionDialogs[$action]['button'] }}</button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="panel">
+            <h3 class="text-xl font-black">Detail</h3>
             <dl class="mt-4 space-y-3 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Client</dt><dd>{{ $ticket->requesterLabel() }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Assigned To</dt><dd>{{ $ticket->assignee?->user_name ?? 'Unassigned' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Project</dt><dd>{{ $ticket->project?->pjct_name ?? '-' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Aset Terkait</dt><dd>@if($ticket->asset) {{ $ticket->asset->ast_brand }} {{ $ticket->asset->ast_brandmodel }} <span class="badge {{ $ticket->asset->condBadgeClass() }}">{{ $ticket->asset->ast_cond }}</span> @else - @endif</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Category</dt><dd>{{ $ticket->subcategory?->name ?? $ticket->category?->name ?? '-' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Response Due</dt><dd class="{{ $ticket->responseDueClass() }}">{{ $ticket->response_due_at?->format('d M Y H:i') ?? '-' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Resolution Due</dt><dd class="{{ $ticket->resolutionDueClass() }}">{{ $ticket->resolution_due_at?->format('d M Y H:i') ?? '-' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-slate-500">Created</dt><dd>{{ $ticket->created_at->format('d M Y H:i') }}</dd></div>
+                @foreach([
+                    'Client'        => $ticket->clientLabel(),
+                    'Pelapor'       => $ticket->reporter_name ?? '-',
+                    'Project'       => $ticket->project?->pjct_name ?? '-',
+                    'Divisi'        => $ticket->project?->pjct_div ?? '-',
+                    'Teknisi'       => $ticket->creator?->user_name ?? '-',
+                    'Atasan'        => $approver?->user_name ?? 'Superadmin',
+                    'Kategori'      => $ticket->subcategory?->name ?? $ticket->category?->name ?? '-',
+                    'Dibuat'        => $ticket->created_at->format('d M Y H:i'),
+                ] as $label => $value)
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">{{ $label }}</dt><dd class="text-right font-medium">{{ $value }}</dd></div>
+                @endforeach
+                <div class="flex justify-between gap-3">
+                    <dt class="text-slate-500">Target Selesai</dt>
+                    <dd class="text-right {{ $ticket->resolutionDueClass() }}">{{ $ticket->resolution_due_at?->format('d M Y H:i') ?? '-' }}</dd>
+                </div>
+                @if($ticket->resolved_at)
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Solved</dt><dd class="text-right font-medium">{{ $ticket->resolved_at->format('d M Y H:i') }}</dd></div>
+                @endif
             </dl>
         </div>
 
-        @if(auth()->user()->isUser())
-            <div class="panel">
-                <h3 class="text-xl font-black">Handling Status</h3>
-                <div class="mt-4 space-y-3">
-                    <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-                        <p class="font-semibold">Support team is handling this ticket.</p>
-                        <p class="mt-1 text-blue-700">You will be notified when there are updates.</p>
+        <div class="panel">
+            <h3 class="text-xl font-black">Device Terkait</h3>
+            <div class="mt-4 space-y-2">
+                @forelse($ticket->assets as $asset)
+                    <div class="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+                        <div class="min-w-0">
+                            <p class="font-semibold">{{ $asset->id }} · {{ $asset->ast_type }}</p>
+                            <p class="text-xs text-slate-500">{{ trim($asset->ast_brand . ' ' . $asset->ast_brandmodel) }}@if($asset->ast_serial) · SN {{ $asset->ast_serial }}@endif @if($asset->ast_userloc) · {{ $asset->ast_userloc }}@endif</p>
+                            @if($asset->pivot->cond_before)
+                                <p class="text-xs text-slate-400">Kondisi sebelum dilaporkan: {{ $asset->pivot->cond_before }}</p>
+                            @endif
+                        </div>
+                        <span class="badge shrink-0 {{ $asset->condBadgeClass() }}">{{ $asset->ast_cond ?? '-' }}</span>
                     </div>
-                    @if($ticket->assignee)
-                        <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm">
-                            <p class="text-slate-500">Handled by</p>
-                            <p class="mt-1 font-semibold text-slate-900">{{ $ticket->assignee->user_name }}</p>
-                        </div>
-                    @else
-                        <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                            Unassigned.
-                        </div>
-                    @endif
-                </div>
+                @empty
+                    <p class="text-sm text-slate-500">Tidak ada device terkait.</p>
+                @endforelse
             </div>
-        @endif
+        </div>
 
-        @if(! auth()->user()->isUser())
-            <div class="panel">
-                <h3 class="text-xl font-black">Update Ticket</h3>
-                @if($ticket->isClosed())
-                    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                        This ticket is <span class="font-semibold text-slate-800">closed</span> and can no longer be updated.
-                    </div>
-                @else
-                    <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4" id="update-workflow-form">
-                        @csrf
-                        @method('PATCH')
-                        <label class="label">Status <span class="text-rose-500">*</span></label>
-                        <select class="field" name="status" id="status-select" required>
-                            @foreach($statuses as $status)
-                                <option value="{{ $status }}" @selected($ticket->status === $status)>{{ \Illuminate\Support\Str::headline($status) }}</option>
-                            @endforeach
-                        </select>
-                        <label class="label">Priority <span class="text-rose-500">*</span></label>
-                        <select class="field" name="priority" required>
-                            @foreach($priorities as $priority)
-                                <option value="{{ $priority }}" @selected($ticket->priority === $priority)>{{ \Illuminate\Support\Str::headline($priority) }}</option>
-                            @endforeach
-                        </select>
-                        <label class="label">Assign To</label>
-                        <select class="field" name="assigned_to" data-ticket-assignee>
-                            <option value="" disabled hidden @selected(blank($ticket->assigned_to))>Select assignee</option>
-                            @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}" @selected($ticket->assigned_to === $agent->id)>{{ $agent->user_name }}</option>
-                            @endforeach
-                        </select>
-                        <label class="label">Project <span class="text-rose-500">*</span></label>
-                        <select class="field" name="pjct_id" data-ticket-project required>
-                            <option value="" disabled hidden @selected(blank($ticket->pjct_id))>Select project</option>
-                            @foreach($pjctProjects as $project)
-                                <option value="{{ $project->id }}" data-client="{{ $project->pjct_client }}" @selected($ticket->pjct_id === $project->id)>{{ $project->pjct_name }}</option>
-                            @endforeach
-                        </select>
-                        @if(! $ticket->requester_id)
-                            <p class="text-xs text-slate-500">Client: <span class="font-semibold text-slate-700" data-ticket-client-label>{{ $ticket->project?->pjct_client ?? '-' }}</span></p>
-                        @endif
-                        <label class="label">Aset Terkait (opsional)</label>
-                        <select class="field" name="ast_id">
-                            <option value="" @selected(blank($ticket->ast_id))>Tidak terkait aset tertentu</option>
-                            @foreach($assets as $asset)
-                                <option value="{{ $asset->id }}" @selected($ticket->ast_id === $asset->id)>{{ $asset->id }} — {{ $asset->ast_brand }} {{ $asset->ast_brandmodel }} ({{ $asset->project?->pjct_name ?? $asset->ast_userloc }})</option>
-                            @endforeach
-                        </select>
-                        <label class="label">Category</label>
-                        <select class="field" name="category_id" data-ticket-category>
-                            <option value="" disabled hidden @selected(blank($ticket->category_id))>Select category</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" @selected($ticket->category_id === $category->id)>{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                        <label class="label">Subcategory</label>
-                        <select class="field" name="subcategory_id" data-ticket-subcategory>
-                            <option value="" disabled hidden @selected(blank($ticket->subcategory_id))>Select subcategory</option>
-                            @foreach($categories as $category)
-                                @foreach($category->children as $child)
-                                    <option value="{{ $child->id }}" @selected($ticket->subcategory_id === $child->id)>{{ $category->name }} / {{ $child->name }}</option>
+        @if($abilities['update'])
+            <details class="panel" @if($errors->hasAny(['priority', 'issue_type', 'category_id', 'subcategory_id', 'ast_ids', 'ast_ids.*'])) open @endif>
+                <summary class="cursor-pointer list-none text-xl font-black">Ubah Detail</summary>
+                <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4">
+                    @csrf
+                    @method('PATCH')
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="label">Jenis Masalah</label>
+                            <select class="field" name="issue_type">
+                                @foreach($issueTypes as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('issue_type', $ticket->issue_type) === $value)>{{ $label }}</option>
                                 @endforeach
-                            @endforeach
-                        </select>
-                        <button class="btn-primary" type="button" data-open-dialog="close-confirm-dialog" id="save-workflow-btn" data-default-submit>Save Changes</button>
-                    </form>
-
-                    <dialog id="close-confirm-dialog" class="max-w-lg">
-                        <div class="panel m-0">
-                            <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-                                <h3 class="text-xl font-black">Confirm Close Ticket</h3>
-                                <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                            </div>
-                            <p class="text-sm text-slate-600">You are changing the ticket status to <span class="font-semibold text-slate-900">Closed</span>. Closed tickets cannot be replied to or modified. Continue?</p>
-                            <div class="mt-6 flex justify-end gap-2">
-                                <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                                <button type="button" class="btn-primary" onclick="document.getElementById('update-workflow-form').submit()">Yes, Close Ticket</button>
-                            </div>
+                            </select>
                         </div>
-                    </dialog>
-                @endif
-            </div>
-
-            @unless($ticket->isClosed())
-                <div class="panel">
-                    <h3 class="text-xl font-black">Automation Tools</h3>
-                    <form id="merge-form" method="POST" action="{{ route('tickets.merge', $ticket) }}" class="mt-4 space-y-3">
-                        @csrf
-                        <select class="field" name="target_ticket_id" id="merge-target-select">
-                            <option value="" disabled hidden>Select target ticket to merge into</option>
-                            @foreach($mergeTargets as $mergeTarget)
-                                <option value="{{ $mergeTarget->id }}">{{ $mergeTarget->ticket_number }} — {{ $mergeTarget->subject }}</option>
-                            @endforeach
-                        </select>
-                        <button class="btn-soft" type="button" data-open-dialog="merge-confirm-dialog">Merge Ticket</button>
-                    </form>
-                    <form id="split-form" method="POST" action="{{ route('tickets.split', $ticket) }}" class="mt-6 space-y-3">
-                        @csrf
-                        <input class="field" name="subject" id="split-subject" placeholder="New ticket subject">
-                        <textarea class="field min-h-28" name="description" placeholder="Describe the scope of the split ticket"></textarea>
-                        <button class="btn-soft" type="button" data-open-dialog="split-confirm-dialog">Split to New Ticket</button>
-                    </form>
-                </div>
-            @endunless
-
-            <dialog id="merge-confirm-dialog" class="max-w-lg">
-                <div class="panel m-0">
-                    <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-                        <h3 class="text-xl font-black">Confirm Ticket Merge</h3>
-                        <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
+                        <div>
+                            <label class="label">Prioritas</label>
+                            <select class="field" name="priority">
+                                @foreach($priorities as $priority)
+                                    <option value="{{ $priority }}" @selected(old('priority', $ticket->priority) === $priority)>{{ \Illuminate\Support\Str::headline($priority) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Kategori</label>
+                            <select class="field" name="category_id" data-ticket-category>
+                                <option value="">Tanpa kategori</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" @selected((string) old('category_id', $ticket->category_id) === (string) $category->id)>{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Subkategori</label>
+                            <select class="field" name="subcategory_id" data-ticket-subcategory>
+                                <option value="">Tanpa subkategori</option>
+                                @foreach($categories as $category)
+                                    @foreach($category->children as $child)
+                                        <option value="{{ $child->id }}" data-parent="{{ $category->id }}" @selected((string) old('subcategory_id', $ticket->subcategory_id) === (string) $child->id)>{{ $category->name }} / {{ $child->name }}</option>
+                                    @endforeach
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <p class="text-sm text-slate-600">Ticket <span class="font-semibold text-slate-900">{{ $ticket->ticket_number }}</span> will be merged into the selected ticket. This action cannot be undone.</p>
-                    <div class="mt-6 flex justify-end gap-2">
-                        <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                        <button type="button" class="btn-primary" onclick="document.getElementById('merge-form').submit()">Yes, Merge</button>
-                    </div>
-                </div>
-            </dialog>
-
-            <dialog id="split-confirm-dialog" class="max-w-lg">
-                <div class="panel m-0">
-                    <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-                        <h3 class="text-xl font-black">Confirm Ticket Split</h3>
-                        <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                    </div>
-                    <p class="text-sm text-slate-600">A new ticket will be created from <span class="font-semibold text-slate-900">{{ $ticket->ticket_number }}</span>. The original ticket will remain open. Continue?</p>
-                    <div class="mt-6 flex justify-end gap-2">
-                        <button type="button" class="btn-soft" data-close-dialog>Cancel</button>
-                        <button type="button" class="btn-primary" onclick="document.getElementById('split-form').submit()">Yes, Split</button>
-                    </div>
-                </div>
-            </dialog>
+                    @include('tickets.partials.asset-picker', [
+                        'projectId' => $ticket->pjct_id,
+                        'selected'  => old('ast_ids', $ticket->assets->pluck('id')->all()),
+                        'issueType' => old('issue_type', $ticket->issue_type),
+                    ])
+                    <div class="flex justify-end"><button class="btn-primary" type="submit">Simpan</button></div>
+                </form>
+            </details>
         @endif
-
-
     </div>
 </div>
-@push('scripts')
-<script>
-    const saveBtn = document.getElementById('save-workflow-btn');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', function () {
-            const status = document.getElementById('status-select')?.value;
-            if (status === 'closed') {
-                document.getElementById('close-confirm-dialog')?.showModal();
-            } else {
-                document.getElementById('update-workflow-form')?.submit();
-            }
-        });
-    }
-</script>
-@endpush
+
+{{-- Dialog aksi alur --}}
+@foreach($availableActions as $action)
+    @php $dialog = $actionDialogs[$action]; @endphp
+    <dialog id="dialog-{{ $action }}" class="w-[calc(100%-2rem)] max-w-lg rounded-3xl p-0">
+        <form method="POST" action="{{ route('tickets.transition', [$ticket, $action]) }}" enctype="multipart/form-data" class="panel m-0 space-y-4">
+            @csrf
+            <input type="hidden" name="_dialog" value="dialog-{{ $action }}">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+                <h3 class="text-xl font-black">{{ $dialog['title'] }}</h3>
+                <button type="button" class="btn-soft" data-close-dialog>Batal</button>
+            </div>
+            <p class="text-sm text-slate-600">{{ $dialog['intro'] }}</p>
+            <div>
+                <label class="label">{{ $dialog['note'] }} @if($dialog['noteRequired'])<span class="text-rose-500">*</span>@endif</label>
+                <textarea class="field min-h-28" name="note" @required($dialog['noteRequired'])>{{ old('_dialog') === 'dialog-' . $action ? old('note') : '' }}</textarea>
+            </div>
+            @if($dialog['doc'])
+                <div>
+                    <label class="label">{{ $dialog['doc'] }} @if($dialog['docRequired'])<span class="text-rose-500">*</span>@endif</label>
+                    <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white" type="file" name="documents[]" multiple @required($dialog['docRequired'])>
+                    <p class="mt-1 text-xs text-slate-500">{{ $fileHint }}</p>
+                </div>
+            @endif
+            <div class="flex justify-end gap-2">
+                <button type="button" class="btn-soft" data-close-dialog>Batal</button>
+                <button type="submit" class="btn-primary">{{ $dialog['button'] }}</button>
+            </div>
+        </form>
+    </dialog>
+@endforeach
+
+@if($errors->any() && old('_dialog'))
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => document.getElementById(@json(old('_dialog')))?.showModal());
+    </script>
+    @endpush
+@endif
 @endsection

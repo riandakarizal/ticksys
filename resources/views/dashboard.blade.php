@@ -200,15 +200,15 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
                 @foreach([
-                    ['Open',        $ticketCounts['open'],        'bg-blue-100',  'text-blue-700'],
-                    ['In Progress', $ticketCounts['in_progress'], 'bg-amber-100', 'text-amber-700'],
-                    ['Pending',     $ticketCounts['pending'],     'bg-orange-100','text-orange-700'],
-                    ['Resolved',    $ticketCounts['resolved'],    'bg-green-100', 'text-green-700'],
-                ] as [$label, $count, $bg, $fg])
-                <div class="rounded-xl {{ $bg }} px-3 py-2.5">
+                    ['Open',      $ticketCounts['open'],      'bg-blue-100',    'text-blue-700',    'open'],
+                    ['Escalated', $ticketCounts['escalated'], 'bg-violet-100',  'text-violet-700',  'escalated'],
+                    ['Solved',    $ticketCounts['solved'],    'bg-emerald-100', 'text-emerald-700', 'solved'],
+                    ['Closed',    $ticketCounts['closed'],    'bg-slate-100',   'text-slate-700',   'closed'],
+                ] as [$label, $count, $bg, $fg, $status])
+                <a href="{{ route('tickets.index', ['status' => $status]) }}" class="block rounded-xl {{ $bg }} px-3 py-2.5 transition hover:opacity-80">
                     <p class="text-[10px] font-semibold {{ $fg }} uppercase tracking-wide">{{ $label }}</p>
                     <p class="text-xl font-black {{ $fg }}">{{ $count }}</p>
-                </div>
+                </a>
                 @endforeach
             </div>
         </div>

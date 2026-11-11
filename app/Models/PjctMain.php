@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\AstMain;
 use App\Models\Concerns\LogsSystemActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -93,6 +94,21 @@ class PjctMain extends Model
         'pjct_accdate' => 'date',
         'pjct_value'   => 'integer',
     ];
+
+    /**
+     * Project yang boleh dilihat user: penugasan pjct_emp untuk teknisi (User::assignedProjectIds()),
+     * divisi untuk role lain (User::allowedDivCodes()). Bukan global scope — dipasang manual.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (($assigned = $user->assignedProjectIds()) !== null) {
+            return $query->whereIn($query->qualifyColumn('id'), $assigned);
+        }
+
+        $divs = $user->allowedDivCodes();
+
+        return $query->when($divs !== null, fn (Builder $q) => $q->whereIn($q->qualifyColumn('pjct_div'), $divs));
+    }
 
     public function assets()
     {

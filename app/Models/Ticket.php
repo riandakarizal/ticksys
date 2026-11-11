@@ -2,38 +2,63 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Carbon\CarbonInterface;
 
+/**
+ * Tiket kerusakan/accident/masalah sistem pada project PRISM, dibuat oleh teknisi lapangan.
+ *
+ * Flow: open → solved (teknisi) → closed (approve atasan); solved bisa ditolak kembali ke open.
+ *       open → escalated (teknisi, BA ke pusat) → open (tim divisi project, BA dari pusat).
+ * `escalated` dihitung sebagai tiket aktif ("termasuk open").
+ */
 class Ticket extends Model
 {
     use HasFactory;
-    public const STATUSES = ['open', 'in_progress', 'pending', 'resolved', 'closed'];
+
+    public const STATUSES = ['open', 'escalated', 'solved', 'closed'];
+
+    /** Tiket yang masih dikerjakan — escalated termasuk open. */
+    public const ACTIVE_STATUSES = ['open', 'escalated'];
+
+    public const STATUS_LABELS = [
+        'open' => 'Open',
+        'escalated' => 'Escalated',
+        'solved' => 'Solved',
+        'closed' => 'Closed',
+    ];
 
     public const PRIORITIES = ['low', 'medium', 'high', 'critical'];
+
+    public const ISSUE_TYPES = [
+        'kerusakan' => 'Kerusakan Device',
+        'accident' => 'Accident',
+        'sistem' => 'Masalah Sistem',
+    ];
+
+    /** Jenis masalah yang wajib menyertakan minimal satu device project. */
+    public const ISSUE_TYPES_REQUIRING_DEVICE = ['kerusakan', 'accident'];
 
     protected $fillable = [
         'requester_id',
         'created_by',
         'assigned_to',
-        'team_id',
-        'ast_id',
-        'asset_cond_before',
         'pjct_id',
         'requester_name',
+        'reporter_name',
         'category_id',
         'subcategory_id',
         'sla_policy_id',
-        'merged_into_ticket_id',
-        'split_from_ticket_id',
         'ticket_number',
         'subject',
         'description',
+        'issue_type',
         'status',
         'priority',
         'tags',
@@ -44,7 +69,7 @@ class Ticket extends Model
         'resolution_due_at',
         'resolved_at',
         'closed_at',
-        'auto_close_warned_at',
+        'approved_by',
     ];
 
     protected function casts(): array
@@ -56,6 +81,7 @@ class Ticket extends Model
             'last_reply_at' => 'datetime',
             'response_due_at' => 'datetime',
             'resolution_due_at' => 'datetime',
+            // Waktu tiket ditandai solved oleh teknisi (nama kolom warisan flow lama).
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
             'auto_close_warned_at' => 'datetime',
@@ -76,9 +102,9 @@ class Ticket extends Model
                 // then lock the row and increment atomically within the transaction.
                 DB::table('ticket_sequences')->insertOrIgnore([
                     'sequence_date' => $date,
-                    'sequence'      => 0,
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
+                    'sequence' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 $sequence = DB::table('ticket_sequences')
@@ -90,7 +116,7 @@ class Ticket extends Model
                     ->where('sequence_date', $date)
                     ->update(['sequence' => $sequence, 'updated_at' => now()]);
 
-                return 'HD-' . $date . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+                return 'HD-'.$date.'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
             });
         });
     }
@@ -100,6 +126,7 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'requester_id');
     }
 
+    /** Teknisi yang membuat tiket — penanggung jawab penanganan. */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -110,14 +137,14 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
-    }
-
-    public function asset(): BelongsTo
-    {
-        return $this->belongsTo(AstMain::class, 'ast_id', 'id');
     }
 
     public function project(): BelongsTo
@@ -125,11 +152,12 @@ class Ticket extends Model
         return $this->belongsTo(PjctMain::class, 'pjct_id', 'id');
     }
 
-    // Requester bisa berupa akun user asli (self-service) atau nama client PRISM
-    // yang diambil otomatis dari project (staff membuatkan tiket atas nama client).
-    public function requesterLabel(): string
+    /** Device project yang terlibat; pivot cond_before = kondisi sebelum dilaporkan. */
+    public function assets(): BelongsToMany
     {
-        return $this->requester?->user_name ?? $this->requester_name ?? '-';
+        return $this->belongsToMany(AstMain::class, 'ticket_assets', 'ticket_id', 'ast_id')
+            ->withPivot('cond_before')
+            ->withTimestamps();
     }
 
     public function category(): BelongsTo
@@ -172,13 +200,43 @@ class Ticket extends Model
         return $this->hasMany(ActivityLog::class);
     }
 
+    /** Client = pemilik project PRISM; fallback ke data tiket lama. */
+    public function clientLabel(): string
+    {
+        return $this->project?->pjct_client ?? $this->requester_name ?? $this->requester?->user_name ?? '-';
+    }
+
+    public function statusLabel(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? str($this->status)->headline()->toString();
+    }
+
+    public function issueTypeLabel(): string
+    {
+        return self::ISSUE_TYPES[$this->issue_type] ?? '-';
+    }
+
+    public function requiresDevice(): bool
+    {
+        return in_array($this->issue_type, self::ISSUE_TYPES_REQUIRING_DEVICE, true);
+    }
+
+    public function isActive(): bool
+    {
+        return in_array($this->status, self::ACTIVE_STATUSES, true);
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
     public function isResponseBreached(): bool
     {
         if (! ($this->response_due_at instanceof Carbon)) {
             return false;
         }
 
-        // If first response exists, check whether it was sent after the deadline.
         if ($this->first_responded_at) {
             return $this->first_responded_at->gt($this->response_due_at);
         }
@@ -192,29 +250,14 @@ class Ticket extends Model
             return false;
         }
 
-        // For resolved/closed tickets, compare the actual resolution time.
-        if ($this->resolved_at) {
-            return $this->resolved_at->gt($this->resolution_due_at);
+        // Waktu selesai = saat ditandai solved; tiket lama yang langsung closed memakai closed_at.
+        $finishedAt = $this->resolved_at ?? $this->closed_at;
+
+        if ($finishedAt) {
+            return $finishedAt->gt($this->resolution_due_at);
         }
 
-        // Ticket is still open — breached only if the deadline has passed.
-        return ! $this->isClosed() && $this->resolution_due_at->isPast();
-    }
-
-    public function isClosed(): bool
-    {
-        return $this->status === 'closed';
-    }
-
-    public function responseDueClass(): string
-    {
-        if (! ($this->response_due_at instanceof Carbon)) {
-            return 'text-slate-900';
-        }
-
-        return $this->isResponseBreached()
-            ? 'text-rose-600 font-semibold'
-            : 'text-emerald-600 font-semibold';
+        return $this->resolution_due_at->isPast();
     }
 
     public function resolutionDueClass(): string
@@ -232,12 +275,16 @@ class Ticket extends Model
     {
         return match ($this->status) {
             'open' => 'bg-blue-100 text-blue-700',
-            'in_progress' => 'bg-amber-100 text-amber-700',
-            'pending' => 'bg-orange-100 text-orange-700',
-            'resolved' => 'bg-emerald-100 text-emerald-700',
+            'escalated' => 'bg-violet-100 text-violet-700',
+            'solved' => 'bg-emerald-100 text-emerald-700',
             'closed' => 'bg-slate-200 text-slate-700',
             default => 'bg-slate-100 text-slate-700',
         };
+    }
+
+    public static function statusBadgeClassFor(?string $status): string
+    {
+        return (new self(['status' => $status]))->statusBadgeClass();
     }
 
     public function priorityBadgeClass(): string
@@ -272,7 +319,7 @@ class Ticket extends Model
             return 'Breached';
         }
 
-        if (in_array($this->status, ['resolved', 'closed'], true)) {
+        if (! $this->isActive()) {
             return 'On Track';
         }
 
@@ -284,7 +331,7 @@ class Ticket extends Model
     public function isSlaCountdownLive(): bool
     {
         return $this->resolution_due_at instanceof Carbon
-            && ! in_array($this->status, ['resolved', 'closed'], true)
+            && $this->isActive()
             && ! $this->isResolutionBreached();
     }
 }

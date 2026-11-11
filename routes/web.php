@@ -7,6 +7,8 @@ use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EqtImportController;
+use App\Http\Controllers\LetterController;
+use App\Http\Controllers\LetterTypeController;
 use App\Http\Controllers\ManpowerController;
 use App\Http\Controllers\ManpowerImportController;
 use App\Http\Controllers\MonitoringController;
@@ -33,12 +35,15 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
         Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+        Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
         Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
         Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
         Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+        // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
+        Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
+            ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
+            ->name('tickets.transition');
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
-        Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge'])->name('tickets.merge');
-        Route::post('/tickets/{ticket}/split', [TicketController::class, 'split'])->name('tickets.split');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
 
@@ -72,12 +77,13 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         ->middleware('role:superadmin,admin,siteadmin,user,vip')
         ->name('report.issues');
 
-    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin`
+    // Project monitoring view (M-02 Project Main) — semua role kecuali `fin` dan teknisi (`user`):
+    // teknisi bekerja dari Dashboard (aset & issue), Asset, Manpower, dan Tickets.
+    Route::middleware('role:superadmin,admin,siteadmin,vip')
+        ->get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    // Dokumen project tetap terbuka untuk teknisi, dibatasi project penugasannya (canSeeProject()).
     Route::middleware('role:superadmin,admin,siteadmin,user,vip')
-        ->prefix('/monitoring')->name('monitoring.')->group(function (): void {
-            Route::get('/', [MonitoringController::class, 'index'])->name('index');
-            Route::get('/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('docs.show');
-        });
+        ->get('/monitoring/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('monitoring.docs.show');
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {
         // M-05/M-06 Vendor, M-08 Report Expenses — User (client-tier) excluded
@@ -91,6 +97,21 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         // Finance sengaja tidak diberi akses ke daftar project (lihat Monitoring).
         Route::get('/report/projects', [ProjectReportController::class, 'index'])->name('report.projects');
         Route::get('/report/projects/export', [ProjectReportController::class, 'export'])->name('report.projects.export');
+    });
+
+    // Surat → Nomor Surat & Jenis Surat — superadmin + admin (semua divisi), tanpa siteadmin/vip/fin/user.
+    Route::middleware('role:superadmin,admin')->prefix('/letters')->name('letters.')->group(function (): void {
+        Route::get('/types', [LetterTypeController::class, 'index'])->name('types.index');
+        Route::post('/types', [LetterTypeController::class, 'store'])->name('types.store');
+        Route::patch('/types/{letterType}', [LetterTypeController::class, 'update'])->name('types.update');
+
+        Route::get('/', [LetterController::class, 'index'])->name('index');
+        Route::get('/export', [LetterController::class, 'export'])->name('export');
+        Route::post('/', [LetterController::class, 'store'])->name('store');
+        Route::patch('/{letter}', [LetterController::class, 'update'])->name('update');
+        Route::post('/{letter}/sub', [LetterController::class, 'storeSub'])->name('sub');
+        Route::post('/{letter}/cancel', [LetterController::class, 'cancel'])->name('cancel');
+        Route::get('/{letter}/file', [LetterController::class, 'file'])->name('file');
     });
 
     // M-09 Report Data — tarikan mentah seluruh kolom aset + export Excel.

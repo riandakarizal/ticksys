@@ -98,7 +98,7 @@
                     </svg>
                 </button>
                 <div data-nav-sub class="{{ $projectActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
-                    @unless(auth()->user()->isFin())
+                    @unless(auth()->user()->isFin() || auth()->user()->isUser())
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
                     @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>
@@ -153,6 +153,26 @@
                     @endif
                 </div>
             </div>
+
+            {{-- SURAT (superadmin + admin) --}}
+            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAdmin())
+            @php $letterActive = request()->routeIs('letters.*'); @endphp
+            <div data-nav-group>
+                <button type="button" data-group-trigger class="nav-item {{ $letterActive ? 'active' : '' }} w-full text-left">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+                    </svg>
+                    <span class="sidebar-label flex-1">Surat</span>
+                    <svg class="nav-chevron sidebar-label nav-icon transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </button>
+                <div data-nav-sub class="{{ $letterActive ? '' : 'hidden' }} space-y-0.5 mt-0.5">
+                    <a href="{{ route('letters.index') }}" class="nav-subitem {{ request()->routeIs('letters.index') ? 'active' : '' }}">Nomor Surat</a>
+                    <a href="{{ route('letters.types.index') }}" class="nav-subitem {{ request()->routeIs('letters.types.*') ? 'active' : '' }}">Jenis Surat</a>
+                </div>
+            </div>
+            @endif
 
             {{-- TICKETS (Finance tidak menyentuh helpdesk) --}}
             @unless(auth()->user()->isFin())
