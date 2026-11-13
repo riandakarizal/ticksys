@@ -129,6 +129,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
             'user'       => 'User',
             'vip'        => 'VIP',
             'fin'        => 'Finance',
+            'qhsse'      => 'QHSSE',
             default      => $this->user_role ?? '-',
         };
     }
@@ -141,6 +142,10 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     // Finance — akses daftar-putih: Dashboard, Project → Asset, Report → Data.
     // Route lain ditutup di routes/web.php, menunya disembunyikan di layouts/app.blade.php.
     public function isFin(): bool        { return $this->user_role === 'fin'; }
+    // QHSSE (Quality, Health, Safety, Security & Environment) — daftar-putih hanya-lihat: Dashboard,
+    // Project → Main, Project → Asset, Tickets (daftar/detail/unduh lampiran). Semua divisi.
+    // Tidak bisa membuat/mengubah apa pun, termasuk komentar & approve tiket (TicketPolicy).
+    public function isQhsse(): bool      { return $this->user_role === 'qhsse'; }
     public function isActive(): bool     { return $this->user_status === 'active'; }
 
     public function canManageAllTickets(): bool
@@ -247,7 +252,9 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     // Returns null = no filter (sees all), array = whitelist of pjct_div codes
     public function allowedDivCodes(): ?array
     {
-        if ($this->isVip() || $this->isSuperAdmin()) {
+        // QHSSE mengawasi lintas divisi — eksplisit, supaya tidak ikut menyempit kalau suatu saat
+        // punya bawahan di unit yang terpetakan.
+        if ($this->isVip() || $this->isSuperAdmin() || $this->isQhsse()) {
             return null;
         }
 

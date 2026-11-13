@@ -56,6 +56,11 @@ class UserFactory extends Factory
         return $this->state(['user_role' => 'vip', 'user_level' => 'L1']);
     }
 
+    public function qhsse(): static
+    {
+        return $this->state(['user_role' => 'qhsse', 'user_level' => 'L5', 'user_unit' => 'Quality, Health, Safety, Security & Environment']);
+    }
+
     public function inactive(): static
     {
         return $this->state(['user_status' => 'inactive']);

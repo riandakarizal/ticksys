@@ -31,23 +31,29 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali)
-    Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali).
+    // `qhsse` hanya-lihat: daftar, detail, unduh lampiran — rute tulis ada di grup dalam tanpa `qhsse`.
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip,qhsse')->group(function (): void {
         Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-        Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
-        Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
-        Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+
+        // Harus terdaftar sebelum `/tickets/{ticket}`, yang kalau tidak akan menelan `/tickets/create`.
+        Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+            Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+            Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
+            Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+            Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+            // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
+            Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
+                ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
+                ->name('tickets.transition');
+            Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
+        });
+
         Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-        Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
-        // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
-        Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
-            ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
-            ->name('tickets.transition');
-        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
 
-    // M-03 Asset — termasuk `fin`, ini salah satu dari tiga halaman yang boleh dibuka Finance
+    // M-03 Asset — semua role, termasuk `fin` dan `qhsse` (keduanya daftar-putih)
     Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
 
     // M-04 Manpower — semua role kecuali `fin`
@@ -79,10 +85,11 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
 
     // Project monitoring view (M-02 Project Main) — semua role kecuali `fin` dan teknisi (`user`):
     // teknisi bekerja dari Dashboard (aset & issue), Asset, Manpower, dan Tickets.
-    Route::middleware('role:superadmin,admin,siteadmin,vip')
+    // `qhsse` hanya-lihat: tombol tambah/ubah/arsip/import tersembunyi ($isAdmin/$canCreateProject false).
+    Route::middleware('role:superadmin,admin,siteadmin,vip,qhsse')
         ->get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
     // Dokumen project tetap terbuka untuk teknisi, dibatasi project penugasannya (canSeeProject()).
-    Route::middleware('role:superadmin,admin,siteadmin,user,vip')
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip,qhsse')
         ->get('/monitoring/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('monitoring.docs.show');
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {

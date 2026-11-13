@@ -45,14 +45,17 @@ after significant schema/data changes, and it does **not** include `docfile/` (s
 There is no roles/permissions package. `users.user_role` is a plain string column checked two ways:
 - Route-level: `EnsureRole` middleware (`app/Http/Middleware/EnsureRole.php`), applied as
   `->middleware('role:superadmin,admin,siteadmin,vip')` — comma-separated role list per route group in
-  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin` (see
+  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin`, `qhsse` (see
   `App\Models\User::isSuperAdmin()` etc.). Note `docs/PRISM-DATABASE.md` and
   `docs/PRISM-REDESIGN.md` still reference an older role set (`supervisor`/`agent`/`client`) — trust the
   code (`User` model, `EnsureRole` usages) over those docs.
-  `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
-  dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
-  user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
-  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Di ticketing, `user` berarti
+  Dua role berpola **daftar-putih**: `fin` (Finance) — hanya Dashboard, Project → Asset, dan Report → Data;
+  `qhsse` (unit Quality, Health, Safety, Security & Environment) — **hanya-lihat** Dashboard, Project → Main
+  (+ dokumen), Project → Asset, dan Tickets (daftar/detail/unduh lampiran), semua divisi
+  (`allowedDivCodes()` = null). Route tulis tiket ada di grup dalam tanpa `qhsse`, dan `TicketPolicy`
+  menolak `comment`/`approve` untuknya. Karena route helpdesk/monitoring/manpower/report-issues dulunya
+  terbuka untuk semua user login, batasannya ditulis terbalik — route-route itu menyebut eksplisit daftar
+  role (mis. `role:superadmin,admin,siteadmin,user,vip`), dan role daftar-putih ditambahkan satu per satu. Di ticketing, `user` berarti
   **teknisi lapangan**, bukan client (client tidak punya akun). Teknisi juga tidak punya Project → Main:
   route `monitoring.index` tanpa `user` (dokumen `monitoring.docs.show` tetap), dan `/dashboard` untuk
   mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Menambah role baru bertipe sempit

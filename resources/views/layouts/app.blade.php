@@ -102,7 +102,7 @@
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
                     @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>
-                    @unless(auth()->user()->isFin())
+                    @unless(auth()->user()->isFin() || auth()->user()->isQhsse())
                     <a href="{{ route('project.manpower') }}" class="nav-subitem {{ request()->routeIs('project.manpower') ? 'active' : '' }}">Manpower</a>
                     @endunless
                 </div>
@@ -110,7 +110,7 @@
 
             {{-- VENDOR group (excludes User tier) --}}
             @php $vendorActive = request()->routeIs('vendor.*'); @endphp
-            @if(!auth()->user()->isUser() && !auth()->user()->isFin())
+            @if(!auth()->user()->isUser() && !auth()->user()->isFin() && !auth()->user()->isQhsse())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $vendorActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -128,8 +128,9 @@
             </div>
             @endif
 
-            {{-- REPORT group (Issues: all roles; Expenses: excludes User tier) --}}
+            {{-- REPORT group (Issues: all roles; Expenses: excludes User tier). QHSSE: tanpa menu report. --}}
             @php $reportActive = request()->routeIs('report.*','reports.*'); @endphp
+            @unless(auth()->user()->isQhsse())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $reportActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -153,6 +154,7 @@
                     @endif
                 </div>
             </div>
+            @endunless
 
             {{-- SURAT (superadmin + admin) --}}
             @if(auth()->user()->isSuperAdmin() || auth()->user()->isAdmin())

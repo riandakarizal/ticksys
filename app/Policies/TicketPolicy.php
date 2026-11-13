@@ -16,7 +16,9 @@ use App\Support\Helpdesk;
  * | solve, escalate (dr open) | teknisi (role user) & superadmin                           |
  * | return (dr escalated)     | admin/superadmin yang divisinya mencakup project tiket     |
  * | approve, reject (dr solved)| atasan langsung teknisi pembuat (user_parid) & superadmin |
- * | komentar                  | semua yang bisa melihat, kecuali vip (hanya-lihat)         |
+ * | komentar                  | semua yang bisa melihat, kecuali vip & qhsse (hanya-lihat) |
+ *
+ * QHSSE hanya-lihat: tidak pernah lolos aksi apa pun, termasuk approve walau tercatat sebagai atasan.
  */
 class TicketPolicy
 {
@@ -59,7 +61,7 @@ class TicketPolicy
 
     public function approve(User $user, Ticket $ticket): bool
     {
-        if ($ticket->status !== 'solved') {
+        if ($ticket->status !== 'solved' || $user->isQhsse()) {
             return false;
         }
 
@@ -74,7 +76,7 @@ class TicketPolicy
 
     public function comment(User $user, Ticket $ticket): bool
     {
-        return ! $ticket->isClosed() && ! $user->isVip() && $this->visible($user, $ticket);
+        return ! $ticket->isClosed() && ! $user->isVip() && ! $user->isQhsse() && $this->visible($user, $ticket);
     }
 
     public function download(User $user, Ticket $ticket): bool
