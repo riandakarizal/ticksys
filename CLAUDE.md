@@ -171,6 +171,10 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 - **Admin** (`app/Http/Controllers/Admin/*`): devices, users, projects (`Team`), categories, SLA
   policies — superadmin-gated CRUD, separate from the project-monitoring "projects" concept (`Team` here
   is helpdesk-side project grouping, not `pjct_main`).
+- **Own password** (`AccountPasswordController`, `/account/password`, key icon in the sidebar footer):
+  every logged-in role can change their own password. It requires the current password, and the new one must be
+  at least 8 characters with letters and numbers, and different from the current one. On success it deletes that
+  user's other rows in `sessions` (database driver only). Other people's passwords are still set via Admin → IAM Role.
 
 Full column-by-column schema reference (including the division-scoping unit→div table) is in
 `docs/PRISM-DATABASE.md`; treat its role names as stale per above but the table/column documentation as

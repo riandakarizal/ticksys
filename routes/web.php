@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountPasswordController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetImportController;
@@ -31,6 +32,10 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+    // Ganti password sendiri — semua role. Throttle: menahan tebak-tebakan password saat ini.
+    Route::get('/account/password', [AccountPasswordController::class, 'edit'])->name('account.password.edit');
+    Route::put('/account/password', [AccountPasswordController::class, 'update'])->name('account.password.update')->middleware('throttle:6,1');
 
     // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali).
     // `qhsse` hanya-lihat: daftar, detail, unduh lampiran — rute tulis ada di grup dalam tanpa `qhsse`.
