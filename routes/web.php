@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetImportController;
+use App\Http\Controllers\AssetMigrationController;
 use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -68,6 +69,14 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
         Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');
         Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
+    });
+
+    // Migrasi aset antar-project (kontrak habis → pindah ke project baru) — sama dengan import:
+    // superadmin + admin divisi E&T O&M (User::canMigrateAssets(), dicek lagi di controller).
+    Route::middleware('role:superadmin,admin')->prefix('/project/assets/migration')->name('project.assets.migration.')->group(function (): void {
+        Route::get('/', [AssetMigrationController::class, 'index'])->name('index');
+        Route::post('/', [AssetMigrationController::class, 'store'])->name('store');
+        Route::get('/{migration}', [AssetMigrationController::class, 'show'])->whereNumber('migration')->name('show');
     });
 
     // Bulk insert manpower dari Excel — superadmin only

@@ -34,6 +34,9 @@
         <p class="text-2xl font-black {{ $kpi['aktif_end'] > 0 ? 'text-orange-600' : 'text-slate-800' }}">{{ number_format($kpi['aktif_end']) }}</p>
         <p class="text-xs text-slate-500 mt-1">Aktif di Project END</p>
         <p class="text-[10px] {{ $kpi['aktif_end'] > 0 ? 'text-orange-400' : 'text-slate-400' }} mt-0.5">{{ $kpi['aktif_end'] > 0 ? 'Perlu ditarik / relokasi' : 'Semua clear' }}</p>
+        @if($kpi['aktif_end'] > 0 && auth()->user()->canMigrateAssets())
+            <a href="{{ route('project.assets.migration.index') }}" class="inline-block mt-1 text-[10px] font-semibold text-orange-600 hover:underline">Migrasi aset →</a>
+        @endif
     </div>
 </div>
 @endunless
@@ -47,6 +50,13 @@
         <p class="text-[11px] text-slate-400 mt-0.5">Upload Excel untuk menambah aset secara massal. Serial yang sudah terdaftar di project yang sama akan dilewati.</p>
     </div>
     <div class="flex items-center gap-2">
+        @if(auth()->user()->canMigrateAssets())
+        <a href="{{ route('project.assets.migration.index') }}"
+           class="btn-soft rounded-xl px-3 py-2 text-xs gap-1.5"
+           title="Pindahkan aset dari project yang kontraknya habis ke project baru">
+            <span>⇄</span> Migrasi Aset
+        </a>
+        @endif
         <a href="{{ route('project.assets.import.template') }}"
            class="btn-soft rounded-xl px-3 py-2 text-xs gap-1.5">
             <span>⬇</span> Download Template

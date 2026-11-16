@@ -186,6 +186,15 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
             || ($this->isAdmin() && $this->user_div === 'Equipment & Technology Operation & Maintenance');
     }
 
+    /**
+     * Migrasi aset antar-project (Project → Migrasi Aset) — pengelola data aset yang sama dengan import:
+     * superadmin + admin divisi E&T O&M, non-superadmin dibatasi ke project di divisinya.
+     */
+    public function canMigrateAssets(): bool
+    {
+        return $this->canImportAssets();
+    }
+
     public function canViewReports(): bool
     {
         return $this->isSuperAdmin() || $this->isAdmin() || $this->isVip();

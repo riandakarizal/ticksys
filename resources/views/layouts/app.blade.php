@@ -102,6 +102,9 @@
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
                     @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>
+                    @if(auth()->user()->canMigrateAssets())
+                    <a href="{{ route('project.assets.migration.index') }}" class="nav-subitem {{ request()->routeIs('project.assets.migration.*') ? 'active' : '' }}">Migrasi Aset</a>
+                    @endif
                     @unless(auth()->user()->isFin() || auth()->user()->isQhsse())
                     <a href="{{ route('project.manpower') }}" class="nav-subitem {{ request()->routeIs('project.manpower') ? 'active' : '' }}">Manpower</a>
                     @endunless

@@ -127,6 +127,15 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
   hook would normally make. Distinct from the equipment import below, which has its own route names
   (`monitoring.import.*` vs `monitoring.projects.import.*`).
+- **Asset migration** (`AssetMigrationController`, `Support/AssetMigrationService.php`, models `AstMigration` /
+  `AstMigrationItem`, routes `project.assets.migration.*`, menu Project → Migrasi Aset): moves assets between
+  projects when a contract ends. Same gate as asset import (`User::canMigrateAssets()` = `canImportAssets()`);
+  source and target must both be `PjctMain::visibleTo($user)`, the target must differ from the source and must not be
+  `END`. Assets on an active ticket (`ast_last_ticket_id`) block the whole batch, so a batch moves all of its assets or none.
+  Each batch is recorded in
+  `ast_migrations` + `ast_migration_items` (JSON snapshot of status/user/location before the move) plus one
+  `system_logs` row (`migrate`); `ast_main` is mass-updated, so there are no per-asset `update` logs. Only
+  `AssetMigrationService::migrate()` should change `ast_pjctid` for existing assets.
 - **Report → Data** (`AssetReportController`, `Support/AssetReportExportService.php`): tarikan mentah
   seluruh kolom `ast_main` (bukan subset operasional seperti `AssetController`) dengan filter gabungan —
   search lintas kolom, Type/Brand/Status/Kondisi/Region/Lokasi/Tahun/Project, dan rentang
