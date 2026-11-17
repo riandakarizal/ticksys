@@ -6,11 +6,13 @@ use App\Models\AstMain;
 use App\Models\PjctEmp;
 use App\Models\PjctMain;
 use App\Models\SlaPolicy;
+use App\Models\SystemLog;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -347,4 +349,65 @@ test('notifikasi SLA terlewati dikirim sekali, ticket tidak di-auto-close', func
     expect(AppNotification::where('type', 'sla_breached')->where('user_id', $this->timPusat->id)->count())->toBe(1)
         ->and(AppNotification::where('type', 'sla_breached')->where('user_id', $this->atasan->id)->count())->toBe(1)
         ->and($ticket->fresh()->status)->toBe('open');
+});
+
+test('superadmin menghapus ticket permanen: lampiran & file, komentar, notifikasi, log ikut terhapus; device dipulihkan', function () {
+    createTicket($this, $this->teknisi);
+    $ticket = Ticket::firstOrFail();
+    $this->actingAs($this->timPusat)->post(route('tickets.messages.store', $ticket), [
+        'body' => 'Foto kerusakan', 'attachments' => [UploadedFile::fake()->image('foto.jpg')],
+    ])->assertRedirect();
+
+    $paths = TicketAttachment::where('ticket_id', $ticket->id)->pluck('path');
+    expect($paths)->toHaveCount(2)
+        ->and($this->laptop->fresh()->only(['ast_cond', 'ast_last_ticket_id']))->toBe(['ast_cond' => 'Bad', 'ast_last_ticket_id' => $ticket->id])
+        ->and(AppNotification::where('ticket_id', $ticket->id)->exists())->toBeTrue()
+        ->and(ActivityLog::where('ticket_id', $ticket->id)->exists())->toBeTrue();
+    $paths->each(fn ($p) => Storage::assertExists($p));
+
+    // Tombol hapus hanya untuk superadmin (URL-nya sama dengan halaman tiket, jadi dicek dari teksnya).
+    $this->actingAs($this->superadmin)->get(route('tickets.show', $ticket))->assertOk()->assertSee('Hapus ticket…');
+    $this->actingAs($this->teknisi)->get(route('tickets.show', $ticket))->assertOk()->assertDontSee('Hapus ticket');
+
+    // Konfirmasi salah → tidak terhapus.
+    $this->actingAs($this->superadmin)->from(route('tickets.show', $ticket))
+        ->delete(route('tickets.destroy', $ticket), ['confirm_number' => 'salah'])
+        ->assertSessionHasErrors('confirm_number');
+    expect(Ticket::whereKey($ticket->id)->exists())->toBeTrue();
+
+    $this->actingAs($this->superadmin)
+        ->delete(route('tickets.destroy', $ticket), ['confirm_number' => $ticket->ticket_number])
+        ->assertRedirect(route('tickets.index'))
+        ->assertSessionHas('success', "Ticket {$ticket->ticket_number} dihapus beserta 2 lampiran, kondisi 1 device dipulihkan.");
+
+    expect(Ticket::whereKey($ticket->id)->exists())->toBeFalse()
+        ->and(TicketAttachment::where('ticket_id', $ticket->id)->count())->toBe(0)
+        ->and(DB::table('ticket_messages')->where('ticket_id', $ticket->id)->count())->toBe(0)
+        ->and(DB::table('ticket_assets')->where('ticket_id', $ticket->id)->count())->toBe(0)
+        ->and(AppNotification::where('ticket_id', $ticket->id)->count())->toBe(0)
+        ->and(ActivityLog::where('ticket_id', $ticket->id)->count())->toBe(0)
+        ->and($this->laptop->fresh()->only(['ast_cond', 'ast_last_ticket_id']))->toBe(['ast_cond' => 'Good', 'ast_last_ticket_id' => null]);
+    $paths->each(fn ($p) => Storage::assertMissing($p));
+
+    $log = SystemLog::where('loggable_type', 'Ticket')->where('action', 'delete')->sole();
+    expect($log->user_id)->toBe($this->superadmin->id)
+        ->and($log->properties['ticket_number'])->toBe($ticket->ticket_number)
+        ->and($log->properties['attachments'])->toBe(2)
+        ->and($log->properties['released_assets'])->toBe([$this->laptop->id]);
+});
+
+test('hapus ticket: selain superadmin ditolak; device yang masih ditahan ticket aktif lain tetap Bad', function () {
+    createTicket($this, $this->teknisi);
+    createTicket($this, $this->teknisi, ['subject' => 'Laptop sama, laporan kedua']);
+    [$first, $second] = Ticket::orderBy('id')->get()->all();
+
+    foreach ([$this->teknisi, $this->atasan, $this->timPusat, $this->vip] as $user) {
+        $this->actingAs($user)->delete(route('tickets.destroy', $first), ['confirm_number' => $first->ticket_number])->assertForbidden();
+    }
+
+    $this->actingAs($this->superadmin)->delete(route('tickets.destroy', $first), ['confirm_number' => $first->ticket_number])->assertRedirect(route('tickets.index'));
+
+    // Laptop masih ditahan ticket kedua → tetap Bad, penunjuknya pindah ke ticket kedua.
+    expect($this->laptop->fresh()->only(['ast_cond', 'ast_last_ticket_id']))->toBe(['ast_cond' => 'Bad', 'ast_last_ticket_id' => $second->id])
+        ->and(Ticket::pluck('id')->all())->toBe([$second->id]);
 });

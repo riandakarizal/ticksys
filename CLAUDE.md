@@ -108,6 +108,14 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ticket_assets` pivot (multi-device, `cond_before`); `Helpdesk::syncTicketAssets()` /
   `releaseTicketAssets()` keep `ast_main.ast_cond = 'Bad'` until close — don't write `ast_cond` from
   ticket code any other way. `tickets.ast_id` is legacy. `User` uses `Authorizable`, so `$user->can()` works.
+  Only a superadmin can permanently delete a ticket (`DELETE /tickets/{ticket}`, `TicketPolicy::delete`, typing
+  the ticket number to confirm). `Helpdesk::deleteTicket()` does it in one transaction: it releases the ticket's
+  devices if the ticket isn't closed, deletes its `app_notifications` and `activity_logs` (their FKs are SET NULL),
+  writes a `system_logs` row (`delete`/`Ticket`), and deletes the ticket, which cascades to messages, attachment rows,
+  `ticket_assets` and custom fields. The attachment files are deleted from storage after the commit.
+  `TicketTransitionRequest::failedAuthorization()` redirects a transition back to the ticket with a message when
+  the ticket's status has already changed (double submit); real permission failures stay 403. Ticket forms carry
+  `data-submit-once`.
 - **Project monitoring** (`MonitoringController`, `PjctMain`, `PjctDoc`): `pjct_main` is the master
   project record (`pjct_div` = `TC`/`EQ`/`TCC`/`EQC`, `pjct_status` = `UPC`/`OG`/`HVR`/`DLY`/`END`,
   `pjct_type` = `RENT`/`SUPPLY`/`JASA`).

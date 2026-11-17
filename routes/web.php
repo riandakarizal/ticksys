@@ -62,6 +62,9 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         });
 
         Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+        // Hapus permanen tiket + lampiran — superadmin saja (TicketPolicy::delete).
+        Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
+            ->middleware('role:superadmin')->name('tickets.destroy');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
 

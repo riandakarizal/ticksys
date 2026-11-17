@@ -17,6 +17,7 @@ use App\Support\Helpdesk;
  * | return (dr escalated)     | admin/superadmin yang divisinya mencakup project tiket     |
  * | approve, reject (dr solved)| atasan langsung teknisi pembuat (user_parid) & superadmin |
  * | komentar                  | semua yang bisa melihat, kecuali vip & qhsse (hanya-lihat) |
+ * | hapus permanen            | superadmin                                                 |
  *
  * QHSSE hanya-lihat: tidak pernah lolos aksi apa pun, termasuk approve walau tercatat sebagai atasan.
  */
@@ -72,6 +73,12 @@ class TicketPolicy
     public function reject(User $user, Ticket $ticket): bool
     {
         return $this->approve($user, $ticket);
+    }
+
+    /** Hapus permanen (beserta lampiran) — superadmin saja, di status apa pun. */
+    public function delete(User $user, Ticket $ticket): bool
+    {
+        return $user->isSuperAdmin();
     }
 
     public function comment(User $user, Ticket $ticket): bool
