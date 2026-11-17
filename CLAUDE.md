@@ -58,7 +58,9 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   role (mis. `role:superadmin,admin,siteadmin,user,vip`), dan role daftar-putih ditambahkan satu per satu. Di ticketing, `user` berarti
   **teknisi lapangan**, bukan client (client tidak punya akun). Teknisi juga tidak punya Project → Main:
   route `monitoring.index` tanpa `user` (dokumen `monitoring.docs.show` tetap), dan `/dashboard` untuk
-  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Menambah role baru bertipe sempit
+  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Di sidebar teknisi
+  tidak ada grup Project sama sekali. Daftar asetnya (`project.assets`) dibuka dari Report → Assets, dan footer/header hanya
+  menampilkan nama tanpa unit. Route `project.manpower` juga ditutup untuk mereka (`role:superadmin,admin,siteadmin,vip`). Menambah role baru bertipe sempit
   berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
   menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an

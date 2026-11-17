@@ -104,17 +104,16 @@ test('teknisi tanpa penugasan tidak melihat project apa pun', function () {
     $this->actingAs($baru)->post(route('tickets.store'), ticketPayload($this->assigned->id))->assertSessionHasErrors('pjct_id');
 });
 
-test('Asset & Manpower hanya berisi data project penugasan', function () {
+test('Asset hanya berisi data project penugasan, Manpower ditutup untuk teknisi', function () {
     // Teknisi cukup daftar aset — tanpa kartu KPI (Total Asset, Aktif di Project END, ...).
     $assets = $this->actingAs($this->teknisi)->get(route('project.assets'))->assertOk()
         ->assertDontSee('Aktif di Project END')->viewData('assets');
     expect($assets->pluck('id')->all())->toBe([$this->assetAssigned->id]);
     $this->actingAs($this->adminTc)->get(route('project.assets'))->assertOk()->assertSee('Aktif di Project END');
 
-    // Rekan di project yang sama terlihat; penugasan rekan di project lain tidak.
-    $employees = $this->actingAs($this->teknisi)->get(route('project.manpower'))->assertOk()->viewData('employees');
-    expect($employees->pluck('emp_pjctid')->unique()->values()->all())->toBe([$this->assigned->id])
-        ->and($employees->total())->toBe(2);
+    // Manpower bukan untuk teknisi — menu disembunyikan dan URL-nya ditolak.
+    $this->actingAs($this->teknisi)->get(route('project.manpower'))->assertForbidden();
+    $this->actingAs($this->adminTc)->get(route('project.manpower'))->assertOk();
 });
 
 test('dokumen project di luar penugasan ditolak', function () {
@@ -157,4 +156,24 @@ test('ticket buatan sendiri tetap terlihat setelah penugasan dicabut', function 
 
     $this->actingAs($teknisi)->get(route('tickets.show', $ticket))->assertOk();
     expect($this->actingAs($teknisi)->get(route('dashboard'))->viewData('projects'))->toBeEmpty();
+});
+
+test('sidebar teknisi: tanpa grup Project & unit, aset dibuka dari Report → Assets', function () {
+    $this->teknisi->update(['user_div' => 'Equipment & Technology Operation & Maintenance']);
+    $this->adminTc->update(['user_div' => 'Equipment & Technology Operation & Maintenance']);
+
+    $page = $this->actingAs($this->teknisi)->get(route('project.assets'))->assertOk();
+    $page->assertDontSee(route('project.manpower'))
+        ->assertDontSee(route('monitoring.index'))
+        ->assertDontSee('Equipment &amp; Technology Operation &amp; Maintenance', false)
+        ->assertSee('<span class="sidebar-label flex-1">Report</span>', false)
+        ->assertDontSee('<span class="sidebar-label flex-1">Project</span>', false);
+    // Report → Assets aktif saat membuka daftar aset.
+    expect(preg_match('/href="'.preg_quote(route('project.assets'), '/').'" class="nav-subitem active">Assets</', $page->getContent()))->toBe(1);
+
+    // Role lain tetap punya grup Project (Asset, Manpower) dan unit di footer.
+    $this->actingAs($this->adminTc)->get(route('project.assets'))->assertOk()
+        ->assertSee(route('project.manpower'))
+        ->assertSee('<span class="sidebar-label flex-1">Project</span>', false)
+        ->assertSee('Equipment &amp; Technology Operation &amp; Maintenance', false);
 });

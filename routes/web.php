@@ -62,9 +62,9 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     // M-03 Asset — semua role, termasuk `fin` dan `qhsse` (keduanya daftar-putih)
     Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
 
-    // M-04 Manpower — semua role kecuali `fin`
+    // M-04 Manpower — tanpa `fin`, `qhsse`, dan teknisi (`user`)
     Route::get('/project/manpower', [ManpowerController::class, 'index'])
-        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->middleware('role:superadmin,admin,siteadmin,vip')
         ->name('project.manpower');
 
     // Bulk insert aset dari Excel — superadmin + admin divisi E&T O&M (User::canImportAssets(),
