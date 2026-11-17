@@ -40,7 +40,7 @@ Akun login PRISM. PK manual format `USR-NNN`. Auth Laravel override via virtual 
 |---|---|---|
 | `id` | varchar(20) PK | Format: `USR-001` |
 | `user_empid` | varchar(20) | NIK karyawan — untuk teknisi (role `user`) harus sama dengan `pjct_emp.emp_id`, karena akses project-nya diambil dari penugasan di `pjct_emp` |
-| `user_name` | varchar(20) | Nama tampil |
+| `user_name` | varchar(225) | Nama tampil (dulu varchar(20); diperlebar migrasi `2026_11_17_000002`) |
 | `user_email` | varchar(225) | Login username |
 | `user_pass` | varchar(225) | Bcrypt hash |
 | `user_level` | varchar(20) | L1–L7 (jabatan struktural) |

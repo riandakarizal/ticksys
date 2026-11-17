@@ -82,3 +82,14 @@ test('password lemah / tidak sama dan input kosong ditolak', function () {
 test('yang sudah login diarahkan ke dashboard', function () {
     $this->actingAs(User::factory()->admin()->create())->get(route('register'))->assertRedirect(route('dashboard'));
 });
+
+test('nama karyawan panjang (> 20 karakter) tersimpan utuh', function () {
+    // Regresi: users.user_name dulu varchar(20) → di MySQL strict insert gagal (500). SQLite tidak membatasi
+    // panjang varchar, jadi yang benar-benar dicek di sini hanya nama tidak dipotong aplikasi.
+    PjctEmp::where('emp_id', '241002002477')->update(['emp_name' => 'Muhammad Rizky Aditya Pratama Nugroho']);
+
+    register($this)->assertSessionHasNoErrors()->assertRedirect(route('dashboard'));
+
+    expect(User::where('user_empid', '241002002477')->value('user_name'))->toBe('Muhammad Rizky Aditya Pratama Nugroho');
+    $this->get(route('dashboard'))->assertOk()->assertSee('Muhammad Rizky Aditya Pratama Nugroho');
+});

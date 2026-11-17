@@ -83,7 +83,7 @@
         </div>
         <div class="grid gap-4 md:grid-cols-2">
             <input class="field" name="user_empid" placeholder="Employee ID"                 required maxlength="20">
-            <input class="field" name="user_name"  placeholder="Nama (maks 20 karakter)"     required maxlength="20">
+            <input class="field" name="user_name"  placeholder="Nama lengkap"     required maxlength="225">
             <input class="field" type="email" name="user_email" placeholder="Email"          required>
             <input class="field" name="user_pass"   type="password" placeholder="Password"   required>
             <select class="field" name="user_role" required>
@@ -155,7 +155,7 @@
             </div>
             <div class="grid gap-4 md:grid-cols-2">
                 <input class="field" name="user_empid" value="{{ $user->user_empid }}" placeholder="Employee ID" required maxlength="20">
-                <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="20">
+                <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="225">
                 <input class="field" type="email" name="user_email" value="{{ $user->user_email }}" required>
                 <select class="field" name="user_role" required>
                     <option value="user"       @selected($user->user_role === 'user')>User</option>

@@ -27,7 +27,9 @@ vendor/bin/pint         # Laravel Pint (code style)
 Tests use Pest (`tests/Pest.php` binds `Tests\TestCase` for the `Feature` suite) with `RefreshDatabase`
 per-test via `uses(RefreshDatabase::class)`. Test env runs on in-memory SQLite (`phpunit.xml`), while
 dev/prod runs MySQL — avoid MySQL-only SQL (raw `LIKE` with div-prefix matching, JSON functions, etc.) in
-code paths exercised by tests.
+code paths exercised by tests. SQLite also ignores `varchar(N)` lengths, while Laravel's MySQL connection is
+strict: a value longer than the column passes the tests but fails with a 500 on MySQL ("Data too long"). Check
+column widths when copying data between tables (e.g. `pjct_emp.emp_name` 225 → `users.user_name`).
 
 ### Docker (used for migrating to another machine)
 ```bash

@@ -258,7 +258,7 @@
         <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6 shadow-sm">
             <div class="flex-1 min-w-0">
                 <h1 class="text-base font-black text-slate-900 truncate">{{ $heading ?? 'Dashboard' }}</h1>
-                <p class="text-xs text-slate-400 hidden sm:block">{{ auth()->user()->user_name }}@unless(auth()->user()->isUser()) · {{ auth()->user()->user_div }}@endunless</p>
+                <p class="text-xs text-slate-400 hidden sm:block truncate">{{ auth()->user()->user_name }}@unless(auth()->user()->isUser()) · {{ auth()->user()->user_div }}@endunless</p>
             </div>
 
             {{-- Notifications bell --}}
