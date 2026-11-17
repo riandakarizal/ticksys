@@ -70,8 +70,8 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `PjctDocController`) must apply this filter manually; it is not a global scope.
 - Project-level (technicians only): role `user` is scoped to the projects they are assigned to in
   `pjct_emp`, matched by NIK (`users.user_empid` = `pjct_emp.emp_id`) — `User::assignedProjectIds()`
-  (via `PjctEmp::projectIdsForNik()`, which also resolves legacy `emp_pjctid` values that hold a contract
-  number truncated to 20 chars). For them this **replaces** the division filter; no assignment = no
+  (via `PjctEmp::projectIdsForNik()`). `pjct_emp.emp_pjctid` holds the `pjct_main.id` (`PJxxxx`) only. There is
+  no contract-number fallback; the user fixes legacy contract-number values directly in the DB. For them this **replaces** the division filter; no assignment = no
   projects. Use the shared helpers rather than `allowedDivCodes()` directly: `PjctMain::visibleTo($user)`
   scope (Eloquent queries on `pjct_main`), `User::visibleProjectIds()` (ID list for `whereIn` on other
   tables — avoids cross-collation joins), `User::canSeeProject($project)` (single-record checks). Already

@@ -88,9 +88,15 @@ test('dashboard teknisi berisi aset & issue project penugasannya, Monitoring dit
     expect($this->actingAs($this->adminTc)->get(route('monitoring.index'))->viewData('projects')->total())->toBe(2);
 });
 
-test('nomor kontrak lama di emp_pjctid (terpotong 20 karakter) tetap dikenali', function () {
-    PjctEmp::query()->where('emp_id', $this->teknisi->user_empid)->update(['emp_pjctid' => 'PJJ.06.02.03/00/12/2']);
+test('emp_pjctid hanya ID project: nomor kontrak (data lama) tidak dianggap penugasan', function () {
+    $emp = PjctEmp::query()->where('emp_id', $this->teknisi->user_empid);
 
+    // Nomor kontrak terpotong 20 karakter (format data lama) → tidak dikenali.
+    $emp->update(['emp_pjctid' => 'PJJ.06.02.03/00/12/2']);
+    expect($this->teknisi->fresh()->assignedProjectIds())->toBe([]);
+
+    // Setelah diisi ID project, penugasan kembali.
+    $emp->update(['emp_pjctid' => $this->assigned->id]);
     expect($this->teknisi->fresh()->assignedProjectIds())->toBe([$this->assigned->id]);
 });
 
