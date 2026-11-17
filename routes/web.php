@@ -20,6 +20,7 @@ use App\Http\Controllers\PjctDocController;
 use App\Http\Controllers\ProjectAddendumController;
 use App\Http\Controllers\ProjectImportController;
 use App\Http\Controllers\ProjectReportController;
+use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -28,6 +29,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [AuthController::class, 'create'])->name('home');
 Route::get('/login', [AuthController::class, 'create'])->name('login');
 Route::post('/login', [AuthController::class, 'store'])->name('login.store')->middleware('throttle:5,1');
+
+// Daftar akun mandiri — hanya NIK yang ada di pjct_emp; akun jadi teknisi (role user).
+Route::get('/register', [RegisterController::class, 'create'])->name('register');
+Route::post('/register', [RegisterController::class, 'store'])->name('register.store')->middleware('throttle:5,1');
 
 Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');

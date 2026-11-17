@@ -184,6 +184,13 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 - **Admin** (`app/Http/Controllers/Admin/*`): devices, users, projects (`Team`), categories, SLA
   policies — superadmin-gated CRUD, separate from the project-monitoring "projects" concept (`Team` here
   is helpdesk-side project grouping, not `pjct_main`).
+- **Self-registration** (`RegisterController`, public routes `GET/POST /register`, the POST throttled at 5/min,
+  linked from the login page). Login and register share `auth/shell.blade.php`, and each view fills the
+  `auth_form` section. Only an employee number (NIK) that exists in `pjct_emp.emp_id` can register, and each
+  NIK gets one account (`users.user_empid`). The email, stored lowercased, is the login username. The account
+  is always a technician: `user_role = user`, name, level and unit copied from the first `pjct_emp` row,
+  `user_div = '-'`, `user_parid = ''` (ticket approval falls back to superadmin until an admin sets the
+  supervisor), and active immediately with no approval step. The user is logged in straight after registering.
 - **Own password** (`AccountPasswordController`, `/account/password`, key icon in the sidebar footer):
   every logged-in role can change their own password. It requires the current password, and the new one must be
   at least 8 characters with letters and numbers, and different from the current one. On success it deletes that
