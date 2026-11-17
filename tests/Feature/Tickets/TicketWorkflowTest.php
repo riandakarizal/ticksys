@@ -140,12 +140,32 @@ test('alur eskalasi: BA wajib di kedua arah, tim pusat mengembalikan ke open, at
         ->toContain('ticket_escalate', 'ticket_return', 'ticket_reject', 'ticket_approve');
 });
 
-test('aksi di luar status asalnya ditolak', function () {
+test('aksi di luar status asalnya ditolak — kembali ke halaman tiket dengan penjelasan, bukan 403', function () {
     createTicket($this, $this->teknisi);
     $ticket = Ticket::firstOrFail();
 
-    transition($this, $this->atasan, $ticket, 'approve')->assertForbidden();          // belum solved
-    transition($this, $this->timPusat, $ticket, 'return', ['note' => 'x', 'documents' => [doc()]])->assertForbidden(); // belum escalated
+    // belum solved / belum escalated
+    transition($this, $this->atasan, $ticket, 'approve')
+        ->assertRedirect(route('tickets.show', $ticket))->assertSessionHasErrors('ticket');
+    transition($this, $this->timPusat, $ticket, 'return', ['note' => 'x', 'documents' => [doc()]])
+        ->assertRedirect(route('tickets.show', $ticket))->assertSessionHasErrors('ticket');
+    expect($ticket->fresh()->status)->toBe('open');
+});
+
+test('klik ganda "Tandai Selesai": request kedua tidak diproses ulang dan tidak berujung 403', function () {
+    createTicket($this, $this->teknisi);
+    $ticket = Ticket::firstOrFail();
+
+    transition($this, $this->teknisi, $ticket, 'solve', ['note' => 'Adaptor diganti.'])->assertSessionHasNoErrors();
+    transition($this, $this->teknisi, $ticket, 'solve', ['note' => 'Adaptor diganti.'])
+        ->assertRedirect(route('tickets.show', $ticket))
+        ->assertSessionHasErrors(['ticket' => 'Aksi tidak diproses: ticket sudah berstatus Solved. Kemungkinan tombol terkirim dua kali atau sudah diproses dari tempat lain.']);
+
+    expect($ticket->fresh()->status)->toBe('solved')
+        ->and($ticket->activityLogs()->where('action', 'ticket_solve')->count())->toBe(1);
+
+    // Halaman tiket memuat pengaman kirim-sekali di form aksi.
+    $this->actingAs($this->teknisi)->get(route('tickets.show', $ticket))->assertOk()->assertSee('data-submit-once', false);
 });
 
 test('approve hanya oleh atasan langsung teknisi pembuat, superadmin sebagai cadangan', function () {

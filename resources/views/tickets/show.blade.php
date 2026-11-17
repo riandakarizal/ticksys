@@ -163,7 +163,7 @@
             </div>
 
             @if($abilities['comment'])
-                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-5 space-y-3">
+                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-5 space-y-3" data-submit-once>
                     @csrf
                     <textarea class="field min-h-28" name="body" placeholder="Tulis komentar. Mention user dengan @nama" required>{{ old('body') }}</textarea>
                     <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white" type="file" name="attachments[]" multiple>
@@ -274,7 +274,7 @@
         @if($abilities['update'])
             <details class="panel" @if($errors->hasAny(['priority', 'issue_type', 'category_id', 'subcategory_id', 'ast_ids', 'ast_ids.*'])) open @endif>
                 <summary class="cursor-pointer list-none text-xl font-black">Ubah Detail</summary>
-                <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4">
+                <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4" data-submit-once>
                     @csrf
                     @method('PATCH')
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -331,7 +331,7 @@
 @foreach($availableActions as $action)
     @php $dialog = $actionDialogs[$action]; @endphp
     <dialog id="dialog-{{ $action }}" class="w-[calc(100%-2rem)] max-w-lg rounded-3xl p-0">
-        <form method="POST" action="{{ route('tickets.transition', [$ticket, $action]) }}" enctype="multipart/form-data" class="panel m-0 space-y-4">
+        <form method="POST" action="{{ route('tickets.transition', [$ticket, $action]) }}" enctype="multipart/form-data" class="panel m-0 space-y-4" data-submit-once>
             @csrf
             <input type="hidden" name="_dialog" value="dialog-{{ $action }}">
             <div class="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">

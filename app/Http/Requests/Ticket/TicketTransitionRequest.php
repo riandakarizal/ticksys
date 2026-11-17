@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\Ticket;
 
+use App\Models\Ticket;
 use App\Models\TicketAttachment;
+use App\Support\TicketManager;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * Input aksi alur tiket. Ability policy = nama aksi (solve/escalate/return/approve/reject).
@@ -18,6 +21,31 @@ class TicketTransitionRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()?->can($this->action(), $this->route('ticket')) ?? false;
+    }
+
+    /**
+     * Aksi yang ditolak karena status tiket sudah berubah (klik ganda, atau sudah diproses orang lain
+     * di tab/perangkat lain) → kembali ke halaman tiket dengan penjelasan, bukan halaman 403 kosong.
+     * Penolakan karena memang tidak berwenang tetap 403.
+     */
+    protected function failedAuthorization(): void
+    {
+        $ticket = $this->route('ticket');
+        $transition = TicketManager::TRANSITIONS[$this->action()] ?? null;
+
+        if ($ticket instanceof Ticket && $transition && $ticket->status !== $transition['from']
+            && $this->user()?->can('view', $ticket)) {
+            throw new HttpResponseException(
+                redirect()->route('tickets.show', $ticket)->withErrors([
+                    'ticket' => sprintf(
+                        'Aksi tidak diproses: ticket sudah berstatus %s. Kemungkinan tombol terkirim dua kali atau sudah diproses dari tempat lain.',
+                        Ticket::STATUS_LABELS[$ticket->status] ?? $ticket->status,
+                    ),
+                ])
+            );
+        }
+
+        parent::failedAuthorization();
     }
 
     public function rules(): array
