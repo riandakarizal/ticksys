@@ -38,6 +38,12 @@
     td {
         @apply align-top;
     }
+
+    /* Edge punya tombol mata bawaan; PRISM memakai tombol sendiri (partials/password-toggle). */
+    input::-ms-reveal,
+    input::-ms-clear {
+        display: none;
+    }
 }
 
 @layer components {

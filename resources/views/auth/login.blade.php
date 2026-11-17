@@ -93,8 +93,11 @@
                             <input class="field" type="email" name="email" value="{{ old('email') }}" placeholder="you@company.com" required>
                         </div>
                         <div>
-                            <label class="label">Password</label>
-                            <input class="field" type="password" name="password" placeholder="********" required>
+                            <label class="label" for="login-password">Password</label>
+                            <div class="relative">
+                                <input class="field pr-11" type="password" name="password" id="login-password" placeholder="********" autocomplete="current-password" required>
+                                @include('partials.password-toggle', ['target' => 'login-password'])
+                            </div>
                         </div>
                         <label class="flex items-center gap-3 text-sm text-slate-500">
                             <input type="checkbox" name="remember" value="1" class="rounded border-slate-300">

@@ -584,7 +584,33 @@ const initSlaCountdowns = () => {
     setInterval(tick, 30000);
 };
 
+// Tombol mata di input password (partials/password-toggle.blade.php): tampil/sembunyikan isi.
+const initPasswordToggles = () => {
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pw-toggle]');
+        if (!button) {
+            return;
+        }
+
+        const input = document.getElementById(button.dataset.pwToggle);
+        if (!input) {
+            return;
+        }
+
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        button.querySelector('[data-pw-icon="show"]')?.classList.toggle('hidden', reveal);
+        button.querySelector('[data-pw-icon="hide"]')?.classList.toggle('hidden', !reveal);
+
+        const label = reveal ? 'Sembunyikan password' : 'Tampilkan password';
+        button.setAttribute('aria-label', label);
+        button.setAttribute('title', label);
+        input.focus();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+    initPasswordToggles();
     initPageToasts();
     initAjaxForms();
     initTicketForm();

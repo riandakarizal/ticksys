@@ -26,11 +26,10 @@
             <div>
                 <label class="label" for="pw-{{ $name }}">{{ $label }}</label>
                 <div class="relative">
-                    <input class="field pr-16 @error($name) border-red-400 @enderror" type="password"
+                    <input class="field pr-11 @error($name) border-red-400 @enderror" type="password"
                            name="{{ $name }}" id="pw-{{ $name }}" autocomplete="{{ $autocomplete }}" required
                            @if($name === 'current_password') autofocus @endif>
-                    <button type="button" data-pw-toggle="pw-{{ $name }}"
-                            class="absolute inset-y-0 right-0 px-3 text-[11px] font-semibold text-slate-400 hover:text-slate-600">Lihat</button>
+                    @include('partials.password-toggle', ['target' => 'pw-'.$name])
                 </div>
                 @error($name)
                     <p class="text-[11px] text-red-600 mt-1">{{ $message }}</p>
@@ -56,15 +55,6 @@
 
 <script>
 (function () {
-    document.querySelectorAll('[data-pw-toggle]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const input = document.getElementById(btn.dataset.pwToggle);
-            const show = input.type === 'password';
-            input.type = show ? 'text' : 'password';
-            btn.textContent = show ? 'Sembunyikan' : 'Lihat';
-        });
-    });
-
     const pw = document.getElementById('pw-password');
     const confirm = document.getElementById('pw-password_confirmation');
     const rules = {
