@@ -106,7 +106,7 @@ class PjctDocController extends Controller
             $disk->makeDirectory($project->id);
         }
 
-        $filename = $this->freeFilename($project->id, $temp['name']);
+        $filename = PjctDoc::freeFilename($project->id, $temp['name']);
         $disk->writeStream($project->id . '/' . $filename, $tempDisk->readStream($temp['path']));
         $tempDisk->delete($temp['path']);
         $request->session()->forget($key);
@@ -200,23 +200,5 @@ class PjctDocController extends Controller
                 $disk->delete($file);
             }
         }
-    }
-
-    /**
-     * Nama file yang belum dipakai di folder project: `kontrak.pdf` → `kontrak (2).pdf`, dst.
-     * Tanpa ini unggahan dengan nama sama menimpa file lama, padahal barisnya di pjct_doc tetap ada.
-     */
-    private function freeFilename(string $folder, string $original): string
-    {
-        $disk = Storage::disk('docfile');
-        $name = pathinfo($original, PATHINFO_FILENAME);
-        $ext  = pathinfo($original, PATHINFO_EXTENSION);
-        $candidate = $original;
-
-        for ($i = 2; $disk->exists($folder . '/' . $candidate); $i++) {
-            $candidate = $name . ' (' . $i . ')' . ($ext !== '' ? '.' . $ext : '');
-        }
-
-        return $candidate;
     }
 }

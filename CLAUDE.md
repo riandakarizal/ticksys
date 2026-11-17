@@ -129,6 +129,17 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
   hook would normally make. Distinct from the equipment import below, which has its own route names
   (`monitoring.import.*` vs `monitoring.projects.import.*`).
+- **Contract addendum** (`ProjectAddendumController`, `Support/ProjectAddendumService.php`, model `PjctAddendum`,
+  table `pjct_addenda`, routes `monitoring.addenda.*`, orange button per row in Project → Main): the project stays a
+  single `pjct_main` row. Each addendum is a history record and takes effect immediately, with no approval step.
+  It holds the per-project `seq`, the number and date, one or more of the 10 reason codes in
+  `PjctAddendum::REASONS` with a note per reason, the PDF stored as a `pjct_doc` of type `ADD`, and `changes`
+  (before/after). The reasons NILAI, WAKTU and IDENTITAS update `pjct_value`, `pjct_coend_m` and `pjct_client`
+  through Eloquent, so the `PjctMain` update log is written too. Anyone who can see the project in Monitoring
+  can view it; superadmin and E&T Commercial admins can record it, limited to their divisions. Records are never
+  edited or deleted. Older addenda stored as separate `pjct_main` rows (`pjct_cotype`/`pjct_parcon`,
+  relation `addendumProjects()`) are only listed as a note. Monitoring counts addenda with a separate
+  `whereIn` query, not `withCount`, because collations can differ.
 - **Asset migration** (`AssetMigrationController`, `Support/AssetMigrationService.php`, models `AstMigration` /
   `AstMigrationItem`, routes `project.assets.migration.*`, menu Project → Migrasi Aset): moves assets between
   projects when a contract ends. Same gate as asset import (`User::canMigrateAssets()` = `canImportAssets()`);

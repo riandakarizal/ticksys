@@ -17,6 +17,7 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
+use App\Http\Controllers\ProjectAddendumController;
 use App\Http\Controllers\ProjectImportController;
 use App\Http\Controllers\ProjectReportController;
 use App\Http\Controllers\ReportController;
@@ -102,6 +103,12 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
     // `qhsse` hanya-lihat: tombol tambah/ubah/arsip/import tersembunyi ($isAdmin/$canCreateProject false).
     Route::middleware('role:superadmin,admin,siteadmin,vip,qhsse')
         ->get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    // Addendum kontrak per project: lihat = yang boleh membuka Project → Main (+ canSeeProject di controller);
+    // catat = superadmin / admin E&T Commercial di divisinya (ProjectAddendumController::canManage()).
+    Route::middleware('role:superadmin,admin,siteadmin,vip,qhsse')
+        ->get('/monitoring/projects/{project}/addenda', [ProjectAddendumController::class, 'index'])->name('monitoring.addenda.index');
+    Route::middleware('role:superadmin,admin')
+        ->post('/monitoring/projects/{project}/addenda', [ProjectAddendumController::class, 'store'])->name('monitoring.addenda.store');
     // Dokumen project tetap terbuka untuk teknisi, dibatasi project penugasannya (canSeeProject()).
     Route::middleware('role:superadmin,admin,siteadmin,user,vip,qhsse')
         ->get('/monitoring/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('monitoring.docs.show');

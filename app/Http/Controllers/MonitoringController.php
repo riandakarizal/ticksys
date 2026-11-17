@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EqtChangeLog;
+use App\Models\PjctAddendum;
 use App\Models\PjctMain;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,13 @@ class MonitoringController extends Controller
             ->with(['docs:id,doc_pjctid,doc_type'])
             ->orderByRaw('pjct_codate DESC')->orderBy('id')->paginate(25)->withQueryString();
 
+        // Jumlah addendum per project — query terpisah lewat daftar ID (bukan withCount/subquery),
+        // karena tabel baru dan pjct_main legacy bisa beda collation di MySQL.
+        $addendaCounts = PjctAddendum::query()
+            ->whereIn('pjct_id', $projects->pluck('id')->all())
+            ->selectRaw('pjct_id, COUNT(*) as c')->groupBy('pjct_id')
+            ->pluck('c', 'pjct_id');
+
         $allForKpi = PjctMain::query()->visibleTo($user)->get();
         $kpi = [
             'total'  => $allForKpi->count(),
@@ -67,7 +75,7 @@ class MonitoringController extends Controller
         $changeLogs = collect();
 
         return view('monitoring.index', compact(
-            'projects', 'kpi',
+            'projects', 'kpi', 'addendaCounts',
             'yearFilter', 'statusFilter', 'typeFilter', 'unitFilter', 'search', 'showArchived',
             'isAdmin', 'canCreateProject', 'changeLogs'
         ));
