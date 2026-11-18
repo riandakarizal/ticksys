@@ -11,7 +11,9 @@ return [
             explode(',', (string) env('HELPDESK_MAIL_CC', ''))
         ))),
         'types' => [
-            'ticket_solve',      // atasan: ticket menunggu approval
+            'ticket_created',    // atasan: ticket baru dibuat teknisi
+            'ticket_reply',      // peserta + yang di-mention: komentar baru
+            'ticket_solve',     // atasan: ticket menunggu approval
             'ticket_escalate',   // tim divisi: unit dieskalasi ke pusat
             'ticket_return',     // teknisi: unit dikembalikan dari pusat
             'ticket_approve',    // teknisi: penyelesaian disetujui
