@@ -38,6 +38,21 @@ services:
       start_period: 90s
     restart: unless-stopped
 
+  # Menjalankan routes/console.php (SLA otomatis + email sla_breached). Entrypoint
+  # di-skip: migrate/cache sudah dikerjakan `app`, jadi tunggu app sehat dulu.
+  scheduler:
+    image: iassprism/prism-app:latest
+    entrypoint: ["php", "artisan", "schedule:work"]
+    env_file:
+      - .env.production
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: mysql:8.0
     environment:
