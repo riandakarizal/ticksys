@@ -85,8 +85,9 @@
                 <span class="sidebar-label">Dashboard</span>
             </a>
 
-            {{-- PROJECT group (all roles) --}}
+            {{-- PROJECT group (semua role kecuali teknisi — aset teknisi ada di Report → Assets) --}}
             @php $projectActive = request()->routeIs('monitoring.*','project.*'); @endphp
+            @unless(auth()->user()->isUser())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $projectActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -102,15 +103,19 @@
                     <a href="{{ route('monitoring.index') }}" class="nav-subitem {{ request()->routeIs('monitoring.*') ? 'active' : '' }}">Main</a>
                     @endunless
                     <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Asset</a>
-                    @unless(auth()->user()->isFin())
+                    @if(auth()->user()->canMigrateAssets())
+                    <a href="{{ route('project.assets.migration.index') }}" class="nav-subitem {{ request()->routeIs('project.assets.migration.*') ? 'active' : '' }}">Migrasi Aset</a>
+                    @endif
+                    @unless(auth()->user()->isFin() || auth()->user()->isQhsse())
                     <a href="{{ route('project.manpower') }}" class="nav-subitem {{ request()->routeIs('project.manpower') ? 'active' : '' }}">Manpower</a>
                     @endunless
                 </div>
             </div>
+            @endunless
 
             {{-- VENDOR group (excludes User tier) --}}
             @php $vendorActive = request()->routeIs('vendor.*'); @endphp
-            @if(!auth()->user()->isUser() && !auth()->user()->isFin())
+            @if(!auth()->user()->isUser() && !auth()->user()->isFin() && !auth()->user()->isQhsse())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $vendorActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -128,8 +133,13 @@
             </div>
             @endif
 
-            {{-- REPORT group (Issues: all roles; Expenses: excludes User tier) --}}
-            @php $reportActive = request()->routeIs('report.*','reports.*'); @endphp
+            {{-- REPORT group (Issues: all roles; Expenses: excludes User tier). QHSSE: tanpa menu report. --}}
+            @php
+                // Teknisi membuka daftar asetnya (project.assets, sudah dibatasi project penugasan) dari Report.
+                $reportActive = request()->routeIs('report.*', 'reports.*')
+                    || (auth()->user()->isUser() && request()->routeIs('project.assets'));
+            @endphp
+            @unless(auth()->user()->isQhsse())
             <div data-nav-group>
                 <button type="button" data-group-trigger class="nav-item {{ $reportActive ? 'active' : '' }} w-full text-left">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -144,6 +154,9 @@
                     @unless(auth()->user()->isFin())
                     <a href="{{ route('report.issues') }}" class="nav-subitem {{ request()->routeIs('report.issues') ? 'active' : '' }}">Issues</a>
                     @endunless
+                    @if(auth()->user()->isUser())
+                    <a href="{{ route('project.assets') }}" class="nav-subitem {{ request()->routeIs('project.assets') ? 'active' : '' }}">Assets</a>
+                    @endif
                     @if(!auth()->user()->isUser())
                     @unless(auth()->user()->isFin())
                     <a href="{{ route('report.expenses') }}" class="nav-subitem {{ request()->routeIs('report.expenses') ? 'active' : '' }}">Expenses</a>
@@ -153,6 +166,7 @@
                     @endif
                 </div>
             </div>
+            @endunless
 
             {{-- SURAT (superadmin + admin) --}}
             @if(auth()->user()->isSuperAdmin() || auth()->user()->isAdmin())
@@ -215,8 +229,16 @@
                 </button>
                 <div class="sidebar-label min-w-0 flex-1">
                     <p class="text-xs font-semibold text-slate-900 truncate">{{ auth()->user()->user_name }}</p>
+                    @unless(auth()->user()->isUser())
                     <p class="text-[10px] text-slate-400">{{ auth()->user()->user_div }}</p>
+                    @endunless
                 </div>
+                <a href="{{ route('account.password.edit') }}" title="Ganti password"
+                    class="sidebar-label h-7 w-7 rounded-lg flex items-center justify-center transition shrink-0 {{ request()->routeIs('account.password.*') ? 'bg-brand-50 text-brand-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600' }}">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+                    </svg>
+                </a>
                 <button type="button" data-open-dialog="logout-dialog" title="Sign out"
                     class="sidebar-label h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition shrink-0">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -236,7 +258,7 @@
         <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6 shadow-sm">
             <div class="flex-1 min-w-0">
                 <h1 class="text-base font-black text-slate-900 truncate">{{ $heading ?? 'Dashboard' }}</h1>
-                <p class="text-xs text-slate-400 hidden sm:block">{{ auth()->user()->user_name }} · {{ auth()->user()->user_div }}</p>
+                <p class="text-xs text-slate-400 hidden sm:block truncate">{{ auth()->user()->user_name }}@unless(auth()->user()->isUser()) · {{ auth()->user()->user_div }}@endunless</p>
             </div>
 
             {{-- Notifications bell --}}

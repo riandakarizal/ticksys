@@ -39,7 +39,26 @@ class PjctDoc extends Model
         'BAST'    => 'Berita Acara Serah Terima (BAST)',
         'BASTO'   => 'Berita Acara Serah Terima Operasi (BASTO)',
         'BAPP'    => 'Berita Acara Penyelesaian Pekerjaan (BAPP)',
+        'ADD'     => 'Addendum',
     ];
+
+    /**
+     * Nama file yang belum dipakai di folder project: `kontrak.pdf` → `kontrak (2).pdf`, dst.
+     * Tanpa ini unggahan dengan nama sama menimpa file lama, padahal barisnya di pjct_doc tetap ada.
+     */
+    public static function freeFilename(string $folder, string $original): string
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('docfile');
+        $name = pathinfo($original, PATHINFO_FILENAME);
+        $ext  = pathinfo($original, PATHINFO_EXTENSION);
+        $candidate = $original;
+
+        for ($i = 2; $disk->exists($folder . '/' . $candidate); $i++) {
+            $candidate = $name . ' (' . $i . ')' . ($ext !== '' ? '.' . $ext : '');
+        }
+
+        return $candidate;
+    }
 
     protected $fillable = [
         'doc_number', 'doc_pjctid', 'doc_type', 'doc_filetype',
@@ -68,6 +87,7 @@ class PjctDoc extends Model
             'BAST'    => 'bg-green-100 text-green-700',
             'BASTO'   => 'bg-emerald-100 text-emerald-700',
             'BAPP'    => 'bg-lime-100 text-lime-700',
+            'ADD'     => 'bg-orange-100 text-orange-700',
             'SOP'     => 'bg-amber-100 text-amber-700',   // jenis lama, tidak bisa diunggah lagi
             default   => 'bg-slate-100 text-slate-500',
         };

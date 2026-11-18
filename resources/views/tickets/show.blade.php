@@ -163,7 +163,7 @@
             </div>
 
             @if($abilities['comment'])
-                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-5 space-y-3">
+                <form method="POST" action="{{ route('tickets.messages.store', $ticket) }}" enctype="multipart/form-data" class="mt-5 space-y-3" data-submit-once>
                     @csrf
                     <textarea class="field min-h-28" name="body" placeholder="Tulis komentar. Mention user dengan @nama" required>{{ old('body') }}</textarea>
                     <input class="field file:mr-4 file:rounded-2xl file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white" type="file" name="attachments[]" multiple>
@@ -274,7 +274,7 @@
         @if($abilities['update'])
             <details class="panel" @if($errors->hasAny(['priority', 'issue_type', 'category_id', 'subcategory_id', 'ast_ids', 'ast_ids.*'])) open @endif>
                 <summary class="cursor-pointer list-none text-xl font-black">Ubah Detail</summary>
-                <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4">
+                <form method="POST" action="{{ route('tickets.update', $ticket) }}" class="mt-4 grid gap-4" data-submit-once>
                     @csrf
                     @method('PATCH')
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -324,14 +324,58 @@
                 </form>
             </details>
         @endif
+
+        @can('delete', $ticket)
+            <div class="panel border-rose-200">
+                <h3 class="text-xl font-black text-rose-700">Hapus Ticket</h3>
+                <p class="mt-2 text-sm text-slate-600">
+                    Menghapus permanen ticket ini beserta {{ $ticket->messages->count() }} komentar, {{ $ticket->attachments->count() }} lampiran (file ikut dihapus),
+                    notifikasi, dan riwayat aktivitasnya. Device yang masih ditahan ticket ini dikembalikan ke kondisi sebelum dilaporkan.
+                </p>
+                <button type="button" class="mt-4 inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 transition"
+                        data-open-dialog="dialog-delete-ticket">Hapus ticket…</button>
+            </div>
+        @endcan
     </div>
 </div>
+
+@can('delete', $ticket)
+    <dialog id="dialog-delete-ticket" class="w-[calc(100%-2rem)] max-w-lg rounded-3xl p-0">
+        <form method="POST" action="{{ route('tickets.destroy', $ticket) }}" class="panel m-0 space-y-4" data-submit-once>
+            @csrf
+            @method('DELETE')
+            <div class="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+                <h3 class="text-xl font-black text-rose-700">Hapus ticket {{ $ticket->ticket_number }}?</h3>
+                <button type="button" class="btn-soft" data-close-dialog>Batal</button>
+            </div>
+            <p class="text-sm text-slate-600">
+                Tindakan ini <b>tidak bisa dibatalkan</b>. Ticket, komentar, semua lampiran beserta file-nya, notifikasi, dan riwayat aktivitas
+                dihapus. Jejak penghapusan tetap dicatat di log sistem.
+            </p>
+            <div>
+                <label class="label" for="confirm-number">Ketik <span class="font-mono">{{ $ticket->ticket_number }}</span> untuk konfirmasi</label>
+                <input class="field font-mono" type="text" name="confirm_number" id="confirm-number" autocomplete="off" required>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="btn-soft" data-close-dialog>Batal</button>
+                <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 transition">Hapus permanen</button>
+            </div>
+        </form>
+    </dialog>
+    @if($errors->has('confirm_number'))
+        @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => document.getElementById('dialog-delete-ticket')?.showModal());
+        </script>
+        @endpush
+    @endif
+@endcan
 
 {{-- Dialog aksi alur --}}
 @foreach($availableActions as $action)
     @php $dialog = $actionDialogs[$action]; @endphp
     <dialog id="dialog-{{ $action }}" class="w-[calc(100%-2rem)] max-w-lg rounded-3xl p-0">
-        <form method="POST" action="{{ route('tickets.transition', [$ticket, $action]) }}" enctype="multipart/form-data" class="panel m-0 space-y-4">
+        <form method="POST" action="{{ route('tickets.transition', [$ticket, $action]) }}" enctype="multipart/form-data" class="panel m-0 space-y-4" data-submit-once>
             @csrf
             <input type="hidden" name="_dialog" value="dialog-{{ $action }}">
             <div class="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">

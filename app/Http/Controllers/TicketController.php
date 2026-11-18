@@ -198,6 +198,29 @@ class TicketController extends Controller
         ]);
     }
 
+    /** Hapus permanen tiket + semua lampiran (superadmin). Konfirmasi: ketik ulang nomor tiket. */
+    public function destroy(Request $request, Ticket $ticket, Helpdesk $helpdesk): RedirectResponse
+    {
+        $this->authorize('delete', $ticket);
+
+        $request->validate([
+            'confirm_number' => ['required', 'string', 'in:'.$ticket->ticket_number],
+        ], [
+            'confirm_number.required' => 'Ketik nomor ticket untuk konfirmasi penghapusan.',
+            'confirm_number.in' => 'Nomor ticket yang diketik tidak sama — ticket tidak dihapus.',
+        ]);
+
+        $number = $ticket->ticket_number;
+        $result = $helpdesk->deleteTicket($ticket, $request->user());
+
+        return redirect()->route('tickets.index')->with('success', sprintf(
+            'Ticket %s dihapus beserta %d lampiran%s.',
+            $number,
+            $result['attachments'],
+            $result['released_assets'] ? ', kondisi '.count($result['released_assets']).' device dipulihkan' : ''
+        ));
+    }
+
     public function download(Ticket $ticket, TicketAttachment $attachment, Helpdesk $helpdesk): StreamedResponse
     {
         $this->authorize('download', $ticket);

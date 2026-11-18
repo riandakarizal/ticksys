@@ -27,7 +27,9 @@ vendor/bin/pint         # Laravel Pint (code style)
 Tests use Pest (`tests/Pest.php` binds `Tests\TestCase` for the `Feature` suite) with `RefreshDatabase`
 per-test via `uses(RefreshDatabase::class)`. Test env runs on in-memory SQLite (`phpunit.xml`), while
 dev/prod runs MySQL — avoid MySQL-only SQL (raw `LIKE` with div-prefix matching, JSON functions, etc.) in
-code paths exercised by tests.
+code paths exercised by tests. SQLite also ignores `varchar(N)` lengths, while Laravel's MySQL connection is
+strict: a value longer than the column passes the tests but fails with a 500 on MySQL ("Data too long"). Check
+column widths when copying data between tables (e.g. `pjct_emp.emp_name` 225 → `users.user_name`).
 
 ### Docker (used for migrating to another machine)
 ```bash
@@ -45,17 +47,22 @@ after significant schema/data changes, and it does **not** include `docfile/` (s
 There is no roles/permissions package. `users.user_role` is a plain string column checked two ways:
 - Route-level: `EnsureRole` middleware (`app/Http/Middleware/EnsureRole.php`), applied as
   `->middleware('role:superadmin,admin,siteadmin,vip')` — comma-separated role list per route group in
-  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin` (see
+  `routes/web.php`. Current roles: `superadmin`, `admin`, `siteadmin`, `user`, `vip`, `fin`, `qhsse` (see
   `App\Models\User::isSuperAdmin()` etc.). Note `docs/PRISM-DATABASE.md` and
   `docs/PRISM-REDESIGN.md` still reference an older role set (`supervisor`/`agent`/`client`) — trust the
   code (`User` model, `EnsureRole` usages) over those docs.
-  `fin` (Finance) adalah satu-satunya role berpola **daftar-putih**: hanya Dashboard, Project → Asset,
-  dan Report → Data. Karena route helpdesk/monitoring/manpower/report-issues dulunya terbuka untuk semua
-  user login, batasannya ditulis terbalik — route-route itu kini menyebut eksplisit
-  `role:superadmin,admin,siteadmin,user,vip` (semua kecuali `fin`). Di ticketing, `user` berarti
+  Dua role berpola **daftar-putih**: `fin` (Finance) — hanya Dashboard, Project → Asset, dan Report → Data;
+  `qhsse` (unit Quality, Health, Safety, Security & Environment) — **hanya-lihat** Dashboard, Project → Main
+  (+ dokumen), Project → Asset, dan Tickets (daftar/detail/unduh lampiran), semua divisi
+  (`allowedDivCodes()` = null). Route tulis tiket ada di grup dalam tanpa `qhsse`, dan `TicketPolicy`
+  menolak `comment`/`approve` untuknya. Karena route helpdesk/monitoring/manpower/report-issues dulunya
+  terbuka untuk semua user login, batasannya ditulis terbalik — route-route itu menyebut eksplisit daftar
+  role (mis. `role:superadmin,admin,siteadmin,user,vip`), dan role daftar-putih ditambahkan satu per satu. Di ticketing, `user` berarti
   **teknisi lapangan**, bukan client (client tidak punya akun). Teknisi juga tidak punya Project → Main:
   route `monitoring.index` tanpa `user` (dokumen `monitoring.docs.show` tetap), dan `/dashboard` untuk
-  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Menambah role baru bertipe sempit
+  mereka merender `dashboard-technician` (aset & issue project penugasan, tanpa analitik project/nilai). Di sidebar teknisi
+  tidak ada grup Project sama sekali. Daftar asetnya (`project.assets`) dibuka dari Report → Assets, dan footer/header hanya
+  menampilkan nama tanpa unit. Route `project.manpower` juga ditutup untuk mereka (`role:superadmin,admin,siteadmin,vip`). Menambah role baru bertipe sempit
   berarti menyisir daftar tersebut lagi; menyembunyikan menu di `layouts/app.blade.php` saja tidak
   menutup URL-nya.
 - Data-level: `User::allowedDivCodes()` returns `null` (no filter — vip/superadmin see everything) or an
@@ -65,8 +72,8 @@ There is no roles/permissions package. `users.user_role` is a plain string colum
   `PjctDocController`) must apply this filter manually; it is not a global scope.
 - Project-level (technicians only): role `user` is scoped to the projects they are assigned to in
   `pjct_emp`, matched by NIK (`users.user_empid` = `pjct_emp.emp_id`) — `User::assignedProjectIds()`
-  (via `PjctEmp::projectIdsForNik()`, which also resolves legacy `emp_pjctid` values that hold a contract
-  number truncated to 20 chars). For them this **replaces** the division filter; no assignment = no
+  (via `PjctEmp::projectIdsForNik()`). `pjct_emp.emp_pjctid` holds the `pjct_main.id` (`PJxxxx`) only. There is
+  no contract-number fallback; the user fixes legacy contract-number values directly in the DB. For them this **replaces** the division filter; no assignment = no
   projects. Use the shared helpers rather than `allowedDivCodes()` directly: `PjctMain::visibleTo($user)`
   scope (Eloquent queries on `pjct_main`), `User::visibleProjectIds()` (ID list for `whereIn` on other
   tables — avoids cross-collation joins), `User::canSeeProject($project)` (single-record checks). Already
@@ -103,6 +110,14 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ticket_assets` pivot (multi-device, `cond_before`); `Helpdesk::syncTicketAssets()` /
   `releaseTicketAssets()` keep `ast_main.ast_cond = 'Bad'` until close — don't write `ast_cond` from
   ticket code any other way. `tickets.ast_id` is legacy. `User` uses `Authorizable`, so `$user->can()` works.
+  Only a superadmin can permanently delete a ticket (`DELETE /tickets/{ticket}`, `TicketPolicy::delete`, typing
+  the ticket number to confirm). `Helpdesk::deleteTicket()` does it in one transaction: it releases the ticket's
+  devices if the ticket isn't closed, deletes its `app_notifications` and `activity_logs` (their FKs are SET NULL),
+  writes a `system_logs` row (`delete`/`Ticket`), and deletes the ticket, which cascades to messages, attachment rows,
+  `ticket_assets` and custom fields. The attachment files are deleted from storage after the commit.
+  `TicketTransitionRequest::failedAuthorization()` redirects a transition back to the ticket with a message when
+  the ticket's status has already changed (double submit); real permission failures stay 403. Ticket forms carry
+  `data-submit-once`.
 - **Project monitoring** (`MonitoringController`, `PjctMain`, `PjctDoc`): `pjct_main` is the master
   project record (`pjct_div` = `TC`/`EQ`/`TCC`/`EQC`, `pjct_status` = `UPC`/`OG`/`HVR`/`DLY`/`END`,
   `pjct_type` = `RENT`/`SUPPLY`/`JASA`).
@@ -124,6 +139,26 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
   `ProjectImportService::execute()` recreates the `docfile/PJxxxx/` directory that `PjctMain`'s `created`
   hook would normally make. Distinct from the equipment import below, which has its own route names
   (`monitoring.import.*` vs `monitoring.projects.import.*`).
+- **Contract addendum** (`ProjectAddendumController`, `Support/ProjectAddendumService.php`, model `PjctAddendum`,
+  table `pjct_addenda`, routes `monitoring.addenda.*`, orange button per row in Project → Main): the project stays a
+  single `pjct_main` row. Each addendum is a history record and takes effect immediately, with no approval step.
+  It holds the per-project `seq`, the number and date, one or more of the 10 reason codes in
+  `PjctAddendum::REASONS` with a note per reason, the PDF stored as a `pjct_doc` of type `ADD`, and `changes`
+  (before/after). The reasons NILAI, WAKTU and IDENTITAS update `pjct_value`, `pjct_coend_m` and `pjct_client`
+  through Eloquent, so the `PjctMain` update log is written too. Anyone who can see the project in Monitoring
+  can view it; superadmin and E&T Commercial admins can record it, limited to their divisions. Records are never
+  edited or deleted. Older addenda stored as separate `pjct_main` rows (`pjct_cotype`/`pjct_parcon`,
+  relation `addendumProjects()`) are only listed as a note. Monitoring counts addenda with a separate
+  `whereIn` query, not `withCount`, because collations can differ.
+- **Asset migration** (`AssetMigrationController`, `Support/AssetMigrationService.php`, models `AstMigration` /
+  `AstMigrationItem`, routes `project.assets.migration.*`, menu Project → Migrasi Aset): moves assets between
+  projects when a contract ends. Same gate as asset import (`User::canMigrateAssets()` = `canImportAssets()`);
+  source and target must both be `PjctMain::visibleTo($user)`, the target must differ from the source and must not be
+  `END`. Assets on an active ticket (`ast_last_ticket_id`) block the whole batch, so a batch moves all of its assets or none.
+  Each batch is recorded in
+  `ast_migrations` + `ast_migration_items` (JSON snapshot of status/user/location before the move) plus one
+  `system_logs` row (`migrate`); `ast_main` is mass-updated, so there are no per-asset `update` logs. Only
+  `AssetMigrationService::migrate()` should change `ast_pjctid` for existing assets.
 - **Report → Data** (`AssetReportController`, `Support/AssetReportExportService.php`): tarikan mentah
   seluruh kolom `ast_main` (bukan subset operasional seperti `AssetController`) dengan filter gabungan —
   search lintas kolom, Type/Brand/Status/Kondisi/Region/Lokasi/Tahun/Project, dan rentang
@@ -159,6 +194,17 @@ inline (PDF opens in-browser) and enforces `allowedDivCodes()` the same way moni
 - **Admin** (`app/Http/Controllers/Admin/*`): devices, users, projects (`Team`), categories, SLA
   policies — superadmin-gated CRUD, separate from the project-monitoring "projects" concept (`Team` here
   is helpdesk-side project grouping, not `pjct_main`).
+- **Self-registration** (`RegisterController`, public routes `GET/POST /register`, the POST throttled at 5/min,
+  linked from the login page). Login and register share `auth/shell.blade.php`, and each view fills the
+  `auth_form` section. Only an employee number (NIK) that exists in `pjct_emp.emp_id` can register, and each
+  NIK gets one account (`users.user_empid`). The email, stored lowercased, is the login username. The account
+  is always a technician: `user_role = user`, name, level and unit copied from the first `pjct_emp` row,
+  `user_div = '-'`, `user_parid = ''` (ticket approval falls back to superadmin until an admin sets the
+  supervisor), and active immediately with no approval step. The user is logged in straight after registering.
+- **Own password** (`AccountPasswordController`, `/account/password`, key icon in the sidebar footer):
+  every logged-in role can change their own password. It requires the current password, and the new one must be
+  at least 8 characters with letters and numbers, and different from the current one. On success it deletes that
+  user's other rows in `sessions` (database driver only). Other people's passwords are still set via Admin → IAM Role.
 
 Full column-by-column schema reference (including the division-scoping unit→div table) is in
 `docs/PRISM-DATABASE.md`; treat its role names as stale per above but the table/column documentation as

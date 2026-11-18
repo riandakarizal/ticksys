@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AccountPasswordController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetImportController;
+use App\Http\Controllers\AssetMigrationController;
 use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -15,8 +17,10 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PjctBudgetController;
 use App\Http\Controllers\PjctDocController;
+use App\Http\Controllers\ProjectAddendumController;
 use App\Http\Controllers\ProjectImportController;
 use App\Http\Controllers\ProjectReportController;
+use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
@@ -26,33 +30,50 @@ Route::get('/', [AuthController::class, 'create'])->name('home');
 Route::get('/login', [AuthController::class, 'create'])->name('login');
 Route::post('/login', [AuthController::class, 'store'])->name('login.store')->middleware('throttle:5,1');
 
+// Daftar akun mandiri — hanya NIK yang ada di pjct_emp; akun jadi teknisi (role user).
+Route::get('/register', [RegisterController::class, 'create'])->name('register');
+Route::post('/register', [RegisterController::class, 'store'])->name('register.store')->middleware('throttle:5,1');
+
 Route::middleware(['auth', 'idle'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali)
-    Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+    // Ganti password sendiri — semua role. Throttle: menahan tebak-tebakan password saat ini.
+    Route::get('/account/password', [AccountPasswordController::class, 'edit'])->name('account.password.edit');
+    Route::put('/account/password', [AccountPasswordController::class, 'update'])->name('account.password.update')->middleware('throttle:6,1');
+
+    // Helpdesk: semua role kecuali `fin` (Finance tidak menyentuh tiket sama sekali).
+    // `qhsse` hanya-lihat: daftar, detail, unduh lampiran — rute tulis ada di grup dalam tanpa `qhsse`.
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip,qhsse')->group(function (): void {
         Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-        Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
-        Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
-        Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+
+        // Harus terdaftar sebelum `/tickets/{ticket}`, yang kalau tidak akan menelan `/tickets/create`.
+        Route::middleware('role:superadmin,admin,siteadmin,user,vip')->group(function (): void {
+            Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+            Route::get('/tickets/project-assets', [TicketController::class, 'projectAssets'])->name('tickets.project-assets');
+            Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+            Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+            // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
+            Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
+                ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
+                ->name('tickets.transition');
+            Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
+        });
+
         Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-        Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
-        // Alur: solve / escalate / return / approve / reject — hak akses per aksi di TicketPolicy.
-        Route::post('/tickets/{ticket}/transition/{action}', [TicketController::class, 'transition'])
-            ->whereIn('action', array_keys(\App\Support\TicketManager::TRANSITIONS))
-            ->name('tickets.transition');
-        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
+        // Hapus permanen tiket + lampiran — superadmin saja (TicketPolicy::delete).
+        Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
+            ->middleware('role:superadmin')->name('tickets.destroy');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'download'])->name('tickets.attachments.download');
     });
 
-    // M-03 Asset — termasuk `fin`, ini salah satu dari tiga halaman yang boleh dibuka Finance
+    // M-03 Asset — semua role, termasuk `fin` dan `qhsse` (keduanya daftar-putih)
     Route::get('/project/assets', [AssetController::class, 'index'])->name('project.assets');
 
-    // M-04 Manpower — semua role kecuali `fin`
+    // M-04 Manpower — tanpa `fin`, `qhsse`, dan teknisi (`user`)
     Route::get('/project/manpower', [ManpowerController::class, 'index'])
-        ->middleware('role:superadmin,admin,siteadmin,user,vip')
+        ->middleware('role:superadmin,admin,siteadmin,vip')
         ->name('project.manpower');
 
     // Bulk insert aset dari Excel — superadmin + admin divisi E&T O&M (User::canImportAssets(),
@@ -62,6 +83,14 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
         Route::post('/preview', [AssetImportController::class, 'preview'])->name('preview');
         Route::post('/confirm', [AssetImportController::class, 'confirm'])->name('confirm');
         Route::post('/cancel', [AssetImportController::class, 'cancel'])->name('cancel');
+    });
+
+    // Migrasi aset antar-project (kontrak habis → pindah ke project baru) — sama dengan import:
+    // superadmin + admin divisi E&T O&M (User::canMigrateAssets(), dicek lagi di controller).
+    Route::middleware('role:superadmin,admin')->prefix('/project/assets/migration')->name('project.assets.migration.')->group(function (): void {
+        Route::get('/', [AssetMigrationController::class, 'index'])->name('index');
+        Route::post('/', [AssetMigrationController::class, 'store'])->name('store');
+        Route::get('/{migration}', [AssetMigrationController::class, 'show'])->whereNumber('migration')->name('show');
     });
 
     // Bulk insert manpower dari Excel — superadmin only
@@ -79,10 +108,17 @@ Route::middleware(['auth', 'idle'])->group(function (): void {
 
     // Project monitoring view (M-02 Project Main) — semua role kecuali `fin` dan teknisi (`user`):
     // teknisi bekerja dari Dashboard (aset & issue), Asset, Manpower, dan Tickets.
-    Route::middleware('role:superadmin,admin,siteadmin,vip')
+    // `qhsse` hanya-lihat: tombol tambah/ubah/arsip/import tersembunyi ($isAdmin/$canCreateProject false).
+    Route::middleware('role:superadmin,admin,siteadmin,vip,qhsse')
         ->get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    // Addendum kontrak per project: lihat = yang boleh membuka Project → Main (+ canSeeProject di controller);
+    // catat = superadmin / admin E&T Commercial di divisinya (ProjectAddendumController::canManage()).
+    Route::middleware('role:superadmin,admin,siteadmin,vip,qhsse')
+        ->get('/monitoring/projects/{project}/addenda', [ProjectAddendumController::class, 'index'])->name('monitoring.addenda.index');
+    Route::middleware('role:superadmin,admin')
+        ->post('/monitoring/projects/{project}/addenda', [ProjectAddendumController::class, 'store'])->name('monitoring.addenda.store');
     // Dokumen project tetap terbuka untuk teknisi, dibatasi project penugasannya (canSeeProject()).
-    Route::middleware('role:superadmin,admin,siteadmin,user,vip')
+    Route::middleware('role:superadmin,admin,siteadmin,user,vip,qhsse')
         ->get('/monitoring/docs/{pjctDoc}', [PjctDocController::class, 'show'])->name('monitoring.docs.show');
 
     Route::middleware('role:superadmin,admin,siteadmin,vip')->group(function (): void {

@@ -83,7 +83,7 @@
         </div>
         <div class="grid gap-4 md:grid-cols-2">
             <input class="field" name="user_empid" placeholder="Employee ID"                 required maxlength="20">
-            <input class="field" name="user_name"  placeholder="Nama (maks 20 karakter)"     required maxlength="20">
+            <input class="field" name="user_name"  placeholder="Nama lengkap"     required maxlength="225">
             <input class="field" type="email" name="user_email" placeholder="Email"          required>
             <input class="field" name="user_pass"   type="password" placeholder="Password"   required>
             <select class="field" name="user_role" required>
@@ -94,6 +94,7 @@
                 <option value="superadmin">Super Admin</option>
                 <option value="vip">VIP</option>
                 <option value="fin">Finance</option>
+                <option value="qhsse">QHSSE (hanya-lihat)</option>
             </select>
             <select class="field" name="user_level" required>
                 <option value="" disabled hidden selected>Select Level</option>
@@ -120,6 +121,7 @@
                 <option value="Technology Operation & Maintenance">Technology Operation & Maintenance</option>
                 <option value="Equipment Operation & Maintenance">Equipment Operation & Maintenance</option>
                 <option value="Asset">Asset</option>
+                <option value="Quality, Health, Safety, Security & Environment">Quality, Health, Safety, Security & Environment</option>
             </select>
             <select class="field" name="user_parid">
                 <option value="">— Tidak ada (Top Level) —</option>
@@ -153,7 +155,7 @@
             </div>
             <div class="grid gap-4 md:grid-cols-2">
                 <input class="field" name="user_empid" value="{{ $user->user_empid }}" placeholder="Employee ID" required maxlength="20">
-                <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="20">
+                <input class="field" name="user_name"  value="{{ $user->user_name }}"  placeholder="Nama" required maxlength="225">
                 <input class="field" type="email" name="user_email" value="{{ $user->user_email }}" required>
                 <select class="field" name="user_role" required>
                     <option value="user"       @selected($user->user_role === 'user')>User</option>
@@ -162,6 +164,7 @@
                     <option value="superadmin" @selected($user->user_role === 'superadmin')>Super Admin</option>
                     <option value="vip"        @selected($user->user_role === 'vip')>VIP</option>
                     <option value="fin"        @selected($user->user_role === 'fin')>Finance</option>
+                    <option value="qhsse"      @selected($user->user_role === 'qhsse')>QHSSE (hanya-lihat)</option>
                 </select>
                 <select class="field" name="user_level" required>
                     <option value="L1" @selected($user->user_level === 'L1')>L1 — Direktur</option>
@@ -185,6 +188,7 @@
                     <option value="Technology Operation & Maintenance" @selected($user->user_unit === 'Technology Operation & Maintenance')>Technology Operation & Maintenance</option>
                     <option value="Equipment Operation & Maintenance" @selected($user->user_unit === 'Equipment Operation & Maintenance')>Equipment Operation & Maintenance</option>
                     <option value="Asset" @selected($user->user_unit === 'Asset')>Asset</option>
+                    <option value="Quality, Health, Safety, Security & Environment" @selected($user->user_unit === 'Quality, Health, Safety, Security & Environment')>Quality, Health, Safety, Security & Environment</option>
                 </select>
                 <select class="field" name="user_parid">
                     <option value="" @selected($user->user_parid === '')>— Tidak ada (Top Level) —</option>

@@ -584,7 +584,74 @@ const initSlaCountdowns = () => {
     setInterval(tick, 30000);
 };
 
+// Form `data-submit-once`: tombol submit dikunci setelah form terkirim, supaya klik ganda (mis. saat
+// unggah lampiran lama) tidak mengirim request kedua — request kedua aksi tiket akan ditolak karena
+// statusnya sudah berubah. Dibuka lagi kalau halaman dipulihkan dari back/forward cache.
+const initSubmitOnce = () => {
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-submit-once')) {
+            return;
+        }
+
+        if (form.dataset.submitting === '1') {
+            event.preventDefault();
+            return;
+        }
+
+        form.dataset.submitting = '1';
+        form.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.dataset.originalLabel = button.innerHTML;
+            button.disabled = true;
+            button.textContent = 'Memproses…';
+        });
+    });
+
+    window.addEventListener('pageshow', (event) => {
+        if (!event.persisted) {
+            return;
+        }
+
+        document.querySelectorAll('form[data-submit-once][data-submitting="1"]').forEach((form) => {
+            delete form.dataset.submitting;
+            form.querySelectorAll('button[type="submit"]').forEach((button) => {
+                button.disabled = false;
+                if (button.dataset.originalLabel) {
+                    button.innerHTML = button.dataset.originalLabel;
+                }
+            });
+        });
+    });
+};
+
+// Tombol mata di input password (partials/password-toggle.blade.php): tampil/sembunyikan isi.
+const initPasswordToggles = () => {
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pw-toggle]');
+        if (!button) {
+            return;
+        }
+
+        const input = document.getElementById(button.dataset.pwToggle);
+        if (!input) {
+            return;
+        }
+
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        button.querySelector('[data-pw-icon="show"]')?.classList.toggle('hidden', reveal);
+        button.querySelector('[data-pw-icon="hide"]')?.classList.toggle('hidden', !reveal);
+
+        const label = reveal ? 'Sembunyikan password' : 'Tampilkan password';
+        button.setAttribute('aria-label', label);
+        button.setAttribute('title', label);
+        input.focus();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+    initSubmitOnce();
+    initPasswordToggles();
     initPageToasts();
     initAjaxForms();
     initTicketForm();

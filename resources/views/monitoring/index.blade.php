@@ -150,6 +150,11 @@ $rp = function($n) {
                     <tr class="{{ $p->trashed() ? 'opacity-50 bg-slate-50' : 'hover:bg-slate-50/50' }}">
                         <td class="pl-4 py-1.5 pr-2 text-slate-500 break-words font-mono text-[10px]">
                             {{ $p->pjct_contract ?: '-' }}
+                            @if(($addendaCounts[$p->id] ?? 0) > 0)
+                                <a href="{{ route('monitoring.addenda.index', $p->id) }}"
+                                   class="mt-0.5 inline-flex items-center rounded px-1.5 py-0.5 font-sans text-[9px] font-semibold bg-orange-100 text-orange-700 hover:bg-orange-200 transition"
+                                   title="Lihat riwayat addendum">{{ $addendaCounts[$p->id] }}× addendum</a>
+                            @endif
                         </td>
                         <td class="py-1.5 pr-2 font-medium break-words">
                             {{ $p->pjct_name }}
@@ -225,6 +230,14 @@ $rp = function($n) {
                                             <path d="M14 3v5h5M12 11v6M9 14h6"/>
                                         </svg>
                                     </button>
+                                    <a href="{{ route('monitoring.addenda.index', $p->id) }}" title="Addendum kontrak" aria-label="Addendum kontrak {{ $p->id }}"
+                                       class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-white shadow-sm transition-all duration-200 ease-out hover:bg-orange-600 hover:shadow-md active:scale-95">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M9 3h6a2 2 0 0 1 2 2v1H7V5a2 2 0 0 1 2-2z"/>
+                                            <path d="M17 6h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1"/>
+                                            <path d="M9 13l2 2 4-4"/>
+                                        </svg>
+                                    </a>
                                     </div>
                                 @endif
                             </td>

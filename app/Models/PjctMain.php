@@ -121,10 +121,19 @@ class PjctMain extends Model
         return $this->belongsTo(self::class, 'pjct_parcon', 'id');
     }
 
-    /** Semua addendum yang menginduk ke kontrak ini. */
-    public function addenda()
+    /**
+     * Project lama yang dicatat sebagai baris addendum terpisah (`pjct_cotype = Contract Addendum`,
+     * `pjct_parcon` → kontrak ini). Addendum baru dicatat di `addenda()`.
+     */
+    public function addendumProjects()
     {
         return $this->hasMany(self::class, 'pjct_parcon', 'id');
+    }
+
+    /** Riwayat addendum kontrak ini (`pjct_addenda`), dicatat lewat ProjectAddendumService. */
+    public function addenda()
+    {
+        return $this->hasMany(PjctAddendum::class, 'pjct_id', 'id');
     }
 
     public function docs()

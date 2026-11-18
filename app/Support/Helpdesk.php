@@ -8,6 +8,7 @@ use App\Models\AppNotification;
 use App\Models\AstMain;
 use App\Models\CustomField;
 use App\Models\SlaPolicy;
+use App\Models\SystemLog;
 use App\Models\Ticket;
 use App\Models\TicketCustomFieldValue;
 use App\Models\User;
@@ -213,6 +214,66 @@ class Helpdesk
         }
 
         return ['attached' => $attached, 'detached' => $detached];
+    }
+
+    /**
+     * Hapus permanen satu tiket beserta semua lampirannya (superadmin, mis. tiket uji coba).
+     *
+     * Satu transaksi: device yang masih ditahan tiket ini dipulihkan seperti saat closed (kecuali
+     * masih ditahan tiket aktif lain); notifikasi & log aktivitas tiket dihapus (FK-nya SET NULL);
+     * tiket dihapus — komentar, baris lampiran, device (ticket_assets), custom field ikut CASCADE.
+     * Karena log aktivitasnya ikut hilang, jejaknya disimpan di satu baris `system_logs`.
+     * File lampiran baru dihapus dari disk setelah transaksi berhasil.
+     *
+     * @return array{attachments: int, files_deleted: int, released_assets: array<int, string>}
+     */
+    public function deleteTicket(Ticket $ticket, User $user): array
+    {
+        $ticket->loadMissing('project:id,pjct_name');
+        $paths = $ticket->attachments()->pluck('path')->filter()->unique()->values();
+        $released = [];
+
+        DB::transaction(function () use ($ticket, $user, $paths, &$released): void {
+            if (! $ticket->isClosed()) {
+                foreach ($ticket->assets()->get() as $asset) {
+                    $this->releaseAsset($asset->id, $asset->pivot->cond_before, $ticket->id);
+                    $released[] = $asset->id;
+                }
+            }
+
+            AppNotification::query()->where('ticket_id', $ticket->id)->delete();
+            ActivityLog::query()->where('ticket_id', $ticket->id)->delete();
+
+            SystemLog::create([
+                'user_id' => $user->id,
+                'action' => 'delete',
+                'loggable_type' => 'Ticket',
+                'loggable_id' => (string) $ticket->id,
+                'description' => "Hapus ticket {$ticket->ticket_number}",
+                'properties' => [
+                    'ticket_number' => $ticket->ticket_number,
+                    'subject' => $ticket->subject,
+                    'status' => $ticket->status,
+                    'pjct_id' => $ticket->pjct_id,
+                    'created_by' => $ticket->created_by,
+                    'created_at' => $ticket->created_at?->toDateTimeString(),
+                    'messages' => $ticket->messages()->count(),
+                    'attachments' => $paths->count(),
+                    'released_assets' => $released,
+                ],
+            ]);
+
+            $ticket->delete();
+        });
+
+        $deleted = 0;
+        foreach ($paths as $path) {
+            if (Storage::exists($path) && Storage::delete($path)) {
+                $deleted++;
+            }
+        }
+
+        return ['attachments' => $paths->count(), 'files_deleted' => $deleted, 'released_assets' => $released];
     }
 
     /** Dipanggil saat tiket closed: pulihkan semua device-nya (kecuali masih ditahan tiket lain). */
