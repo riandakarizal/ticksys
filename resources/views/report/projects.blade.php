@@ -25,10 +25,10 @@
 
 @section('content')
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="pt-well">
 
     {{-- ── Filter ──────────────────────────────────────────────────── --}}
-    <form method="GET" action="{{ route('report.projects') }}" class="px-4 py-3 border-b border-slate-100">
+    <form method="GET" action="{{ route('report.projects') }}" class="rounded-3xl bg-white px-4 py-3">
         <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
         <input type="hidden" name="dir" value="{{ $filters['dir'] }}">
 
@@ -164,7 +164,7 @@
     </form>
 
     {{-- ── Info baris ──────────────────────────────────────────────── --}}
-    <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
         <span class="text-xs text-slate-500">
             {{ number_format($projects->total()) }} project
             @if($projects->total() !== $summary['total'])
@@ -176,7 +176,7 @@
 
     {{-- ── Tabel: semua kolom pjct_main ────────────────────────────── --}}
     <div class="overflow-x-auto">
-        <table class="min-w-full text-xs">
+        <table class="pt-table min-w-full text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100">
                 <tr>
                     <th class="px-4 py-2 font-medium">#</th>

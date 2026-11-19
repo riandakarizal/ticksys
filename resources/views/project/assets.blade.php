@@ -71,10 +71,10 @@
 @endif
 
 {{-- ── Filter & Table ──────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="pt-well">
 
     {{-- Filter Bar --}}
-    <div class="px-4 py-3 border-b border-slate-100">
+    <div class="rounded-3xl bg-white px-4 py-3">
         <form method="GET" class="flex flex-wrap items-end gap-2">
             <div class="flex-1 min-w-[180px]">
                 <label class="label">Search</label>
@@ -125,7 +125,7 @@
     </div>
 
     {{-- Table Header --}}
-    <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
         <span class="text-xs text-slate-500">
             {{ number_format($assets->total()) }} asset
             @if($assets->total() !== $kpi['total'])
@@ -137,7 +137,7 @@
 
     {{-- Table --}}
     <div class="overflow-x-auto">
-        <table class="min-w-full text-xs">
+        <table class="pt-table min-w-full text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100">
                 <tr>
                     <th class="px-4 py-2 font-medium">#</th>

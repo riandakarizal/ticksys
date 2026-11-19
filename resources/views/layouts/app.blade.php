@@ -17,25 +17,26 @@
         #sidebar.collapsed #sidebar-header { justify-content: center; padding-left: 0; padding-right: 0; }
         .nav-item {
             display: flex; align-items: center; gap: 0.625rem;
-            padding: 0.5rem 0.625rem; border-radius: 0.625rem;
-            font-size: 0.8125rem; font-weight: 600; color: #475569;
+            padding: 0.625rem 0.875rem; border-radius: 9999px;
+            font-size: 0.875rem; font-weight: 500; color: #475569;
             transition: background 0.15s, color 0.15s; cursor: pointer;
             text-decoration: none; width: 100%;
         }
-        .nav-item:hover { background: #f1f5f9; color: #0f172a; }
-        .nav-item.active { background: #f0fdfd; color: #0d9191; }
+        .nav-item:hover { background: #f2f3f5; color: #18191d; }
+        /* Menu aktif = pill hitam, sama dengan chip aktif di dashboard. */
+        .nav-item.active { background: #18191d; color: #ffffff; }
         .nav-subitem {
             display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.375rem 0.625rem 0.375rem 2.25rem;
-            border-radius: 0.5rem; font-size: 0.75rem; font-weight: 500;
+            padding: 0.5rem 0.875rem 0.5rem 2.5rem;
+            border-radius: 9999px; font-size: 0.8125rem; font-weight: 500;
             color: #64748b; text-decoration: none; transition: background 0.15s, color 0.15s;
         }
-        .nav-subitem:hover { background: #f8fafc; color: #0f172a; }
-        .nav-subitem.active { color: #0d9191; font-weight: 700; background: #f0fdfd; }
+        .nav-subitem:hover { background: #f2f3f5; color: #18191d; }
+        .nav-subitem.active { color: #18191d; font-weight: 600; background: #eef0fd; }
         .nav-icon { width: 1.125rem; height: 1.125rem; flex-shrink: 0; }
     </style>
 </head>
-<body class="h-full bg-slate-100 text-slate-900">
+<body class="h-full bg-white text-slate-900">
 
 <div id="app-toast" class="pointer-events-none fixed right-5 top-5 z-50 hidden max-w-sm rounded-2xl px-5 py-4 text-sm font-semibold text-white shadow-xl transition duration-200 translate-y-3 opacity-0"></div>
 
@@ -46,7 +47,7 @@
     {{-- ══════════════════════════════════════════════════════
          SIDEBAR
     ══════════════════════════════════════════════════════ --}}
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-white border-r border-slate-200 shadow-sm overflow-hidden">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-white border-r border-slate-100 overflow-hidden">
 
         {{-- Logo + Toggle --}}
         <div id="sidebar-header" class="flex h-16 shrink-0 items-center justify-between px-4 border-b border-slate-100">
@@ -230,7 +231,7 @@
                 <div class="sidebar-label min-w-0 flex-1">
                     <p class="text-xs font-semibold text-slate-900 truncate">{{ auth()->user()->user_name }}</p>
                     @unless(auth()->user()->isUser())
-                    <p class="text-[10px] text-slate-400">{{ auth()->user()->user_div }}</p>
+                    <p class="truncate text-[11px] text-slate-500" title="{{ auth()->user()->user_div }}">{{ auth()->user()->user_div }}</p>
                     @endunless
                 </div>
                 <a href="{{ route('account.password.edit') }}" title="Ganti password"
@@ -255,9 +256,9 @@
     <div id="main-wrapper" class="flex min-h-full flex-col ml-60 w-[calc(100vw-15rem)]">
 
         {{-- Top Bar --}}
-        <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6 shadow-sm">
+        <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-100 bg-white/90 px-6 backdrop-blur">
             <div class="flex-1 min-w-0">
-                <h1 class="text-base font-black text-slate-900 truncate">{{ $heading ?? 'Dashboard' }}</h1>
+                <h1 class="text-base font-semibold text-slate-900 truncate">{{ $heading ?? 'Dashboard' }}</h1>
                 <p class="text-xs text-slate-400 hidden sm:block truncate">{{ auth()->user()->user_name }}@unless(auth()->user()->isUser()) · {{ auth()->user()->user_div }}@endunless</p>
             </div>
 
@@ -274,7 +275,7 @@
                 </button>
                 {{-- Notification dropdown --}}
                 <div data-notif-panel class="hidden absolute right-0 top-[calc(100%+0.5rem)] z-50 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl p-3">
-                    <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 px-1">Notifications</p>
+                    <p class="mb-2 px-1 text-sm font-semibold text-slate-900">Notifications</p>
                     <div class="space-y-1.5">
                         @forelse(auth()->user()->notificationsFeed()->latest()->limit(5)->get() as $notification)
                             <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs hover:border-brand-200 hover:bg-brand-50 transition">
@@ -312,10 +313,7 @@
 <dialog id="logout-dialog" class="max-w-lg">
     <div class="panel m-0">
         <div class="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Confirm Sign Out</p>
-                <h2 class="mt-2 text-2xl font-black text-slate-900">Sign out of PRISM?</h2>
-            </div>
+            <h2 class="text-2xl font-semibold text-slate-900">Sign out of PRISM?</h2>
             <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200" data-close-dialog>✕</button>
         </div>
         <p class="text-sm text-slate-600">Your session will end and you'll need to log in again.</p>

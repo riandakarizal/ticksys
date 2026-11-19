@@ -61,8 +61,8 @@
     <div class="grid gap-4 lg:grid-cols-[1fr_320px] mb-4">
 
         {{-- ── Langkah 2: pilih aset ──────────────────────────────────── --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-w-0">
-            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+        <div class="pt-well min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 pt-3 pb-1">
                 <div class="min-w-0">
                     <p class="text-xs font-bold text-slate-700">2. Pilih aset — {{ $from->id }}
                         <span class="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $from->statusBadgeClass() }}">{{ $from->statusLabel() }}</span>
@@ -82,7 +82,7 @@
             @endif
 
             <div class="overflow-x-auto max-h-[60vh]">
-                <table class="min-w-full text-xs">
+                <table class="pt-table min-w-full text-xs">
                     <thead class="text-left text-slate-400 border-b border-slate-100 bg-white sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-2 w-8">
@@ -183,13 +183,13 @@
 @endif
 
 {{-- ── Riwayat ────────────────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+<div class="pt-well">
+    <div class="px-4 pt-3 pb-1">
         <span class="text-xs font-bold text-slate-700">Riwayat migrasi</span>
         <span class="text-[11px] text-slate-400 ml-1">20 terakhir</span>
     </div>
     <div class="overflow-x-auto">
-        <table class="min-w-full text-xs">
+        <table class="pt-table min-w-full text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100">
                 <tr>
                     <th class="px-4 py-2 font-medium">Tanggal</th>

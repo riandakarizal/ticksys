@@ -112,8 +112,8 @@ $rp = function($n) {
 @endif
 
 {{-- ── Projects Table ────────────────────────────────────────── --}}
-<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+<div class="pt-well">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
         <div class="flex items-center gap-3">
             <h3 class="text-sm font-bold text-slate-800">Project List</h3>
             <span class="text-xs text-slate-400">{{ $projects->total() }} project{{ $projects->total() !== 1 ? 's' : '' }}</span>
@@ -127,7 +127,7 @@ $rp = function($n) {
         @endif
     </div>
     <div>
-        <table class="w-full table-fixed text-xs">
+        <table class="pt-table w-full table-fixed text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100 bg-slate-50/60">
                 <tr>
                     <th class="w-[7%] pl-4 py-1.5 pr-2 font-medium">Kontrak</th>
@@ -140,9 +140,9 @@ $rp = function($n) {
                     <th class="w-[9%] py-1.5 pr-2 font-medium">Periode</th>
                     <th class="w-[6%] py-1.5 pr-2 font-medium">Status</th>
                     <th class="w-[5%] py-1.5 pr-2 font-medium">Assets</th>
-                    <th class="w-[9%] py-1.5 pr-2 font-medium">Doc</th>
+                    <th class="w-[7%] py-1.5 pr-2 font-medium">Doc</th>
                     <th class="w-[8%] py-1.5 pr-2 font-medium">Notes</th>
-                    @if($isAdmin)<th class="w-[8%] py-1.5 pr-4"></th>@endif
+                    @if($isAdmin)<th class="w-[10%] py-1.5 pr-4"><span class="sr-only">Aksi</span></th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">

@@ -28,8 +28,8 @@
     @endforeach
 </div>
 
-<div class="panel overflow-hidden">
-    <div class="border-b border-slate-200 pb-4">
+<div class="pt-well">
+    <div class="rounded-3xl bg-white p-3">
         <form method="GET" class="flex flex-wrap items-center gap-2">
             @if($needsAction)<input type="hidden" name="needs_action" value="1">@endif
             @if($currentStatus !== '')<input type="hidden" name="status" value="{{ $currentStatus }}">@endif
@@ -104,14 +104,14 @@
         </form>
     </div>
 
-    <div class="flex items-center justify-between pt-5">
+    <div class="flex items-center justify-between px-4 pt-5">
         <div class="flex items-center gap-3">
-            <h2 class="text-xl font-black text-slate-900">Daftar Ticket</h2>
-            <span class="text-xs text-slate-400">{{ $tickets->total() }} ticket</span>
+            <h2 class="text-xl font-semibold text-slate-900">Daftar Ticket</h2>
+            <span class="text-sm text-slate-500">{{ $tickets->total() }} ticket</span>
         </div>
         @can('create', \App\Models\Ticket::class)
             <a href="{{ route('tickets.create') }}"
-               class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700">
+               class="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-[#fde2ea] to-[#e3e9fb] px-5 py-2.5 text-sm font-medium text-slate-800 transition hover:brightness-95">
                 + Buat Ticket
             </a>
         @endcan
@@ -139,8 +139,8 @@
     </div>
 
     {{-- Desktop --}}
-    <div class="mt-6 hidden overflow-x-auto md:block">
-        <table class="min-w-full text-sm">
+    <div class="mt-2 hidden overflow-x-auto md:block">
+        <table class="pt-table min-w-full text-sm">
             <thead class="text-left text-slate-500">
                 <tr>
                     <th class="pb-3 pr-3">Nomor</th>
@@ -184,6 +184,6 @@
         </table>
     </div>
 
-    <div class="mt-6">{{ $tickets->links() }}</div>
+    <div class="mt-2 px-2 pb-2">{{ $tickets->links() }}</div>
 </div>
 @endsection

@@ -29,6 +29,7 @@ class DashboardController extends Controller
 
         $projectKpi = [
             'total'  => $allProjects->count(),
+            'upc'    => $allProjects->where('pjct_status', 'UPC')->count(),
             'og'     => $allProjects->where('pjct_status', 'OG')->count(),
             'hvr'    => $allProjects->where('pjct_status', 'HVR')->count(),
             'dly'    => $allProjects->where('pjct_status', 'DLY')->count(),
@@ -65,6 +66,8 @@ class DashboardController extends Controller
             'byYear'         => $byYear,
             'recentProjects' => $recentProjects,
             'ticketCounts'   => $this->ticketCounts($visible),
+            // Finance tidak punya akses helpdesk; kartu aksinya beralih ke project delay.
+            'needsAction'    => $user->isFin() ? 0 : $helpdesk->whereNeedsAction(clone $visible, $user)->count(),
             'notifications'  => $user->notificationsFeed()->latest()->limit(5)->get(),
         ]);
     }

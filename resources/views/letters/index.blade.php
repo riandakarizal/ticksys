@@ -74,10 +74,10 @@
     </div>
 </div>
 
-<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+<div class="pt-well">
 
     {{-- ── Filter ─────────────────────────────────────────────────────── --}}
-    <form method="GET" action="{{ route('letters.index') }}" class="border-b border-slate-100 px-4 py-3">
+    <form method="GET" action="{{ route('letters.index') }}" class="rounded-3xl bg-white px-4 py-3">
         <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
         <input type="hidden" name="dir" value="{{ $filters['dir'] }}">
 
@@ -154,14 +154,14 @@
         </div>
     </form>
 
-    <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
         <span class="text-xs text-slate-500">{{ number_format($letters->total()) }} nomor surat</span>
         <span class="text-xs text-slate-400">Halaman {{ $letters->currentPage() }} / {{ max($letters->lastPage(), 1) }}</span>
     </div>
 
     {{-- ── Tabel ──────────────────────────────────────────────────────── --}}
     <div class="overflow-x-auto">
-        <table class="min-w-full text-xs">
+        <table class="pt-table min-w-full text-xs">
             <thead class="border-b border-slate-100 text-left text-slate-400">
                 <tr>
                     <th class="whitespace-nowrap px-4 py-2 font-medium">

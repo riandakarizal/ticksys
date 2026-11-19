@@ -81,7 +81,7 @@ $totalUnchanged = collect($summary)->sum('unchanged');
             <p class="text-xs text-slate-400 py-2">No changes in this section.</p>
         @else
             <div class="overflow-x-auto">
-                <table class="min-w-full text-xs">
+                <table class="pt-table min-w-full text-xs">
                     <thead class="text-left text-slate-500 border-b border-slate-200">
                         <tr>
                             <th class="pb-2 pr-2 w-8">#</th>
