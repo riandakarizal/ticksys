@@ -61,8 +61,8 @@
 @endif
 
 {{-- ── Detail per baris ─────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+<div class="pt-well">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
         <span class="text-xs text-slate-500">Detail per baris</span>
         <div class="flex items-center gap-1" id="project-preview-filters">
             @foreach(['all' => 'Semua', 'new' => 'Akan masuk', 'skip' => 'Dilewati', 'error' => 'Gagal'] as $key => $label)
@@ -75,7 +75,7 @@
     </div>
 
     <div class="overflow-x-auto max-h-[60vh]">
-        <table class="min-w-full text-xs">
+        <table class="pt-table min-w-full text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100 bg-white sticky top-0">
                 <tr>
                     <th class="px-4 py-2 font-medium">Baris</th>

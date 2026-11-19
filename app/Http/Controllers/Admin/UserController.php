@@ -15,7 +15,7 @@ class UserController extends AdminController
 {
     public function index(): View
     {
-        return view('admin.users', $this->viewData('Users', 'Manage Users and their access across projects.'));
+        return view('admin.users', $this->viewData('IAM Role', 'Akun PRISM, role, divisi, dan atasan langsung (approver ticket) setiap user.'));
     }
 
     public function store(UserStoreRequest $request): RedirectResponse|JsonResponse
@@ -35,7 +35,7 @@ class UserController extends AdminController
             'user_status' => $data['user_status'],
         ]);
 
-        return $this->respond($request, 'User created successfully.', route('admin.users.index'));
+        return $this->respond($request, 'User berhasil ditambahkan.', route('admin.users.index'));
     }
 
     public function update(UserUpdateRequest $request, User $managedUser): RedirectResponse|JsonResponse
@@ -60,7 +60,7 @@ class UserController extends AdminController
 
         $managedUser->save();
 
-        return $this->respond($request, 'User updated successfully.', route('admin.users.index'));
+        return $this->respond($request, 'Perubahan user disimpan.', route('admin.users.index'));
     }
 
     public function destroy(Request $request, User $managedUser): RedirectResponse|JsonResponse
@@ -70,6 +70,6 @@ class UserController extends AdminController
         $managedUser->teams()->detach();
         $managedUser->delete();
 
-        return $this->respond($request, 'User deleted successfully.', route('admin.users.index'));
+        return $this->respond($request, 'User dihapus.', route('admin.users.index'));
     }
 }

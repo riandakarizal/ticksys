@@ -51,6 +51,19 @@
         caret-color: auto;
     }
 
+    /* Fokus keyboard terlihat di link & tombol (mouse tidak memicunya). */
+    a:focus-visible,
+    button:focus-visible,
+    summary:focus-visible {
+        outline: 2px solid #18191d;
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: #e9ebfd;
+        color: #18191d;
+    }
+
     /* Edge punya tombol mata bawaan; PRISM memakai tombol sendiri (partials/password-toggle). */
     input::-ms-reveal,
     input::-ms-clear {
@@ -81,6 +94,44 @@
 
     .field {
         @apply w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    }
+
+    /* Papan Teknisi: field abu lembut tanpa border, fokus tinta (lihat DESIGN.md). */
+    .pt-field {
+        @apply w-full rounded-2xl border border-transparent bg-[#f5f5f6] px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:bg-[#eef0f2] focus:border-[#18191d] focus:bg-white;
+    }
+
+    .pt-label {
+        @apply mb-1.5 block text-sm font-medium text-slate-700;
+    }
+
+    /* Well Papan Teknisi: wadah abu muda berisi kartu/baris putih (DESIGN.md "Well"). */
+    .pt-well {
+        @apply rounded-[28px] bg-[#f5f5f6] p-2;
+    }
+
+    /* Tabel data Papan Teknisi: setiap baris = kartu putih membulat di atas well.
+       Latar sel di layer ini supaya warna sel bermakna (bg-amber-50 "kosong", baris batal) tetap menang. */
+    .pt-table {
+        border-collapse: separate;
+        border-spacing: 0 6px;
+    }
+
+    .pt-table tbody td {
+        background-color: #ffffff;
+    }
+
+    .pt-table tbody tr:hover td {
+        background-color: #fafafb;
+    }
+
+    /* Chip filter Papan Teknisi; aktif = tinta (aria-pressed). */
+    .role-chip {
+        @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
+    }
+
+    .role-chip[aria-pressed='true'] {
+        @apply bg-[#18191d] text-white hover:bg-[#18191d];
     }
 
     .label {
@@ -179,4 +230,55 @@
     .datatable-shell .datatable-pagination a {
         @apply inline-flex min-h-9 min-w-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700;
     }
+}
+
+/* Struktur .pt-table yang harus menang atas utility per sel (tanpa layer = di atas @layer utilities):
+   header kolom kecil tanpa kapital, tanpa garis antarbaris, sudut baris membulat. */
+.pt-table thead,
+.pt-table thead tr {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.pt-table thead th {
+    background-color: #f5f5f6;
+    border-color: transparent;
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    padding-top: 0.5rem;
+    padding-bottom: 0.25rem;
+}
+
+.pt-table tbody tr,
+.pt-table tbody td {
+    border-color: transparent;
+}
+
+.pt-table tbody td {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.pt-table tbody td:first-child {
+    border-top-left-radius: 1rem;
+    border-bottom-left-radius: 1rem;
+}
+
+.pt-table tbody td:last-child {
+    border-top-right-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+}
+
+.pt-table th:first-child,
+.pt-table td:first-child {
+    padding-left: 1.25rem;
+}
+
+.pt-table th:last-child,
+.pt-table td:last-child {
+    padding-right: 1.25rem;
 }

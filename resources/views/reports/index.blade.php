@@ -32,10 +32,10 @@
             @endforelse
         </div>
     </div>
-    <div class="panel overflow-hidden">
-        <h2 class="text-xl font-black">Hasil Filter</h2>
-        <div class="mt-4 overflow-x-auto">
-            <table class="min-w-full text-sm">
+    <div class="pt-well min-w-0">
+        <h2 class="px-4 pt-3 text-xl font-semibold">Hasil Filter</h2>
+        <div class="mt-2 overflow-x-auto">
+            <table class="pt-table min-w-full text-sm">
                 <thead class="text-left text-slate-500"><tr><th class="pb-3 pr-3">Ticket</th><th class="pb-3 pr-3">Project</th><th class="pb-3 pr-3">Jenis</th><th class="pb-3 pr-3">Status</th><th class="pb-3">Teknisi</th></tr></thead>
                 <tbody class="divide-y divide-slate-200">
                     @foreach($tickets as $ticket)
@@ -50,7 +50,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-6">{{ $tickets->links() }}</div>
+        <div class="mt-2 px-2 pb-2">{{ $tickets->links() }}</div>
     </div>
 </div>
 @endsection
