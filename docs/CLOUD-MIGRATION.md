@@ -85,6 +85,9 @@ begitu DNS sudah mengarah ke server dan port 80/443 bisa diakses dari luar.
 # di PC lokal: build ulang & push versi baru
 docker buildx build --platform linux/amd64,linux/arm64 -t iassprism/prism-app:latest --push .
 
+# kalau docker-compose.prod.yml berubah (mis. service scheduler), kirim ulang:
+scp docker-compose.prod.yml user@prism.iassupport.id:~/prism/
+
 # di server: pull & restart
 docker compose -f docker-compose.prod.yml --env-file .env.production pull
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
