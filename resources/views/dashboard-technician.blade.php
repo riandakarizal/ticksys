@@ -31,7 +31,7 @@
     $yMax    = max(4, (int) ceil($weekMax / 4) * 4);
 @endphp
 
-<div class="-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
+<div class="-m-4 sm:-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
 
     {{-- ── Judul + aksi ───────────────────────────────────────────────────── --}}
     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">

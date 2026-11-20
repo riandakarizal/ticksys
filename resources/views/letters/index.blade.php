@@ -22,6 +22,17 @@
 
 @section('content')
 
+{{-- ── Bar judul + aksi utama ────────────────────────────────────────── --}}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="min-w-0">
+        <h2 class="text-xl font-semibold text-slate-900">Nomor Surat</h2>
+        <p class="text-sm text-slate-500">Register nomor surat IASS {{ $stats['year'] }}</p>
+    </div>
+    <button type="button" class="inline-flex items-center gap-1.5 rounded-full bg-[#18191d] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-black" data-open-letter="create">
+        <span aria-hidden="true">+</span> Buat Nomor Surat
+    </button>
+</div>
+
 {{-- ── Hasil buat nomor ─────────────────────────────────────────────── --}}
 @if($created->isNotEmpty())
 <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
@@ -48,31 +59,32 @@
 @endif
 
 @unless($hasImported)
-<div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+<div class="mb-4 rounded-2xl bg-amber-50 px-5 py-3.5 text-sm text-amber-900">
     <span class="font-bold">Register lama dari Excel belum diimpor.</span>
     Nomor yang dibuat sekarang bisa bentrok dengan nomor yang sudah terpakai di Excel —
-    jalankan <code class="rounded bg-amber-100 px-1">php artisan letters:import</code> lebih dulu.
+    jalankan <code class="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs">php artisan letters:import</code> lebih dulu.
 </div>
 @endunless
 
-{{-- ── Ringkasan + tombol ───────────────────────────────────────────── --}}
-<div class="mb-4 flex flex-wrap items-stretch gap-3">
-    @foreach([
-        ['Nomor aktif '.$stats['year'], $stats['year_total'], 'text-slate-900', null],
-        ['Bulan ini', $stats['month_total'], 'text-slate-900', null],
-        ['Dibatalkan', $stats['cancelled'], 'text-slate-500', route('letters.index', ['status' => 'cancelled'])],
-        ['Data impor bertanda', $stats['flagged'], 'text-amber-600', route('letters.index', ['flagged' => 1])],
-    ] as [$label, $value, $color, $link])
-        <a @if($link) href="{{ $link }}" @endif class="min-w-[140px] rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm {{ $link ? 'hover:border-slate-300' : '' }}">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $label }}</p>
-            <p class="mt-1 text-2xl font-black {{ $color }}">{{ number_format($value) }}</p>
-        </a>
-    @endforeach
-
-    <div class="ml-auto flex items-center gap-2">
-        <button type="button" class="btn-primary rounded-xl" data-open-letter="create">+ Buat Nomor Surat</button>
+{{-- ── Ringkasan ───────────────────────────────────────────────────── --}}
+<section class="pt-well mb-4">
+    <div class="px-3 pb-2 pt-1">
+        <h3 class="text-base font-semibold text-slate-900">Ringkasan {{ $stats['year'] }}</h3>
     </div>
-</div>
+    <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        @foreach([
+            ['Nomor aktif', $stats['year_total'], 'text-slate-900', null],
+            ['Bulan ini', $stats['month_total'], 'text-slate-900', null],
+            ['Dibatalkan', $stats['cancelled'], 'text-slate-500', route('letters.index', ['status' => 'cancelled'])],
+            ['Data impor bertanda', $stats['flagged'], 'text-amber-600', route('letters.index', ['flagged' => 1])],
+        ] as [$label, $value, $color, $link])
+            <a @if($link) href="{{ $link }}" @endif class="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-white px-4 py-2.5 {{ $link ? 'transition hover:bg-[#fafafb]' : '' }}">
+                <span class="truncate text-sm text-slate-500">{{ $label }}@if($link) <span class="text-slate-300" aria-hidden="true">&rarr;</span>@endif</span>
+                <span class="text-xl font-semibold tabular-nums {{ $color }}">{{ number_format($value) }}</span>
+            </a>
+        @endforeach
+    </div>
+</section>
 
 <div class="pt-well">
 

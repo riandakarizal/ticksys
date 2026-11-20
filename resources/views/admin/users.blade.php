@@ -25,13 +25,12 @@
     $me = auth()->id();
 @endphp
 
-<div class="-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
+<div class="-m-4 sm:-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
 
     {{-- ── Judul + aksi ───────────────────────────────────────────────────── --}}
     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
             <h2 class="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl">{{ $pageTitle }}</h2>
-            <p class="mt-3 text-sm text-slate-500">{{ $pageDescription }}</p>
         </div>
         <button type="button" data-open-dialog="user-create-dialog"
                 class="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-linear-to-r from-[#fde2ea] to-[#e3e9fb] px-5 py-3 text-sm font-medium text-slate-800 transition hover:brightness-95">

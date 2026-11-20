@@ -61,7 +61,7 @@
     $areaMax = max(1, (int) ($byArea->max() ?? 0));
 @endphp
 
-<div class="-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
+<div class="-m-4 sm:-m-6 min-h-full bg-white p-4 sm:p-6 lg:p-8">
 
     {{-- ── Sapaan + aksi ──────────────────────────────────────────────────── --}}
     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -69,12 +69,7 @@
             <h2 class="text-4xl leading-tight tracking-tight text-slate-900 sm:text-5xl">
                 <span class="font-light">Halo,</span> <span class="font-extrabold">{{ $firstName }}</span>
             </h2>
-            <p class="mt-3 text-sm text-slate-500">
-                <span class="font-semibold text-slate-700">{{ $total }} project</span>
-                · {{ $projectKpi['dly'] }} delay
-                @if($canTickets) · {{ $ticketCounts['open'] + $ticketCounts['escalated'] }} ticket berjalan @endif
-                @if($user->user_div && $user->user_div !== '-') · {{ $user->user_div }} @endif
-            </p>
+            <p class="mt-3 text-sm text-slate-500">{{ $user->user_unit ?: "-" }}</p>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
             @if($canMonitor)
