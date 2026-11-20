@@ -8,7 +8,12 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
-        #sidebar { transition: width 0.2s ease; }
+        #sidebar { transition: width 0.2s ease, transform 0.2s ease; }
+        /* < lg: sidebar jadi laci (drawer), dibuka tombol menu di top bar. */
+        @media (max-width: 1023px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: none; box-shadow: 0 10px 40px rgb(0 0 0 / 0.15); }
+        }
         #main-wrapper { transition: margin-left 0.2s ease; }
         #sidebar.collapsed .sidebar-label { display: none; }
         #sidebar.collapsed .nav-chevron { display: none; }
@@ -253,10 +258,16 @@
     {{-- ══════════════════════════════════════════════════════
          MAIN WRAPPER
     ══════════════════════════════════════════════════════ --}}
-    <div id="main-wrapper" class="flex min-h-full flex-col ml-60 w-[calc(100vw-15rem)]">
+    <div id="sidebar-backdrop" class="fixed inset-0 z-[35] hidden bg-slate-900/30 lg:hidden"></div>
+
+    <div id="main-wrapper" class="flex min-h-full min-w-0 w-full flex-col lg:ml-60 lg:w-[calc(100vw-15rem)]">
 
         {{-- Top Bar --}}
-        <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-100 bg-white/90 px-6 backdrop-blur">
+        <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-100 bg-white/90 px-4 backdrop-blur sm:gap-4 sm:px-6">
+            <button type="button" id="sidebar-open" title="Menu" aria-label="Buka menu"
+                class="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>
+            </button>
             <div class="flex-1 min-w-0">
                 <h1 class="text-base font-semibold text-slate-900 truncate">{{ $heading ?? 'Dashboard' }}</h1>
                 <p class="text-xs text-slate-400 hidden sm:block truncate">{{ auth()->user()->user_name }}@unless(auth()->user()->isUser()) · {{ auth()->user()->user_div }}@endunless</p>
@@ -299,7 +310,7 @@
         </header>
 
         {{-- Page Content --}}
-        <main class="flex-1 p-6">
+        <main class="min-w-0 flex-1 p-4 sm:p-6">
             @include('partials.flash')
             @yield('content')
             {{ $slot ?? '' }}
@@ -332,8 +343,21 @@
     const sidebar     = document.getElementById('sidebar');
     const mainWrapper = document.getElementById('main-wrapper');
     const KEY         = 'prism-sb-collapsed';
+    const desktop     = window.matchMedia('(min-width: 1024px)');
+    const backdrop    = document.getElementById('sidebar-backdrop');
+
+    function setDrawer(open) {
+        sidebar.classList.toggle('open', open);
+        backdrop.classList.toggle('hidden', !open);
+    }
 
     function apply(collapsed) {
+        // Mode ciut & lebar inline hanya untuk desktop; di HP lebar diatur CSS (drawer).
+        if (!desktop.matches) {
+            sidebar.classList.remove('collapsed');
+            sidebar.style.width = mainWrapper.style.marginLeft = mainWrapper.style.width = '';
+            return;
+        }
         if (collapsed) {
             sidebar.classList.add('collapsed');
             sidebar.style.width = '4rem';
@@ -365,7 +389,15 @@
         }
     });
 
+    document.getElementById('sidebar-open')?.addEventListener('click', function () { setDrawer(true); });
+    backdrop.addEventListener('click', function () { setDrawer(false); });
+    desktop.addEventListener('change', function () {
+        setDrawer(false);
+        apply(localStorage.getItem(KEY) === '1');
+    });
+
     document.getElementById('sidebar-toggle')?.addEventListener('click', function () {
+        if (!desktop.matches) { setDrawer(false); return; }
         const next = !sidebar.classList.contains('collapsed');
         apply(next);
         localStorage.setItem(KEY, next ? '1' : '0');

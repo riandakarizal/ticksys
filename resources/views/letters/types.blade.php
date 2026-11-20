@@ -15,7 +15,7 @@
     <button type="button" class="btn-primary rounded-xl" data-open-type>+ Tambah Jenis Surat</button>
 </div>
 
-<div class="pt-well">
+<div class="pt-well overflow-x-auto">
     <table class="pt-table min-w-full text-xs">
         <thead class="border-b border-slate-100 text-left text-slate-400">
             <tr>

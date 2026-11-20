@@ -126,8 +126,8 @@ $rp = function($n) {
             </button>
         @endif
     </div>
-    <div>
-        <table class="pt-table w-full table-fixed text-xs">
+    <div class="overflow-x-auto">
+        <table class="pt-table w-full min-w-[960px] table-fixed text-xs">
             <thead class="text-left text-slate-400 border-b border-slate-100 bg-slate-50/60">
                 <tr>
                     <th class="w-[7%] pl-4 py-1.5 pr-2 font-medium">Kontrak</th>
